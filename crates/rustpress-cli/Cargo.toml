@@ -1,0 +1,19 @@
+[package]
+name = "rustpress-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "CLI tool for RustPress"
+
+[[bin]]
+name = "rustpress-cli"
+path = "src/main.rs"
+
+[dependencies]
+rustpress-core = { workspace = true }
+rustpress-db = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+dotenvy = { workspace = true }

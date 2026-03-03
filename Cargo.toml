@@ -1,0 +1,58 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/rustpress-core",
+    "crates/rustpress-db",
+    "crates/rustpress-server",
+    "crates/rustpress-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "GPL-2.0"
+description = "RustPress - A WordPress-compatible CMS built in Rust"
+
+[workspace.metadata.wp-compat]
+wordpress-db-schema = "6.x"
+target-compat = "read-only"
+phase = "0"
+
+[workspace.dependencies]
+# Internal crates
+rustpress-core = { path = "crates/rustpress-core" }
+rustpress-db = { path = "crates/rustpress-db" }
+
+# Web framework
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+
+# ORM (MySQL for WP database compatibility)
+sea-orm = { version = "1.1", features = [
+    "sqlx-mysql",
+    "runtime-tokio-native-tls",
+    "macros",
+] }
+
+# Template engine
+tera = "1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Configuration
+dotenvy = "0.15"
+
+# CLI
+clap = { version = "4", features = ["derive"] }

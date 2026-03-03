@@ -1,0 +1,12 @@
+pub mod wp_commentmeta;
+pub mod wp_comments;
+pub mod wp_links;
+pub mod wp_options;
+pub mod wp_postmeta;
+pub mod wp_posts;
+pub mod wp_term_relationships;
+pub mod wp_term_taxonomy;
+pub mod wp_termmeta;
+pub mod wp_terms;
+pub mod wp_usermeta;
+pub mod wp_users;
