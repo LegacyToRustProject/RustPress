@@ -1,0 +1,14 @@
+target/
+.git/
+node_modules/
+*.log
+.env
+.env.*
+.vscode/
+.claude/
+test-screenshots/
+*.swp
+*.swo
+.DS_Store
+Dockerfile
+docker-compose.yml

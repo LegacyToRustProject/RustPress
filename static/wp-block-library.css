@@ -1,0 +1,376 @@
+/*
+ * WordPress Block Library CSS (wp-block-library)
+ * Core block styles that WordPress loads on every page
+ * Subset relevant to Twenty Twenty-Five frontend rendering
+ */
+
+/* Reset */
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+/* Alignments */
+.has-text-align-center {
+	text-align: center;
+}
+
+.has-text-align-left {
+	text-align: left;
+}
+
+.has-text-align-right {
+	text-align: right;
+}
+
+/* WordPress Block: Paragraph */
+.wp-block-paragraph {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+/* WordPress Block: Image */
+.wp-block-image {
+	margin: 0 0 1em;
+}
+
+.wp-block-image img {
+	max-width: 100%;
+	height: auto;
+	vertical-align: bottom;
+	box-sizing: border-box;
+}
+
+.wp-block-image.aligncenter {
+	text-align: center;
+}
+
+.wp-block-image.alignfull img,
+.wp-block-image.alignwide img {
+	width: 100%;
+}
+
+.wp-block-image .alignleft {
+	float: left;
+	margin-right: 1em;
+}
+
+.wp-block-image .alignright {
+	float: right;
+	margin-left: 1em;
+}
+
+.wp-block-image figcaption {
+	margin-top: 0.5em;
+	margin-bottom: 1em;
+}
+
+/* WordPress Block: Quote */
+.wp-block-quote {
+	border-left: 0.25em solid;
+	margin: 0 0 1.75em;
+	padding-left: 1em;
+}
+
+.wp-block-quote cite,
+.wp-block-quote footer {
+	color: currentColor;
+	font-size: var(--wp--preset--font-size--small, 0.875rem);
+	font-style: normal;
+	position: relative;
+}
+
+.wp-block-quote.has-text-align-right {
+	border-left: none;
+	border-right: 0.25em solid;
+	padding-left: 0;
+	padding-right: 1em;
+}
+
+.wp-block-quote.has-text-align-center {
+	border: none;
+	padding-left: 0;
+}
+
+/* WordPress Block: List */
+.wp-block-list {
+	padding-left: 1.3em;
+}
+
+/* WordPress Block: Code */
+.wp-block-code {
+	font-family: Menlo, Consolas, monaco, monospace;
+	font-size: 0.9em;
+	color: var(--wp--preset--color--contrast, #111);
+	padding: 0.8em 1em;
+	border: 1px solid var(--wp--preset--color--accent-1, #ddd);
+	overflow-wrap: break-word;
+	white-space: pre-wrap;
+}
+
+/* WordPress Block: Preformatted */
+.wp-block-preformatted {
+	font-family: Menlo, Consolas, monaco, monospace;
+	font-size: 0.9em;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+}
+
+/* WordPress Block: Separator */
+.wp-block-separator {
+	border: none;
+	border-bottom: 2px solid currentColor;
+	margin-left: auto;
+	margin-right: auto;
+	opacity: 0.4;
+}
+
+.wp-block-separator:not(.is-style-wide):not(.is-style-dots) {
+	max-width: 100px;
+}
+
+.wp-block-separator.is-style-dots {
+	background: none !important;
+	border: none;
+	text-align: center;
+	max-width: none;
+	line-height: 1;
+	height: auto;
+}
+
+.wp-block-separator.is-style-dots::before {
+	content: "\00b7 \00b7 \00b7";
+	color: currentColor;
+	font-size: 1.5em;
+	letter-spacing: 2em;
+	padding-left: 2em;
+	font-family: serif;
+}
+
+/* WordPress Block: Table */
+.wp-block-table {
+	margin: 0 0 1em;
+	overflow-x: auto;
+}
+
+.wp-block-table table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.wp-block-table td,
+.wp-block-table th {
+	border: 1px solid;
+	padding: 0.5em;
+}
+
+/* WordPress Block: Gallery */
+.wp-block-gallery {
+	display: flex;
+	flex-wrap: wrap;
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
+	gap: var(--wp--style--gallery-gap-default, var(--gallery-block--gutter-size, var(--wp--style--block-gap, 0.5em)));
+}
+
+.wp-block-gallery .wp-block-image {
+	margin: 0;
+	width: calc(50% - var(--wp--style--gallery-gap-default, var(--gallery-block--gutter-size, var(--wp--style--block-gap, 0.5em))) / 2);
+}
+
+/* WordPress Block: Columns */
+.wp-block-columns {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2em;
+	align-items: initial !important;
+}
+
+.wp-block-column {
+	flex-grow: 1;
+	min-width: 0;
+	word-break: break-word;
+	overflow-wrap: break-word;
+}
+
+@media (min-width: 782px) {
+	.wp-block-columns {
+		flex-wrap: nowrap;
+	}
+}
+
+/* WordPress Block: Button */
+.wp-block-button__link {
+	color: var(--wp--preset--color--base, #fff);
+	background-color: var(--wp--preset--color--contrast, #111);
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	cursor: pointer;
+	display: inline-block;
+	font-size: inherit;
+	padding: calc(0.667em + 2px) calc(1.333em + 2px);
+	text-align: center;
+	text-decoration: none;
+	word-break: normal;
+	overflow-wrap: break-word;
+}
+
+.wp-block-button__link:hover {
+	opacity: 0.9;
+}
+
+.wp-block-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	align-items: center;
+}
+
+/* WordPress Block: Cover */
+.wp-block-cover {
+	position: relative;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 430px;
+	padding: 1em;
+	overflow: hidden;
+}
+
+.wp-block-cover__background,
+.wp-block-cover__gradient-background {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	z-index: 1;
+}
+
+.wp-block-cover__inner-container {
+	z-index: 1;
+	color: #fff;
+	width: 100%;
+}
+
+/* WordPress Block: Spacer */
+.wp-block-spacer {
+	clear: both;
+}
+
+/* WordPress Block: Embed */
+.wp-block-embed {
+	margin: 0 0 1em;
+	overflow-wrap: break-word;
+}
+
+.wp-block-embed figcaption {
+	margin-top: 0.5em;
+	margin-bottom: 1em;
+}
+
+.wp-block-embed__wrapper {
+	position: relative;
+}
+
+/* WordPress Block: Video */
+.wp-block-video video {
+	max-width: 100%;
+}
+
+/* WordPress Block: Audio */
+.wp-block-audio audio {
+	width: 100%;
+	min-width: 300px;
+}
+
+/* WordPress Block: File */
+.wp-block-file {
+	margin-bottom: 1.5em;
+}
+
+.wp-block-file a.wp-block-file__button {
+	background: var(--wp--preset--color--contrast, #32373c);
+	border-radius: 2em;
+	color: var(--wp--preset--color--base, #fff);
+	font-size: 0.8em;
+	padding: 0.5em 1em;
+}
+
+/* WordPress Block: Pullquote */
+.wp-block-pullquote {
+	margin: 0 0 1em;
+	padding: 3em 0;
+	text-align: center;
+	overflow-wrap: break-word;
+	border-top: 4px solid currentColor;
+	border-bottom: 4px solid currentColor;
+}
+
+.wp-block-pullquote cite,
+.wp-block-pullquote footer {
+	color: currentColor;
+	font-size: var(--wp--preset--font-size--small, 0.875rem);
+	font-style: normal;
+	text-transform: uppercase;
+}
+
+/* WordPress Block: Details */
+.wp-block-details summary {
+	cursor: pointer;
+	list-style-position: outside;
+}
+
+/* WordPress Block: Footnotes */
+.wp-block-footnotes {
+	font-size: var(--wp--preset--font-size--small, 0.875rem);
+}
+
+/* WordPress Block: Navigation */
+.wp-block-navigation-item {
+	display: flex;
+	align-items: center;
+}
+
+.wp-block-navigation-item__content {
+	text-decoration: none;
+	color: inherit;
+}
+
+/* WordPress: Utility classes */
+.has-small-font-size {
+	font-size: var(--wp--preset--font-size--small) !important;
+}
+
+.has-medium-font-size {
+	font-size: var(--wp--preset--font-size--medium) !important;
+}
+
+.has-large-font-size {
+	font-size: var(--wp--preset--font-size--large) !important;
+}
+
+.has-x-large-font-size {
+	font-size: var(--wp--preset--font-size--x-large) !important;
+}
+
+/* Color classes */
+.has-base-color { color: var(--wp--preset--color--base) !important; }
+.has-contrast-color { color: var(--wp--preset--color--contrast) !important; }
+.has-base-background-color { background-color: var(--wp--preset--color--base) !important; }
+.has-contrast-background-color { background-color: var(--wp--preset--color--contrast) !important; }
+.has-accent-1-background-color { background-color: var(--wp--preset--color--accent-1) !important; }
+.has-accent-2-background-color { background-color: var(--wp--preset--color--accent-2) !important; }
+.has-accent-3-background-color { background-color: var(--wp--preset--color--accent-3) !important; }
+.has-accent-4-background-color { background-color: var(--wp--preset--color--accent-4) !important; }
+.has-accent-5-background-color { background-color: var(--wp--preset--color--accent-5) !important; }
+.has-black-color { color: var(--wp--preset--color--black) !important; }
+.has-white-color { color: var(--wp--preset--color--white) !important; }
+.has-black-background-color { background-color: var(--wp--preset--color--black) !important; }
+.has-white-background-color { background-color: var(--wp--preset--color--white) !important; }
+
+/* WordPress: border-color preset classes */
+.has-border-color {
+	border-style: solid;
+}

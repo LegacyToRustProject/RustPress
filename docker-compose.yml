@@ -67,10 +67,11 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      db:
+      wordpress:
         condition: service_healthy
     environment:
-      DATABASE_URL: mysql://wpuser:wppass@db:3306/wordpress
+      DATABASE_URL: mysql://wpuser:wppass@db:3306/wordpress_ref
+      SKIP_MIGRATIONS: "true"
       JWT_SECRET: e2e-test-jwt-secret-do-not-use-in-production
       SITE_URL: http://localhost:8080
       RUSTPRESS_HOST: 0.0.0.0
@@ -89,13 +90,35 @@ services:
       retries: 20
       start_period: 30s
 
+  # ── Selenium Chrome (headless browser for visual tests) ───────────────────
+  selenium:
+    image: selenium/standalone-chrome:131.0
+    restart: unless-stopped
+    shm_size: 2gb
+    environment:
+      SE_NODE_MAX_SESSIONS: 4
+      SE_VNC_NO_PASSWORD: 1
+    ports:
+      - "4444:4444"
+      - "7900:7900"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    profiles:
+      - e2e
+
   # ── E2E Test Runner ────────────────────────────────────────────────────────
   e2e:
-    image: rust:1.82-slim
+    image: rust:1.88-slim
     depends_on:
       wordpress:
         condition: service_healthy
       rustpress:
+        condition: service_healthy
+      selenium:
         condition: service_healthy
     working_dir: /workspace
     volumes:
@@ -107,13 +130,17 @@ services:
       RUSTPRESS_URL: http://rustpress:3000
       ADMIN_USER: admin
       ADMIN_PASSWORD: password
+      WEBDRIVER_URL: http://selenium:4444
+      SCREENSHOT_DIR: /workspace/test-screenshots
     command: >
       bash -c "
         apt-get update -qq && apt-get install -y -qq pkg-config libssl-dev curl > /dev/null &&
+        mkdir -p /workspace/test-screenshots &&
         echo '=== Waiting for servers ===' &&
         until curl -sf http://wordpress:80/wp-json/ > /dev/null; do echo 'waiting for WordPress...'; sleep 3; done &&
         until curl -sf http://rustpress:3000/wp-json/ > /dev/null; do echo 'waiting for RustPress...'; sleep 3; done &&
-        echo '=== Both servers ready. Running E2E tests ===' &&
+        until curl -sf http://selenium:4444/wd/hub/status > /dev/null; do echo 'waiting for Selenium...'; sleep 3; done &&
+        echo '=== All services ready. Running E2E tests ===' &&
         cargo test -p rustpress-e2e -- --ignored --nocapture --test-threads=4 2>&1
       "
     profiles:

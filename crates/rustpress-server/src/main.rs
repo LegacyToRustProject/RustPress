@@ -50,20 +50,25 @@ async fn main() -> Result<()> {
     // Connect to database
     let db = connection::connect(&config.database_url).await?;
 
-    // Run migrations (create tables if not exist)
-    info!("Running database migrations...");
-    rustpress_migrate::create_wp_tables(&db).await?;
-    rustpress_migrate::insert_default_options(&db, &config.site_url, "RustPress").await?;
+    // Run migrations (create tables if not exist) — skip when using an existing WordPress DB
+    let skip_migrations = std::env::var("SKIP_MIGRATIONS").unwrap_or_default();
+    if skip_migrations == "true" || skip_migrations == "1" {
+        info!("SKIP_MIGRATIONS set — using existing database tables");
+    } else {
+        info!("Running database migrations...");
+        rustpress_migrate::create_wp_tables(&db).await?;
+        rustpress_migrate::insert_default_options(&db, &config.site_url, "RustPress").await?;
 
-    // Create default admin user with bcrypt hash of "password"
-    let admin_hash = "$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
-    rustpress_migrate::create_default_admin(&db, admin_hash).await?;
+        // Create default admin user with bcrypt hash of "password"
+        let admin_hash = "$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
+        rustpress_migrate::create_default_admin(&db, admin_hash).await?;
 
-    // Insert a sample post so there's something to see
-    {
-        use sea_orm::{ConnectionTrait, Statement};
-        let sample_post = "INSERT IGNORE INTO wp_posts (ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count) VALUES (1, 1, NOW(), NOW(), '<h2>Welcome to RustPress!</h2>\n<p>This is your first post, powered by <strong>Rust</strong>. RustPress is a WordPress-compatible CMS built entirely in Rust for blazing-fast performance.</p>\n<h3>Features</h3>\n<ul>\n<li>WordPress 6.9 database compatible</li>\n<li>WP REST API compatible (/wp-json/wp/v2/)</li>\n<li>Plugin system with WASM support</li>\n<li>Built with Axum, SeaORM, and Tera</li>\n</ul>\n<p>Edit or delete this post, then start writing!</p>', 'Hello RustPress!', 'Welcome to RustPress - a WordPress-compatible CMS built in Rust.', 'publish', 'open', 'open', '', 'hello-rustpress', '', '', NOW(), NOW(), '', 0, '', 0, 'post', '', 0)";
-        db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sample_post.to_string())).await.ok();
+        // Insert a sample post so there's something to see
+        {
+            use sea_orm::{ConnectionTrait, Statement};
+            let sample_post = "INSERT IGNORE INTO wp_posts (ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count) VALUES (1, 1, NOW(), NOW(), '<h2>Welcome to RustPress!</h2>\n<p>This is your first post, powered by <strong>Rust</strong>. RustPress is a WordPress-compatible CMS built entirely in Rust for blazing-fast performance.</p>\n<h3>Features</h3>\n<ul>\n<li>WordPress 6.9 database compatible</li>\n<li>WP REST API compatible (/wp-json/wp/v2/)</li>\n<li>Plugin system with WASM support</li>\n<li>Built with Axum, SeaORM, and Tera</li>\n</ul>\n<p>Edit or delete this post, then start writing!</p>', 'Hello RustPress!', 'Welcome to RustPress - a WordPress-compatible CMS built in Rust.', 'publish', 'open', 'open', '', 'hello-rustpress', '', '', NOW(), NOW(), '', 0, '', 0, 'post', '', 0)";
+            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sample_post.to_string())).await.ok();
+        }
     }
 
     info!("Database ready");

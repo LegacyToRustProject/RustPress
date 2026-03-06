@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use serde::Serialize;
 use tera::Context;
 
@@ -5,6 +6,33 @@ use rustpress_db::entities::wp_posts;
 
 /// Template tag helpers for rendering WordPress-like template data.
 /// These functions populate Tera contexts with post/page data.
+
+/// Format a NaiveDateTime to WordPress's default "F j, Y" format (e.g., "January 1, 2024").
+fn format_date_human(dt: NaiveDateTime) -> String {
+    let month = match dt.format("%m").to_string().as_str() {
+        "01" => "January",
+        "02" => "February",
+        "03" => "March",
+        "04" => "April",
+        "05" => "May",
+        "06" => "June",
+        "07" => "July",
+        "08" => "August",
+        "09" => "September",
+        "10" => "October",
+        "11" => "November",
+        "12" => "December",
+        _ => "January",
+    };
+    let day = dt.format("%-d").to_string();
+    let year = dt.format("%Y").to_string();
+    format!("{} {}, {}", month, day, year)
+}
+
+/// Format a NaiveDateTime to ISO 8601 for datetime attributes.
+fn format_date_iso(dt: NaiveDateTime) -> String {
+    dt.format("%Y-%m-%dT%H:%M:%S+00:00").to_string()
+}
 
 /// Post data prepared for template rendering.
 #[derive(Debug, Clone, Serialize)]
@@ -14,6 +42,10 @@ pub struct PostTemplateData {
     pub content: String,
     pub excerpt: String,
     pub date: String,
+    /// Human-readable date like "January 1, 2024" (WordPress "F j, Y" format)
+    pub date_formatted: String,
+    /// ISO 8601 date for datetime attribute: "2024-01-01T00:00:00+00:00"
+    pub date_iso: String,
     pub modified: String,
     pub author_id: u64,
     pub slug: String,
@@ -23,6 +55,7 @@ pub struct PostTemplateData {
     pub comment_count: i64,
     pub comment_status: String,
     pub sticky: bool,
+    pub password_required: bool,
 }
 
 impl PostTemplateData {
@@ -44,6 +77,8 @@ impl PostTemplateData {
                 post.post_excerpt.clone()
             },
             date: post.post_date.format("%Y-%m-%d %H:%M:%S").to_string(),
+            date_formatted: format_date_human(post.post_date),
+            date_iso: format_date_iso(post.post_date),
             modified: post.post_modified.format("%Y-%m-%d %H:%M:%S").to_string(),
             author_id: post.post_author,
             slug: post.post_name.clone(),
@@ -53,6 +88,7 @@ impl PostTemplateData {
             comment_count: post.comment_count,
             comment_status: post.comment_status.clone(),
             sticky: false,
+            password_required: !post.post_password.is_empty(),
         }
     }
 
@@ -75,6 +111,8 @@ impl PostTemplateData {
                 post.post_excerpt.clone()
             },
             date: post.post_date.format("%Y-%m-%d %H:%M:%S").to_string(),
+            date_formatted: format_date_human(post.post_date),
+            date_iso: format_date_iso(post.post_date),
             modified: post.post_modified.format("%Y-%m-%d %H:%M:%S").to_string(),
             author_id: post.post_author,
             slug: post.post_name.clone(),
@@ -84,6 +122,7 @@ impl PostTemplateData {
             comment_count: post.comment_count,
             comment_status: post.comment_status.clone(),
             sticky: false,
+            password_required: !post.post_password.is_empty(),
         }
     }
 }

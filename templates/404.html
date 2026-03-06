@@ -1,17 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Page not found - {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block title %}Page not found &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}error404{% endblock %}
 
 {% block content %}
-<div class="content-area error-404">
-    <h1 class="page-title">Page not found</h1>
-    <div class="error-content">
-        <p>It looks like nothing was found at this location. Maybe try a search?</p>
-        <form class="search-form" action="/search" method="get">
-            <label for="search-input" class="screen-reader-text">Search</label>
-            <input type="text" id="search-input" name="s" placeholder="Search..." class="search-field">
-            <button type="submit" class="search-submit">Search</button>
-        </form>
-    </div>
+<div class="wp-block-group is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--50);padding-bottom:var(--wp--preset--spacing--50)">
+
+<h1 class="wp-block-heading" style="text-align:center">Page not found</h1>
+
+<p style="text-align:center">It looks like nothing was found at this location. Maybe try a search?</p>
+
+<form role="search" method="get" action="{{ site_url | default(value='') }}/" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search">
+<label class="wp-block-search__label" for="wp-block-search__input-1">Search</label>
+<div class="wp-block-search__inside-wrapper"><input class="wp-block-search__input" id="wp-block-search__input-1" placeholder="" value="" type="search" name="s" required /><button aria-label="Search" class="wp-block-search__button wp-element-button" type="submit">Search</button></div>
+</form>
+
 </div>
 {% endblock %}

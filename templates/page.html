@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}{{ the_title }} - {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block title %}{{ the_title }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}page page-id-{{ post.id | default(value=2) }} page-template-default{% endblock %}
 
 {% block content %}
-<article class="single-page">
-    <header class="entry-header content-area">
-        <h1 class="entry-title">{{ the_title }}</h1>
-    </header>
-    <div class="entry-content content-area">
-        {{ the_content | safe }}
-    </div>
-</article>
+<div class="wp-block-group is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--50);padding-bottom:var(--wp--preset--spacing--50)">
+<h1 class="wp-block-post-title">{{ the_title }}</h1>
+
+<div class="entry-content wp-block-post-content is-layout-constrained wp-block-post-content-is-layout-constrained">
+{{ the_content | safe }}
+</div>
+</div>
 {% endblock %}

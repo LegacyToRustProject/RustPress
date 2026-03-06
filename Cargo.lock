@@ -3609,6 +3609,8 @@ dependencies = [
 name = "rustpress-e2e"
 version = "0.1.0"
 dependencies = [
+ "base64",
+ "image",
  "reqwest",
  "scraper",
  "serde",
@@ -3701,6 +3703,7 @@ dependencies = [
 name = "rustpress-themes"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "regex",
  "rustpress-core",
  "rustpress-db",

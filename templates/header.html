@@ -1,17 +1,16 @@
-<header class="site-header">
-    <div class="header-inner">
-        <div class="site-branding">
-            <p class="site-title"><a href="/">{{ site_name | default(value="RustPress") }}</a></p>
-        </div>
-        <nav class="primary-navigation">
-            {% if header_menu is defined and header_menu | length > 0 %}
-                {% for item in header_menu %}
-                    <a href="{{ item.url }}">{{ item.label }}</a>
-                {% endfor %}
-            {% else %}
-                <a href="/">Blog</a>
-                <a href="/search">Search</a>
-            {% endif %}
-        </nav>
-    </div>
+<header class="wp-block-template-part">
+<div class="wp-block-group alignfull is-layout-flow wp-block-group-is-layout-flow">
+<div class="wp-block-group has-global-padding is-layout-constrained wp-block-group-is-layout-constrained">
+<div class="wp-block-group alignwide is-content-justification-space-between is-nowrap is-layout-flex wp-block-group-is-layout-flex" style="padding-top:var(--wp--preset--spacing--30);padding-bottom:var(--wp--preset--spacing--30)">
+<p class="wp-block-site-title"><a href="{{ site_url | default(value='/') }}" rel="home">{{ site_name | default(value="RustPress") }}</a></p>
+<div class="wp-block-group is-content-justification-right is-nowrap is-layout-flex wp-block-group-is-layout-flex">
+<nav class="is-responsive items-justified-right wp-block-navigation is-content-justification-right is-layout-flex wp-block-navigation-is-layout-flex" aria-label="Navigation"><div class="wp-block-navigation__responsive-container" id="modal-1"><div class="wp-block-navigation__responsive-close"><div class="wp-block-navigation__responsive-dialog"><div class="wp-block-navigation__responsive-container-content" id="modal-1-content"><ul class="wp-block-navigation__container is-responsive items-justified-right wp-block-navigation">{% if header_menu is defined and header_menu | length > 0 %}{% for item in header_menu %}
+<li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="{{ item.url }}"><span class="wp-block-navigation-item__label">{{ item.label }}</span></a></li>{% endfor %}{% else %}<ul class="wp-block-page-list">{% for page in pages | default(value=[]) %}
+<li class="wp-block-pages-list__item wp-block-navigation-item"><a class="wp-block-pages-list__item__link wp-block-navigation-item__content" href="{{ page.permalink | default(value='/' ~ page.slug ~ '/') }}">{{ page.title }}</a></li>{% endfor %}{% if pages is not defined or pages | length == 0 %}
+<li class="wp-block-pages-list__item wp-block-navigation-item"><a class="wp-block-pages-list__item__link wp-block-navigation-item__content" href="{{ site_url | default(value='') }}/sample-page/">Sample Page</a></li>{% endif %}</ul>{% endif %}
+</ul></div></div></div></div></nav>
+</div>
+</div>
+</div>
+</div>
 </header>

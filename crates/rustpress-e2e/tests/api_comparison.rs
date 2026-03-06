@@ -5229,19 +5229,19 @@ async fn test_rest_api_global_styles() {
 }
 
 // ---------------------------------------------------------------------------
-// _fields parameter
+// _fields parameter (detailed)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
 #[ignore]
-async fn test_rest_api_fields_parameter() {
+async fn test_rest_api_fields_parameter_detailed() {
     let cfg = TestConfig::from_env();
     let client = build_http_client();
     if skip_if_unavailable(&cfg.wordpress_url, &cfg.rustpress_url).await {
         return;
     }
 
-    eprintln!("\n=== test_rest_api_fields_parameter ===");
+    eprintln!("\n=== test_rest_api_fields_parameter_detailed ===");
 
     let fields = "id,title,slug";
 
@@ -5285,7 +5285,7 @@ async fn test_rest_api_fields_parameter() {
                 assert_json_keys_match(wp_first, rp_first);
             }
 
-            eprintln!("[PASS] _fields parameter compared");
+            eprintln!("[PASS] _fields parameter detailed compared");
         }
         _ => eprintln!("[SKIP] Could not fetch posts with _fields from one or both servers"),
     }

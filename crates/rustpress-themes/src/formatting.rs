@@ -490,6 +490,9 @@ pub fn apply_content_filters(content: &str) -> String {
 
     let mut result = content.to_string();
 
+    // 0. Strip WordPress block editor comments (<!-- wp:xxx --> / <!-- /wp:xxx -->)
+    result = strip_block_comments(&result);
+
     // 1. Process shortcodes ([caption], [audio], [video], etc.)
     result = process_shortcodes(&result);
 
@@ -500,6 +503,16 @@ pub fn apply_content_filters(content: &str) -> String {
     result = wptexturize(&result);
 
     result
+}
+
+/// Strip WordPress Gutenberg block comments from content.
+///
+/// Removes `<!-- wp:blockname -->`, `<!-- wp:blockname {"attrs":...} -->`,
+/// and `<!-- /wp:blockname -->` comments that the block editor stores in post_content.
+/// WordPress's block parser processes these; we strip them since we render raw HTML.
+fn strip_block_comments(content: &str) -> String {
+    let re = Regex::new(r"<!-- /?wp:\S+?(?:\s+\{[^}]*\})?\s*/?-->").unwrap();
+    re.replace_all(content, "").to_string()
 }
 
 /// Apply content filters suitable for titles (no wpautop, just wptexturize).
@@ -538,6 +551,9 @@ pub fn apply_content_filters_full(
     hooks: &rustpress_core::hooks::HookRegistry,
 ) -> String {
     let mut result = content.to_string();
+
+    // 0. Strip WordPress block editor comments
+    result = strip_block_comments(&result);
 
     // 1. Process shortcodes via registry (plugins can add shortcodes here)
     result = shortcodes.do_shortcode(&result);

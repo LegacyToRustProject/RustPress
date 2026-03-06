@@ -119,17 +119,13 @@ pub fn routes() -> Router<Arc<AppState>> {
         .route("/comments/feed/", get(comments_feed))
         // Date-based archives (WordPress compatible) — single post routes BEFORE archives
         .route("/{year}/{month}/{day}/{slug}", get(single_by_date_slug))
-        .route("/{year}/{month}/{slug}", get(single_by_month_slug))
-        .route("/{year}/{month}/{day}", get(day_archive))
+        .route("/{year}/{month}/{slug}", get(single_by_month_slug_or_day_archive))
         .route("/{year}/{month}", get(month_archive))
         .route(
             "/wp-comments-post.php",
             axum::routing::post(submit_comment),
         )
-        .route(
-            "/wp-login.php",
-            get(wp_login_page).post(wp_login_post),
-        )
+        // wp-login.php is registered in wp_admin routes
         // admin-ajax.php compatible endpoint
         .route(
             "/wp-admin/admin-ajax.php",
@@ -214,6 +210,25 @@ async fn build_base_context(state: &AppState) -> tera::Context {
         )
     };
     ctx.insert("footer_widgets", &footer_widgets_html);
+
+    // Load published pages for navigation fallback (wp-block-page-list)
+    if header_links.is_empty() {
+        let pages = wp_posts::Entity::find()
+            .filter(wp_posts::Column::PostType.eq("page"))
+            .filter(wp_posts::Column::PostStatus.eq("publish"))
+            .order_by_asc(wp_posts::Column::MenuOrder)
+            .order_by_asc(wp_posts::Column::PostTitle)
+            .all(&state.db)
+            .await
+            .unwrap_or_default();
+        let rewrite = state.rewrite_rules.read().await;
+        let page_data: Vec<PostTemplateData> = pages
+            .iter()
+            .map(|p| PostTemplateData::from_model_with_rewrite(p, &state.site_url, &rewrite))
+            .collect();
+        drop(rewrite);
+        ctx.insert("pages", &page_data);
+    }
 
     ctx
 }
@@ -504,7 +519,7 @@ async fn front_page_or_query(
                 m_val[0..4].parse::<u32>(),
                 m_val[4..6].parse::<u32>(),
             ) {
-                let url = format!("/{:04}/{:02}/", year, month);
+                let url = format!("/{:04}/{:02}", year, month);
                 return Redirect::permanent(&url).into_response();
             }
         }
@@ -1339,7 +1354,13 @@ async fn month_archive(
         .count(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
-    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+
+    // WordPress shows 404 for date archives with no posts
+    if total == 0 {
+        return render_theme_page(&state, &PageType::NotFound, &context).await;
+    }
+
+    let total_pages = (total + per_page - 1) / per_page;
 
     let models = query
         .offset((page - 1) * per_page)
@@ -1464,9 +1485,49 @@ async fn get_sticky_post_ids(state: &AppState) -> Vec<u64> {
         return vec![];
     }
 
-    // WordPress stores sticky_posts as a serialized PHP array or comma-separated
-    sticky_opt
-        .split(|c: char| c == ',' || c == ';')
+    // WordPress stores sticky_posts as a serialized PHP array like "a:1:{i:0;i:6;}"
+    // or sometimes as JSON like "[6]" or comma-separated "6,7"
+    parse_php_serialized_ids(&sticky_opt)
+}
+
+/// Parse WordPress PHP serialized integer array like "a:1:{i:0;i:6;}"
+/// Also handles JSON arrays "[6,7]" and comma-separated "6,7".
+fn parse_php_serialized_ids(input: &str) -> Vec<u64> {
+    let trimmed = input.trim();
+
+    // PHP serialized array: a:N:{i:K;i:V;...}
+    if trimmed.starts_with("a:") {
+        // Extract all "i:NUMBER;" patterns — values are at odd positions
+        let numbers: Vec<u64> = trimmed
+            .split("i:")
+            .filter_map(|s| {
+                s.trim_end_matches(|c: char| c == ';' || c == '}')
+                    .parse::<u64>()
+                    .ok()
+            })
+            .collect();
+        // In PHP serialized arrays, format is i:KEY;i:VALUE; so values are at odd indices
+        // But since we split on "i:", we get ["a:1:{", "0;", "6;", "}"]
+        // Filter to get only the actual post IDs (skip index keys)
+        // For "a:1:{i:0;i:6;}" -> after split on "i:" -> ["a:1:{", "0;", "6;", "}"]
+        // Indices in the serialized data: 0 is key, 6 is value
+        // We take every other number starting from index 1 (the values)
+        return numbers.into_iter().skip(1).step_by(2).collect();
+    }
+
+    // JSON array: [6, 7, 8]
+    if trimmed.starts_with('[') {
+        return trimmed
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .split(',')
+            .filter_map(|s| s.trim().parse::<u64>().ok())
+            .collect();
+    }
+
+    // Comma-separated: "6,7,8"
+    trimmed
+        .split(',')
         .filter_map(|s| s.trim().parse::<u64>().ok())
         .collect()
 }
@@ -2189,15 +2250,31 @@ fn build_comment_tree(comments: &[rustpress_db::entities::wp_comments::Model]) -
     let flat: Vec<serde_json::Value> = comments
         .iter()
         .map(|c| {
-            serde_json::json!({
-                "id": c.comment_id,
-                "author": c.comment_author,
-                "author_url": c.comment_author_url,
-                "content": c.comment_content,
-                "date": c.comment_date.format("%Y-%m-%d %H:%M").to_string(),
-                "parent": c.comment_parent,
-                "children": [],
-            })
+            {
+                let dt = c.comment_date;
+                let month_name = match dt.format("%m").to_string().as_str() {
+                    "01" => "January", "02" => "February", "03" => "March",
+                    "04" => "April", "05" => "May", "06" => "June",
+                    "07" => "July", "08" => "August", "09" => "September",
+                    "10" => "October", "11" => "November", "12" => "December",
+                    _ => "January",
+                };
+                let day = dt.format("%-d").to_string();
+                let year = dt.format("%Y").to_string();
+                let time_12h = dt.format("%-I:%M %P").to_string();
+                let date_formatted = format!("{} {}, {} at {}", month_name, day, year, time_12h);
+                let date_iso = dt.format("%Y-%m-%dT%H:%M:%S+00:00").to_string();
+                serde_json::json!({
+                    "id": c.comment_id,
+                    "author": c.comment_author,
+                    "author_url": c.comment_author_url,
+                    "content": c.comment_content,
+                    "date": date_formatted,
+                    "date_iso": date_iso,
+                    "parent": c.comment_parent,
+                    "children": [],
+                })
+            }
         })
         .collect();
 
@@ -2606,9 +2683,11 @@ async fn single_by_date_slug(
 }
 
 /// Handle WordPress date-based permalink: /{year}/{month}/{slug}
-async fn single_by_month_slug(
+/// Also handles day archive: /{year}/{month}/{day} when third segment is numeric
+async fn single_by_month_slug_or_day_archive(
     State(state): State<Arc<AppState>>,
-    Path((year, month, slug)): Path<(String, String, String)>,
+    Path((year, month, slug_or_day)): Path<(String, String, String)>,
+    Query(params): Query<PageQuery>,
     headers: HeaderMap,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
     let _year: u32 = year.parse().map_err(|_| {
@@ -2618,7 +2697,19 @@ async fn single_by_month_slug(
         (StatusCode::NOT_FOUND, Html("Not found".to_string()))
     })?;
 
-    single_post_by_slug(&state, &slug, &headers).await
+    // If third segment is a number (1-31), treat as day archive
+    if let Ok(day) = slug_or_day.parse::<u32>() {
+        if (1..=31).contains(&day) {
+            return day_archive(
+                State(state),
+                Path((year, month, slug_or_day)),
+                Query(params),
+            ).await;
+        }
+    }
+
+    // Otherwise treat as post slug
+    single_post_by_slug(&state, &slug_or_day, &headers).await
 }
 
 // ---- Per-post comment feed ----

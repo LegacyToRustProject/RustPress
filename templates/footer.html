@@ -1,23 +1,8 @@
-<footer class="site-footer">
-    <div class="footer-inner">
-        <div class="footer-branding">
-            <p class="footer-title">{{ site_name | default(value="RustPress") }}</p>
-            <p class="footer-description">{{ site_description | default(value="") }}</p>
-        </div>
-        <div class="footer-nav-columns">
-            <nav class="footer-nav">
-                {% if footer_menu is defined and footer_menu | length > 0 %}
-                    {% for item in footer_menu %}
-                        <a href="{{ item.url }}">{{ item.label }}</a>
-                    {% endfor %}
-                {% else %}
-                    <a href="/">Blog</a>
-                    <a href="/search">Search</a>
-                {% endif %}
-            </nav>
-        </div>
-        <div class="footer-credits">
-            <p>Designed with <a href="https://github.com/rustpress/rustpress">RustPress</a></p>
-        </div>
-    </div>
+<footer class="wp-block-template-part">
+<div class="wp-block-group is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--60);padding-bottom:var(--wp--preset--spacing--40)">
+<div class="wp-block-group alignwide is-content-justification-space-between is-layout-flex wp-block-group-is-layout-flex" style="padding-right:var(--wp--preset--spacing--50);padding-left:var(--wp--preset--spacing--50)">
+<p class="wp-block-site-title"><a href="{{ site_url | default(value='/') }}">{{ site_name | default(value="RustPress") }}</a></p>
+<p>Designed with <a href="https://wordpress.org">WordPress</a></p>
+</div>
+</div>
 </footer>

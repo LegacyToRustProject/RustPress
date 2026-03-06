@@ -1,58 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-US" class="wp-embed-responsive">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}{{ site_name | default(value="RustPress") }}{% endblock %}</title>
-    <meta name="description" content="{% block meta_description %}{{ site_description | default(value="") }}{% endblock %}">
-    <link rel="canonical" href="{% block canonical %}{{ site_url | default(value="") }}{% endblock %}">
-
-    <!-- Open Graph -->
-    <meta property="og:site_name" content="{{ site_name | default(value='RustPress') }}">
-    <meta property="og:title" content="{% block og_title %}{{ site_name | default(value='RustPress') }}{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}{{ site_description | default(value='') }}{% endblock %}">
-    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
-    <meta property="og:url" content="{% block og_url %}{{ site_url | default(value='') }}{% endblock %}">
-    {% block og_image %}{% endblock %}
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block tw_title %}{{ site_name | default(value='RustPress') }}{% endblock %}">
-    <meta name="twitter:description" content="{% block tw_description %}{{ site_description | default(value='') }}{% endblock %}">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
-    <link rel="alternate" type="application/rss+xml" title="{{ site_name | default(value='RustPress') }} Feed" href="/feed/">
-    <link rel="EditURI" type="application/rsd+xml" title="RSD" href="/xmlrpc.php?rsd" />
-    <link rel="pingback" href="/xmlrpc.php" />
-    {{ wp_head | default(value="") | safe }}
-    {% block head %}{% endblock %}
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="profile" href="https://gmpg.org/xfn/11" />
+<title>{% block title %}{{ site_name | default(value="RustPress") }} &#8211; {{ site_description | default(value="Just another WordPress site") }}{% endblock %}</title>
+<meta name='robots' content='max-image-preview:large' />
+{% block meta_extra %}{% endblock %}
+<link rel='dns-prefetch' href='//s.w.org' />
+<link rel="alternate" type="application/rss+xml" title="{{ site_name | default(value='RustPress') }} &raquo; Feed" href="{{ site_url | default(value='') }}/feed/" />
+<link rel="alternate" type="application/rss+xml" title="{{ site_name | default(value='RustPress') }} &raquo; Comments Feed" href="{{ site_url | default(value='') }}/comments/feed/" />
+<style id='wp-emoji-styles-inline-css' type='text/css'>
+img.wp-smiley, img.emoji { display: inline !important; border: none !important; box-shadow: none !important; height: 1em !important; width: 1em !important; margin: 0 0.07em !important; vertical-align: -0.1em !important; background: none !important; padding: 0 !important; }
+</style>
+<link rel='stylesheet' id='wp-block-library-css' href='/static/wp-block-library.css' type='text/css' media='all' />
+<link rel='stylesheet' id='global-styles-css' href='/static/style.css' type='text/css' media='all' />
+<link rel="https://api.w.org/" href="{{ site_url | default(value='') }}/wp-json/" />
+<link rel="EditURI" type="application/rsd+xml" title="RSD" href="{{ site_url | default(value='') }}/xmlrpc.php?rsd" />
+<link rel="pingback" href="{{ site_url | default(value='') }}/xmlrpc.php" />
+<link rel="shortlink" href="{{ site_url | default(value='') }}/" />
+<link rel="alternate" type="application/json+oembed" href="{{ site_url | default(value='') }}/wp-json/oembed/1.0/embed?url={{ site_url | default(value='') | urlencode }}%2F" />
+{{ wp_head | default(value="") | safe }}
+{% block head %}{% endblock %}
 </head>
-<body class="tt25">
-    <a class="skip-link" href="#main">Skip to content</a>
-    {% include "header.html" ignore missing %}
-    <main id="main" class="site-content">
-        <div class="site-content-inner{% if sidebar_widgets is defined and sidebar_widgets %} has-sidebar{% endif %}">
-            <div class="primary-content">
-                {% block content %}{% endblock %}
-            </div>
-            {% if sidebar_widgets is defined and sidebar_widgets %}
-            <aside class="sidebar widget-area" role="complementary">
-                {{ sidebar_widgets | safe }}
-            </aside>
-            {% endif %}
-        </div>
-    </main>
-    {% if footer_widgets is defined and footer_widgets %}
-    <div class="footer-widgets-area">
-        <div class="footer-widgets-inner">
-            {{ footer_widgets | safe }}
-        </div>
-    </div>
-    {% endif %}
-    {% include "footer.html" ignore missing %}
-    {{ wp_footer | default(value="") | safe }}
+<body class="{% block body_class %}home blog{% endblock %} wp-embed-responsive twentytwentyfive-style-default">
+<div class="wp-site-blocks">
+<a class="skip-link screen-reader-text" href="#wp--skip-link--target">Skip to content</a>
+
+{% include "header.html" ignore missing %}
+
+<div id="wp--skip-link--target"></div>
+{% block main %}
+<main class="wp-block-group has-global-padding is-layout-constrained wp-block-group-is-layout-constrained" style="margin-top:var(--wp--preset--spacing--60)">
+{% block content %}{% endblock %}
+</main>
+{% endblock %}
+
+{% include "footer.html" ignore missing %}
+</div>
+{{ wp_footer | default(value="") | safe }}
 </body>
 </html>

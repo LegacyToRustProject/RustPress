@@ -1,26 +1,25 @@
 {% extends "base.html" %}
-{% block title %}Category: {{ term_name | default(value="") }} &mdash; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block title %}Category: {{ term_name | default(value="") }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}archive category{% endblock %}
 {% block content %}
-<div class="archive category-archive">
-    <header class="archive-header">
-        <span class="archive-label">Category</span>
-        <h1 class="archive-title">{{ term_name | default(value="") }}</h1>
-        {% if term_description %}<p class="archive-description">{{ term_description }}</p>{% endif %}
-    </header>
-    {% if posts %}
-    <div class="post-list">
-        {% for post in posts %}
-        <article class="post-entry">
-            <h2 class="entry-title"><a href="/{{ post.slug }}">{{ post.title }}</a></h2>
-            <div class="entry-meta">
-                <time datetime="{{ post.date }}">{{ post.date }}</time>
-            </div>
-            <div class="entry-excerpt">{{ post.excerpt | safe }}</div>
-        </article>
-        {% endfor %}
-    </div>
-    {% else %}
-    <p>No posts found in this category.</p>
-    {% endif %}
+<h1 class="wp-block-query-title">Category: {{ term_name | default(value="") }}</h1>
+{% if term_description %}<div class="taxonomy-description"><p>{{ term_description }}</p></div>{% endif %}
+
+<div class="wp-block-query is-layout-flow wp-block-query-is-layout-flow">
+<div class="wp-block-post-template is-layout-flow wp-block-post-template-is-layout-flow">
+{% if posts %}{% for post in posts %}
+<div class="wp-block-post post-{{ post.id | default(value=0) }} post type-post status-publish hentry category-{{ term_name | default(value='uncategorized') | lower }}">
+<div class="wp-block-group is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--50);padding-bottom:var(--wp--preset--spacing--50);border-top-width:1px;border-top-style:solid">
+<h2 class="wp-block-post-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}">{{ post.title }}</a></h2>
+
+<div class="wp-block-post-date"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></div>
+
+<div class="wp-block-post-excerpt"><p class="wp-block-post-excerpt__excerpt">{{ post.excerpt | striptags | default(value="") }}</p></div>
+</div>
+</div>
+{% endfor %}{% else %}
+<p>No posts found in this category.</p>
+{% endif %}
+</div>
 </div>
 {% endblock %}

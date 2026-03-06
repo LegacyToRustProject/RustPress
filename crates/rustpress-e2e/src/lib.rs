@@ -12,10 +12,13 @@
 //! - `ADMIN_PASSWORD` - Admin password for both instances (default: `password`)
 //! - `WEBDRIVER_URL` - Selenium WebDriver URL (default: `http://localhost:9515`)
 
+use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 use scraper::{Html, Selector};
 use serde_json::Value;
 use similar::{ChangeTag, TextDiff};
 use std::collections::BTreeSet;
+use std::path::{Path, PathBuf};
+use thirtyfour::prelude::*;
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -520,6 +523,392 @@ pub async fn is_webdriver_available(webdriver_url: &str) -> bool {
         .await
         .map(|r| r.status().is_success())
         .unwrap_or(false)
+}
+
+// ---------------------------------------------------------------------------
+// Visual / Pixel-perfect comparison helpers
+// ---------------------------------------------------------------------------
+
+/// Directory where screenshots and diff images are saved.
+pub fn screenshot_dir() -> PathBuf {
+    PathBuf::from(
+        std::env::var("SCREENSHOT_DIR").unwrap_or_else(|_| "test-screenshots".to_string()),
+    )
+}
+
+/// Viewport sizes to test (width, height, label).
+pub fn viewport_sizes() -> Vec<(u32, u32, &'static str)> {
+    vec![
+        (1920, 1080, "desktop"),
+        (1366, 768, "laptop"),
+        (768, 1024, "tablet"),
+        (375, 812, "mobile"),
+    ]
+}
+
+/// Create a WebDriver session connected to the Selenium server.
+pub async fn create_webdriver(webdriver_url: &str) -> Result<WebDriver, String> {
+    let mut caps = DesiredCapabilities::chrome();
+    caps.add_arg("--headless=new")
+        .map_err(|e| format!("Failed to set headless: {}", e))?;
+    caps.add_arg("--no-sandbox")
+        .map_err(|e| format!("Failed to set no-sandbox: {}", e))?;
+    caps.add_arg("--disable-dev-shm-usage")
+        .map_err(|e| format!("Failed to set disable-dev-shm: {}", e))?;
+    caps.add_arg("--disable-gpu")
+        .map_err(|e| format!("Failed to set disable-gpu: {}", e))?;
+    caps.add_arg("--font-render-hinting=none")
+        .map_err(|e| format!("Failed to set font hinting: {}", e))?;
+    caps.add_arg("--force-device-scale-factor=1")
+        .map_err(|e| format!("Failed to set scale factor: {}", e))?;
+
+    WebDriver::new(webdriver_url, caps)
+        .await
+        .map_err(|e| format!("Failed to create WebDriver: {}", e))
+}
+
+/// Set the browser viewport to an exact pixel size.
+pub async fn set_viewport(driver: &WebDriver, width: u32, height: u32) -> Result<(), String> {
+    driver
+        .set_window_rect(0, 0, width, height)
+        .await
+        .map_err(|e| format!("Failed to set window rect: {}", e))?;
+    Ok(())
+}
+
+/// Take a full-page screenshot and return it as a DynamicImage.
+pub async fn take_screenshot(driver: &WebDriver, url: &str) -> Result<DynamicImage, String> {
+    driver
+        .goto(url)
+        .await
+        .map_err(|e| format!("Failed to navigate to {}: {}", url, e))?;
+
+    // Wait for page to fully load
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    // Execute JS to wait for all images/fonts to load
+    driver
+        .execute(
+            r#"
+            return new Promise((resolve) => {
+                if (document.readyState === 'complete') {
+                    // Additional wait for CSS/fonts
+                    setTimeout(resolve, 1000);
+                } else {
+                    window.addEventListener('load', () => setTimeout(resolve, 1000));
+                }
+            });
+            "#,
+            vec![],
+        )
+        .await
+        .map_err(|e| format!("Failed to wait for page load: {}", e))?;
+
+    let png_bytes = driver
+        .screenshot_as_png()
+        .await
+        .map_err(|e| format!("Failed to take screenshot: {}", e))?;
+
+    image::load_from_memory_with_format(&png_bytes, image::ImageFormat::Png)
+        .map_err(|e| format!("Failed to decode screenshot PNG: {}", e))
+}
+
+/// Result of a pixel-perfect comparison between two images.
+#[derive(Debug)]
+pub struct PixelDiffResult {
+    /// Total number of pixels compared.
+    pub total_pixels: u64,
+    /// Number of pixels that differ.
+    pub diff_pixels: u64,
+    /// Percentage of identical pixels (0.0 - 100.0).
+    pub match_percentage: f64,
+    /// Maximum per-channel difference found.
+    pub max_channel_diff: u8,
+    /// Path to the diff image (if saved).
+    pub diff_image_path: Option<PathBuf>,
+    /// Path to the WordPress screenshot.
+    pub wp_screenshot_path: Option<PathBuf>,
+    /// Path to the RustPress screenshot.
+    pub rp_screenshot_path: Option<PathBuf>,
+}
+
+/// Compare two images pixel by pixel.
+///
+/// If sizes differ, the smaller image is padded with transparent pixels.
+/// Returns detailed diff statistics and optionally saves a diff visualization.
+pub fn compare_images_pixel_perfect(
+    wp_img: &DynamicImage,
+    rp_img: &DynamicImage,
+    tolerance: u8,
+) -> PixelDiffResult {
+    let (wp_w, wp_h) = wp_img.dimensions();
+    let (rp_w, rp_h) = rp_img.dimensions();
+
+    let max_w = wp_w.max(rp_w);
+    let max_h = wp_h.max(rp_h);
+
+    let wp_rgba = wp_img.to_rgba8();
+    let rp_rgba = rp_img.to_rgba8();
+
+    let mut diff_image = RgbaImage::new(max_w, max_h);
+    let mut diff_pixels: u64 = 0;
+    let mut max_channel_diff: u8 = 0;
+    let total_pixels = max_w as u64 * max_h as u64;
+
+    for y in 0..max_h {
+        for x in 0..max_w {
+            let wp_pixel = if x < wp_w && y < wp_h {
+                wp_rgba.get_pixel(x, y)
+            } else {
+                &Rgba([0, 0, 0, 0])
+            };
+            let rp_pixel = if x < rp_w && y < rp_h {
+                rp_rgba.get_pixel(x, y)
+            } else {
+                &Rgba([0, 0, 0, 0])
+            };
+
+            let mut pixel_differs = false;
+            for c in 0..4 {
+                let diff = (wp_pixel[c] as i16 - rp_pixel[c] as i16).unsigned_abs() as u8;
+                if diff > max_channel_diff {
+                    max_channel_diff = diff;
+                }
+                if diff > tolerance {
+                    pixel_differs = true;
+                }
+            }
+
+            if pixel_differs {
+                diff_pixels += 1;
+                // Red highlight for differences
+                diff_image.put_pixel(x, y, Rgba([255, 0, 0, 200]));
+            } else {
+                // Dimmed grayscale for matching pixels
+                let gray = ((wp_pixel[0] as u16 + wp_pixel[1] as u16 + wp_pixel[2] as u16) / 3) as u8;
+                diff_image.put_pixel(x, y, Rgba([gray / 3, gray / 3, gray / 3, 255]));
+            }
+        }
+    }
+
+    let match_percentage = if total_pixels == 0 {
+        100.0
+    } else {
+        (total_pixels - diff_pixels) as f64 / total_pixels as f64 * 100.0
+    };
+
+    PixelDiffResult {
+        total_pixels,
+        diff_pixels,
+        match_percentage,
+        max_channel_diff,
+        diff_image_path: None,
+        wp_screenshot_path: None,
+        rp_screenshot_path: None,
+    }
+}
+
+/// Full visual comparison pipeline: take screenshots of both sites at the
+/// given path and viewport, compare them pixel-by-pixel, and save artifacts.
+pub async fn visual_compare(
+    wp_driver: &WebDriver,
+    rp_driver: &WebDriver,
+    wp_base_url: &str,
+    rp_base_url: &str,
+    page_path: &str,
+    viewport_width: u32,
+    viewport_height: u32,
+    label: &str,
+    tolerance: u8,
+) -> Result<PixelDiffResult, String> {
+    let out_dir = screenshot_dir();
+    std::fs::create_dir_all(&out_dir)
+        .map_err(|e| format!("Failed to create screenshot dir: {}", e))?;
+
+    // Set viewport on both browsers
+    set_viewport(wp_driver, viewport_width, viewport_height).await?;
+    set_viewport(rp_driver, viewport_width, viewport_height).await?;
+
+    let wp_url = format!("{}{}", wp_base_url, page_path);
+    let rp_url = format!("{}{}", rp_base_url, page_path);
+
+    // Take screenshots
+    let wp_img = take_screenshot(wp_driver, &wp_url).await?;
+    let rp_img = take_screenshot(rp_driver, &rp_url).await?;
+
+    // Save screenshots
+    let safe_label = label.replace(['/', '?', '&', ' '], "_");
+    let wp_path = out_dir.join(format!("wp_{}_{}.png", safe_label, viewport_width));
+    let rp_path = out_dir.join(format!("rp_{}_{}.png", safe_label, viewport_width));
+    let diff_path = out_dir.join(format!("diff_{}_{}.png", safe_label, viewport_width));
+
+    wp_img
+        .save(&wp_path)
+        .map_err(|e| format!("Failed to save WP screenshot: {}", e))?;
+    rp_img
+        .save(&rp_path)
+        .map_err(|e| format!("Failed to save RP screenshot: {}", e))?;
+
+    // Pixel comparison
+    let mut result = compare_images_pixel_perfect(&wp_img, &rp_img, tolerance);
+
+    // Save diff image
+    save_diff_image(&wp_img, &rp_img, &diff_path, tolerance)?;
+
+    result.diff_image_path = Some(diff_path);
+    result.wp_screenshot_path = Some(wp_path);
+    result.rp_screenshot_path = Some(rp_path);
+
+    Ok(result)
+}
+
+/// Save a side-by-side + diff visualization image.
+pub fn save_diff_image(
+    wp_img: &DynamicImage,
+    rp_img: &DynamicImage,
+    path: &Path,
+    tolerance: u8,
+) -> Result<(), String> {
+    let (wp_w, wp_h) = wp_img.dimensions();
+    let (rp_w, rp_h) = rp_img.dimensions();
+
+    let max_w = wp_w.max(rp_w);
+    let max_h = wp_h.max(rp_h);
+
+    // Create side-by-side image: [WP | RP | DIFF]
+    let canvas_w = max_w * 3 + 4; // 2px separator between each
+    let canvas_h = max_h + 30; // 30px for labels at top
+    let mut canvas = RgbaImage::from_pixel(canvas_w, canvas_h, Rgba([40, 40, 40, 255]));
+
+    let wp_rgba = wp_img.to_rgba8();
+    let rp_rgba = rp_img.to_rgba8();
+
+    let col_offsets = [0u32, max_w + 2, (max_w + 2) * 2];
+
+    // Copy WordPress screenshot
+    for y in 0..wp_h {
+        for x in 0..wp_w {
+            canvas.put_pixel(col_offsets[0] + x, 30 + y, *wp_rgba.get_pixel(x, y));
+        }
+    }
+
+    // Copy RustPress screenshot
+    for y in 0..rp_h {
+        for x in 0..rp_w {
+            canvas.put_pixel(col_offsets[1] + x, 30 + y, *rp_rgba.get_pixel(x, y));
+        }
+    }
+
+    // Generate diff overlay in the third panel
+    for y in 0..max_h {
+        for x in 0..max_w {
+            let wp_pixel = if x < wp_w && y < wp_h {
+                wp_rgba.get_pixel(x, y)
+            } else {
+                &Rgba([0, 0, 0, 0])
+            };
+            let rp_pixel = if x < rp_w && y < rp_h {
+                rp_rgba.get_pixel(x, y)
+            } else {
+                &Rgba([0, 0, 0, 0])
+            };
+
+            let mut differs = false;
+            for c in 0..4 {
+                let diff = (wp_pixel[c] as i16 - rp_pixel[c] as i16).unsigned_abs() as u8;
+                if diff > tolerance {
+                    differs = true;
+                    break;
+                }
+            }
+
+            let pixel = if differs {
+                Rgba([255, 0, 0, 230])
+            } else {
+                let gray =
+                    ((wp_pixel[0] as u16 + wp_pixel[1] as u16 + wp_pixel[2] as u16) / 3) as u8;
+                Rgba([gray / 3, gray / 3, gray / 3, 255])
+            };
+            canvas.put_pixel(col_offsets[2] + x, 30 + y, pixel);
+        }
+    }
+
+    canvas
+        .save(path)
+        .map_err(|e| format!("Failed to save diff image: {}", e))?;
+    Ok(())
+}
+
+/// Assert that a visual comparison result meets the pixel match threshold.
+/// Panics with detailed diagnostics on failure.
+pub fn assert_pixel_match(result: &PixelDiffResult, threshold: f64, label: &str) {
+    eprintln!(
+        "[VISUAL] {} — match: {:.4}% ({}/{} pixels identical, max channel diff: {})",
+        label,
+        result.match_percentage,
+        result.total_pixels - result.diff_pixels,
+        result.total_pixels,
+        result.max_channel_diff,
+    );
+
+    if let Some(ref diff_path) = result.diff_image_path {
+        eprintln!("  Diff image: {}", diff_path.display());
+    }
+    if let Some(ref wp_path) = result.wp_screenshot_path {
+        eprintln!("  WP screenshot: {}", wp_path.display());
+    }
+    if let Some(ref rp_path) = result.rp_screenshot_path {
+        eprintln!("  RP screenshot: {}", rp_path.display());
+    }
+
+    if result.match_percentage < threshold {
+        panic!(
+            "PIXEL MISMATCH: {} — {:.4}% match (threshold: {:.2}%). {} of {} pixels differ. See diff image for details.",
+            label,
+            result.match_percentage,
+            threshold,
+            result.diff_pixels,
+            result.total_pixels,
+        );
+    }
+}
+
+/// Run a full visual regression test across multiple viewports for a single page.
+pub async fn visual_regression_test(
+    wp_driver: &WebDriver,
+    rp_driver: &WebDriver,
+    wp_base_url: &str,
+    rp_base_url: &str,
+    page_path: &str,
+    label: &str,
+    threshold: f64,
+    tolerance: u8,
+) -> Result<Vec<PixelDiffResult>, String> {
+    let viewports = viewport_sizes();
+    let mut results = Vec::new();
+
+    for (width, height, vp_label) in &viewports {
+        let full_label = format!("{}_{}", label, vp_label);
+        eprintln!("\n--- Visual test: {} ({}x{}) ---", full_label, width, height);
+
+        let result = visual_compare(
+            wp_driver,
+            rp_driver,
+            wp_base_url,
+            rp_base_url,
+            page_path,
+            *width,
+            *height,
+            &full_label,
+            tolerance,
+        )
+        .await?;
+
+        assert_pixel_match(&result, threshold, &full_label);
+        results.push(result);
+    }
+
+    Ok(results)
 }
 
 #[cfg(test)]

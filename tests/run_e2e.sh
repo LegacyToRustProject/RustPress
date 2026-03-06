@@ -37,6 +37,7 @@ export RUSTPRESS_URL="${2:-${RUSTPRESS_URL:-http://localhost:8080}}"
 export ADMIN_USER="${ADMIN_USER:-admin}"
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-password}"
 export WEBDRIVER_URL="${WEBDRIVER_URL:-http://localhost:9515}"
+export SCREENSHOT_DIR="${SCREENSHOT_DIR:-test-screenshots}"
 
 # --- Banner ---------------------------------------------------------------
 
@@ -44,10 +45,11 @@ echo "========================================================"
 echo "  RustPress E2E Comparison Test Suite"
 echo "========================================================"
 echo ""
-echo "  WordPress:  $WORDPRESS_URL"
-echo "  RustPress:  $RUSTPRESS_URL"
-echo "  Admin User: $ADMIN_USER"
-echo "  WebDriver:  $WEBDRIVER_URL"
+echo "  WordPress:    $WORDPRESS_URL"
+echo "  RustPress:    $RUSTPRESS_URL"
+echo "  Admin User:   $ADMIN_USER"
+echo "  WebDriver:    $WEBDRIVER_URL"
+echo "  Screenshots:  $SCREENSHOT_DIR"
 echo ""
 
 # --- Pre-flight checks ----------------------------------------------------
@@ -88,15 +90,32 @@ if [ "$WP_OK" = false ] || [ "$RP_OK" = false ]; then
     echo ""
 fi
 
+# Create screenshot output directory
+mkdir -p "$SCREENSHOT_DIR"
+
 # --- Run tests ------------------------------------------------------------
 
-echo "--- Running E2E tests ---"
-echo ""
+TEST_FILTER="${1:-}"
 
-# Run all ignored tests (they are #[ignore] by default and require servers)
-# --nocapture ensures eprintln! output is visible for diagnostics
-
-RUST_LOG=warn cargo test -p rustpress-e2e -- --ignored --nocapture 2>&1 | tee /tmp/rustpress-e2e-results.txt
+if [ "$TEST_FILTER" = "visual" ]; then
+    echo "--- Running VISUAL comparison tests only ---"
+    echo ""
+    RUST_LOG=warn cargo test -p rustpress-e2e visual -- --ignored --nocapture 2>&1 | tee /tmp/rustpress-e2e-results.txt
+elif [ "$TEST_FILTER" = "api" ]; then
+    echo "--- Running API comparison tests only ---"
+    echo ""
+    RUST_LOG=warn cargo test -p rustpress-e2e api -- --ignored --nocapture 2>&1 | tee /tmp/rustpress-e2e-results.txt
+elif [ "$TEST_FILTER" = "frontend" ]; then
+    echo "--- Running frontend comparison tests only ---"
+    echo ""
+    RUST_LOG=warn cargo test -p rustpress-e2e frontend -- --ignored --nocapture 2>&1 | tee /tmp/rustpress-e2e-results.txt
+else
+    echo "--- Running ALL E2E tests ---"
+    echo ""
+    echo "Hint: pass 'visual', 'api', or 'frontend' as first arg to filter."
+    echo ""
+    RUST_LOG=warn cargo test -p rustpress-e2e -- --ignored --nocapture 2>&1 | tee /tmp/rustpress-e2e-results.txt
+fi
 
 EXIT_CODE=${PIPESTATUS[0]}
 
@@ -110,5 +129,11 @@ fi
 echo "========================================================"
 echo ""
 echo "Full output saved to /tmp/rustpress-e2e-results.txt"
+
+if [ -d "$SCREENSHOT_DIR" ] && [ "$(ls -A "$SCREENSHOT_DIR" 2>/dev/null)" ]; then
+    echo "Screenshots and diff images saved to: $SCREENSHOT_DIR/"
+    echo "Files:"
+    ls -lh "$SCREENSHOT_DIR"/*.png 2>/dev/null || true
+fi
 
 exit "$EXIT_CODE"
