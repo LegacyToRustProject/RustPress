@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Tag: {{ term_name | default(value="") }} &mdash; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block content %}
+<div class="archive tag-archive">
+    <header class="archive-header">
+        <span class="archive-label">Tag</span>
+        <h1 class="archive-title">{{ term_name | default(value="") }}</h1>
+    </header>
+    {% if posts %}
+    <div class="post-list">
+        {% for post in posts %}
+        <article class="post-entry">
+            <h2 class="entry-title"><a href="/{{ post.slug }}">{{ post.title }}</a></h2>
+            <div class="entry-meta">
+                <time datetime="{{ post.date }}">{{ post.date }}</time>
+            </div>
+            <div class="entry-excerpt">{{ post.excerpt | safe }}</div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No posts found with this tag.</p>
+    {% endif %}
+</div>
+{% endblock %}

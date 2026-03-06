@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ __( key="Media Settings") }}{% endblock %}
+
+{% block content %}
+<h1>{{ __( key="Media Settings") }}</h1>
+
+{% if saved %}
+<div class="notice notice-success">{{ __( key="Settings saved.") }}</div>
+{% endif %}
+
+<form method="post" action="/wp-admin/options-media.php">
+    <table class="form-table">
+        <tr>
+            <th>{{ __( key="Thumbnail size") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label for="thumbnail_size_w">{{ __( key="Width") }}</label>
+                        <input type="number" id="thumbnail_size_w" name="thumbnail_size_w" value="{{ thumbnail_size_w }}" style="width:80px" min="0">
+                    </p>
+                    <p>
+                        <label for="thumbnail_size_h">{{ __( key="Height") }}</label>
+                        <input type="number" id="thumbnail_size_h" name="thumbnail_size_h" value="{{ thumbnail_size_h }}" style="width:80px" min="0">
+                    </p>
+                </fieldset>
+            </td>
+        </tr>
+        <tr>
+            <th>{{ __( key="Medium size") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label for="medium_size_w">{{ __( key="Max Width") }}</label>
+                        <input type="number" id="medium_size_w" name="medium_size_w" value="{{ medium_size_w }}" style="width:80px" min="0">
+                    </p>
+                    <p>
+                        <label for="medium_size_h">{{ __( key="Max Height") }}</label>
+                        <input type="number" id="medium_size_h" name="medium_size_h" value="{{ medium_size_h }}" style="width:80px" min="0">
+                    </p>
+                </fieldset>
+            </td>
+        </tr>
+        <tr>
+            <th>{{ __( key="Large size") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label for="large_size_w">{{ __( key="Max Width") }}</label>
+                        <input type="number" id="large_size_w" name="large_size_w" value="{{ large_size_w }}" style="width:80px" min="0">
+                    </p>
+                    <p>
+                        <label for="large_size_h">{{ __( key="Max Height") }}</label>
+                        <input type="number" id="large_size_h" name="large_size_h" value="{{ large_size_h }}" style="width:80px" min="0">
+                    </p>
+                </fieldset>
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top:1rem">
+        <button type="submit" class="button button-primary">{{ __( key="Save Changes") }}</button>
+    </div>
+</form>
+{% endblock %}

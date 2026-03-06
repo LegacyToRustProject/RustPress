@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}{{ the_title }} - {{ site_name | default(value="RustPress") }}{% endblock %}
+
+{% block content %}
+<article class="single-page">
+    <header class="entry-header content-area">
+        <h1 class="entry-title">{{ the_title }}</h1>
+    </header>
+    <div class="entry-content content-area">
+        {{ the_content | safe }}
+    </div>
+</article>
+{% endblock %}

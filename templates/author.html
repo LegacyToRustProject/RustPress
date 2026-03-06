@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Author: {{ author_name | default(value="") }} &mdash; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block content %}
+<div class="archive author-archive">
+    <header class="archive-header">
+        <span class="archive-label">Author</span>
+        <h1 class="archive-title">{{ author_name | default(value="") }}</h1>
+        {% if author_bio %}<p class="author-bio">{{ author_bio }}</p>{% endif %}
+    </header>
+    {% if posts %}
+    <div class="post-list">
+        {% for post in posts %}
+        <article class="post-entry">
+            <h2 class="entry-title"><a href="/{{ post.slug }}">{{ post.title }}</a></h2>
+            <div class="entry-meta">
+                <time datetime="{{ post.date }}">{{ post.date }}</time>
+            </div>
+            <div class="entry-excerpt">{{ post.excerpt | safe }}</div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No posts found by this author.</p>
+    {% endif %}
+</div>
+{% endblock %}

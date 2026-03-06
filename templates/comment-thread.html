@@ -1,0 +1,27 @@
+<li class="comment" id="comment-{{ comment.id }}">
+    <div class="comment-body">
+        <div class="comment-meta">
+            <strong class="comment-author">
+                {% if comment.author_url %}
+                    <a href="{{ comment.author_url }}" rel="external nofollow">{{ comment.author }}</a>
+                {% else %}
+                    {{ comment.author }}
+                {% endif %}
+            </strong>
+            <time class="comment-date" datetime="{{ comment.date }}">{{ comment.date }}</time>
+        </div>
+        <div class="comment-content">
+            <p>{{ comment.content }}</p>
+        </div>
+        <div class="reply">
+            <a class="comment-reply-link" href="#respond" onclick="document.getElementById('comment_parent').value='{{ comment.id }}';document.getElementById('respond').scrollIntoView();return false;">Reply</a>
+        </div>
+    </div>
+    {% if comment.children is defined and comment.children | length > 0 %}
+    <ol class="children">
+        {% for comment in comment.children %}
+        {% include "comment-thread.html" %}
+        {% endfor %}
+    </ol>
+    {% endif %}
+</li>

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ archive_title | default(value="Archives") }} &mdash; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block content %}
+<div class="archive date-archive">
+    <header class="archive-header">
+        <span class="archive-label">Archives</span>
+        <h1 class="archive-title">{{ archive_title | default(value="Archives") }}</h1>
+    </header>
+    {% if posts %}
+    <div class="post-list">
+        {% for post in posts %}
+        <article class="post-entry">
+            <h2 class="entry-title"><a href="/{{ post.slug }}">{{ post.title }}</a></h2>
+            <div class="entry-meta">
+                <time datetime="{{ post.date }}">{{ post.date }}</time>
+            </div>
+            <div class="entry-excerpt">{{ post.excerpt | safe }}</div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>No posts found for this date.</p>
+    {% endif %}
+</div>
+{% endblock %}

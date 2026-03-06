@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title | default(value="Attachment") }} &mdash; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block content %}
+<article class="attachment">
+    <header class="entry-header">
+        <h1 class="entry-title">{{ post.title }}</h1>
+    </header>
+    <div class="attachment-content">
+        {% if post.mime_type is starting_with("image/") %}
+        <figure class="attachment-image">
+            <img src="{{ post.guid }}" alt="{{ post.title }}">
+            {% if post.excerpt %}<figcaption>{{ post.excerpt }}</figcaption>{% endif %}
+        </figure>
+        {% else %}
+        <div class="attachment-link">
+            <a href="{{ post.guid }}">Download {{ post.title }}</a>
+        </div>
+        {% endif %}
+        {% if post.content %}
+        <div class="entry-content">{{ post.content | safe }}</div>
+        {% endif %}
+    </div>
+</article>
+{% endblock %}

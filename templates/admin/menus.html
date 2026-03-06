@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Menus{% endblock %}
+
+{% block content %}
+<h1>Navigation Menus</h1>
+
+{% if saved %}
+<div class="notice notice-success">Menu saved successfully.</div>
+{% endif %}
+
+<p style="color:#646970;margin-bottom:1.5rem">
+    Configure the navigation links shown in the site header and footer. Add one link per line in the format: <code>Label|URL</code>
+</p>
+
+<form method="post" action="/wp-admin/nav-menus.php">
+    <table class="form-table">
+        <tr>
+            <th><label for="header_menu">Header Menu</label></th>
+            <td>
+                <textarea id="header_menu" name="header_menu" rows="6" style="width:100%;max-width:600px;font-family:monospace;font-size:13px;padding:8px">{{ header_menu | default(value="") }}</textarea>
+                <p class="description">Example: <code>Blog|/</code> or <code>About|/about</code></p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="footer_menu">Footer Menu</label></th>
+            <td>
+                <textarea id="footer_menu" name="footer_menu" rows="6" style="width:100%;max-width:600px;font-family:monospace;font-size:13px;padding:8px">{{ footer_menu | default(value="") }}</textarea>
+                <p class="description">Example: <code>Privacy|/privacy</code> or <code>Contact|/contact</code></p>
+            </td>
+        </tr>
+    </table>
+    <p><button type="submit" class="button button-primary">Save Menus</button></p>
+</form>
+
+<h2 style="margin-top:2rem">Preview</h2>
+<div style="background:#fff;border:1px solid #c3c4c7;border-radius:4px;padding:1rem;margin-top:0.5rem">
+    <strong>Header:</strong>
+    <nav style="display:flex;gap:1rem;margin-top:0.5rem">
+        {% if header_links is defined %}
+            {% for link in header_links %}
+                <a href="{{ link.url }}">{{ link.label }}</a>
+            {% endfor %}
+        {% else %}
+            <span style="color:#646970">No header menu items</span>
+        {% endif %}
+    </nav>
+    <hr style="margin:1rem 0">
+    <strong>Footer:</strong>
+    <nav style="display:flex;gap:1rem;margin-top:0.5rem">
+        {% if footer_links is defined %}
+            {% for link in footer_links %}
+                <a href="{{ link.url }}">{{ link.label }}</a>
+            {% endfor %}
+        {% else %}
+            <span style="color:#646970">No footer menu items</span>
+        {% endif %}
+    </nav>
+</div>
+{% endblock %}

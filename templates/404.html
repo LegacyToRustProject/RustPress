@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Page not found - {{ site_name | default(value="RustPress") }}{% endblock %}
+
+{% block content %}
+<div class="content-area error-404">
+    <h1 class="page-title">Page not found</h1>
+    <div class="error-content">
+        <p>It looks like nothing was found at this location. Maybe try a search?</p>
+        <form class="search-form" action="/search" method="get">
+            <label for="search-input" class="screen-reader-text">Search</label>
+            <input type="text" id="search-input" name="s" placeholder="Search..." class="search-field">
+            <button type="submit" class="search-submit">Search</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

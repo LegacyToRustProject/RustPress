@@ -1,0 +1,154 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ type_label | default(value="Posts") }}{% endblock %}
+
+{% block content %}
+<h1>{{ type_label | default(value="Posts") }} <a href="/wp-admin/post-new.php{% if post_type == 'page' %}?post_type=page{% endif %}" class="add-new-btn">Add New</a></h1>
+
+<ul class="subsubsub">
+    <li><a href="/wp-admin/edit.php?{% if post_type == 'page' %}post_type=page&{% endif %}status=all" {% if status_filter == "all" %}class="current"{% endif %}>All</a></li>
+    <li><a href="/wp-admin/edit.php?{% if post_type == 'page' %}post_type=page&{% endif %}status=publish" {% if status_filter == "publish" %}class="current"{% endif %}>Published ({{ publish_count }})</a></li>
+    <li><a href="/wp-admin/edit.php?{% if post_type == 'page' %}post_type=page&{% endif %}status=draft" {% if status_filter == "draft" %}class="current"{% endif %}>Draft ({{ draft_count }})</a></li>
+    <li><a href="/wp-admin/edit.php?{% if post_type == 'page' %}post_type=page&{% endif %}status=trash" {% if status_filter == "trash" %}class="current"{% endif %}>Trash ({{ trash_count }})</a></li>
+</ul>
+
+<div class="clearfix">
+    <div class="tablenav top" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <select id="bulk-action-selector" class="bulk-action-select" style="padding:4px 8px;border:1px solid #8c8f94;border-radius:3px;font-size:13px">
+            <option value="">Bulk Actions</option>
+            <option value="trash">Move to Trash</option>
+            <option value="publish">Publish</option>
+            <option value="draft">Set as Draft</option>
+        </select>
+        <button type="button" class="button" onclick="applyBulkAction()">Apply</button>
+        <span id="bulk-status" style="font-size:12px;color:#646970"></span>
+
+        <form method="get" action="/wp-admin/edit.php" style="display:flex;align-items:center;gap:6px;margin-left:8px">
+            {% if post_type == "page" %}<input type="hidden" name="post_type" value="page">{% endif %}
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <input type="hidden" name="s" value="{{ search }}">
+            {% if post_type != "page" %}
+            <select name="cat" style="padding:4px 8px;border:1px solid #8c8f94;border-radius:3px;font-size:13px">
+                <option value="0">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.term_id }}" {% if cat_filter == cat.term_id %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <select name="m" style="padding:4px 8px;border:1px solid #8c8f94;border-radius:3px;font-size:13px">
+                <option value="0">All Dates</option>
+                {% for dm in date_months %}
+                <option value="{{ dm.value }}" {% if month_filter == dm.value %}selected{% endif %}>{{ dm.label }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="button">Filter</button>
+        </form>
+    </div>
+    <div class="search-box">
+        <form method="get" action="/wp-admin/edit.php">
+            {% if post_type == "page" %}<input type="hidden" name="post_type" value="page">{% endif %}
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <input type="text" name="s" value="{{ search }}" placeholder="Search {{ type_label | default(value='posts') | lower }}...">
+            <button type="submit" class="button">Search</button>
+        </form>
+    </div>
+</div>
+
+<table class="wp-list-table">
+    <thead>
+        <tr>
+            <th style="width:30px;padding:8px"><input type="checkbox" id="select-all" onclick="toggleAll(this)"></th>
+            <th style="width:35%">Title</th>
+            <th style="width:12%">Author</th>
+            {% if post_type != "page" %}<th style="width:15%">Categories</th>{% endif %}
+            <th style="width:12%">Status</th>
+            <th style="width:20%">Date</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% if posts | length > 0 %}
+        {% for post in posts %}
+        <tr>
+            <td style="padding:8px"><input type="checkbox" class="post-cb" value="{{ post.id }}"></td>
+            <td class="column-title">
+                <strong><a href="/wp-admin/post.php?post={{ post.id }}&action=edit">{{ post.title }}</a></strong>
+                <div class="row-actions">
+                    <a href="/wp-admin/post.php?post={{ post.id }}&action=edit">Edit</a>
+                    <a href="#" class="trash" onclick="trashPost({{ post.id }}); return false;">Trash</a>
+                    <a href="/{{ post.slug | default(value='') }}" target="_blank">View</a>
+                </div>
+            </td>
+            <td>{{ post.author }}</td>
+            {% if post_type != "page" %}<td>{{ post.categories | default(value="") }}</td>{% endif %}
+            <td><span class="status-badge status-{{ post.status }}">{{ post.status }}</span></td>
+            <td>{{ post.date }}</td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr><td colspan="{% if post_type == 'page' %}5{% else %}6{% endif %}" style="text-align:center;padding:2rem;color:#646970">No {{ type_label | default(value="posts") | lower }} found.</td></tr>
+    {% endif %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="tablenav">
+    <div class="tablenav-pages">
+        {{ total }} items &mdash; Page {{ page }} of {{ total_pages }}
+        {% if page > 1 %}
+            <a href="/wp-admin/edit.php?{% if post_type == 'page' %}post_type=page&{% endif %}status={{ status_filter }}&page={{ page - 1 }}&s={{ search }}&cat={{ cat_filter }}&m={{ month_filter }}">&laquo; Prev</a>
+        {% endif %}
+        {% if page < total_pages %}
+            <a href="/wp-admin/edit.php?{% if post_type == 'page' %}post_type=page&{% endif %}status={{ status_filter }}&page={{ page + 1 }}&s={{ search }}&cat={{ cat_filter }}&m={{ month_filter }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(master) {
+    document.querySelectorAll('.post-cb').forEach(cb => cb.checked = master.checked);
+}
+
+function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.post-cb:checked')).map(cb => Number(cb.value));
+}
+
+async function trashPost(id) {
+    if (!confirm('Move this to trash?')) return;
+    try {
+        await RustPressAdmin.deletePost(id);
+        location.reload();
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function applyBulkAction() {
+    const action = document.getElementById('bulk-action-selector').value;
+    if (!action) return;
+    const ids = getSelectedIds();
+    if (ids.length === 0) { alert('No items selected.'); return; }
+    if (!confirm('Apply "' + action + '" to ' + ids.length + ' item(s)?')) return;
+
+    const statusEl = document.getElementById('bulk-status');
+    statusEl.textContent = 'Processing...';
+
+    let done = 0;
+    for (const id of ids) {
+        try {
+            if (action === 'trash') {
+                await RustPressAdmin.deletePost(id);
+            } else {
+                await RustPressAdmin.updatePost(id, { status: action });
+            }
+            done++;
+        } catch(e) {}
+    }
+    statusEl.textContent = done + '/' + ids.length + ' updated.';
+    setTimeout(function() { location.reload(); }, 500);
+}
+</script>
+{% endblock %}

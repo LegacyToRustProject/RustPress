@@ -13,7 +13,12 @@ path = "src/main.rs"
 [dependencies]
 rustpress-core = { workspace = true }
 rustpress-db = { workspace = true }
+rustpress-auth = { workspace = true }
+rustpress-migrate = { workspace = true }
+rustpress-plugins = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 dotenvy = { workspace = true }
+anyhow = { workspace = true }

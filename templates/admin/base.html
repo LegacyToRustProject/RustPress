@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %} &lsaquo; {{ site_name | default(value="RustPress") }} &mdash; Admin</title>
+    <link rel="stylesheet" href="/static/fonts/dashicons.css">
+    <link rel="stylesheet" href="/static/admin.css">
+    {% block head %}{% endblock %}
+</head>
+<body class="wp-admin">
+    <div id="wpadminbar">
+        <div class="wp-logo">
+            <span class="dashicons dashicons-wordpress"></span>
+        </div>
+        <a href="/" target="_blank" class="ab-item">{{ site_name | default(value="RustPress") }}</a>
+        <a href="/" target="_blank" class="ab-item">{{ __( key="Visit Site") }}</a>
+        <div class="ab-right">
+            <span>{{ __( key="Hello,") }} {{ current_user.login | default(value="admin") }}</span>
+            <a href="/wp-admin/logout" class="ab-item">{{ __( key="Log Out") }}</a>
+        </div>
+    </div>
+
+    <div id="adminmenu-wrap">
+        <nav id="adminmenu">
+            <a href="/wp-admin/index.php" class="menu-item {% if active_page == 'dashboard' %}active{% endif %}">
+                <span class="dashicons dashicons-dashboard"></span>
+                <span>{{ __( key="Dashboard") }}</span>
+            </a>
+            <div class="menu-sep"></div>
+            {% if can_edit_posts | default(value=true) %}
+            <a href="/wp-admin/edit.php" class="menu-item {% if active_page == 'posts' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-post"></span>
+                <span>{{ __( key="Posts") }}</span>
+            </a>
+            <a href="/wp-admin/edit.php" class="menu-item submenu-item">
+                <span>{{ __( key="All Posts") }}</span>
+            </a>
+            <a href="/wp-admin/post-new.php" class="menu-item submenu-item">
+                <span>{{ __( key="Add New") }}</span>
+            </a>
+            <a href="/wp-admin/edit-tags.php?taxonomy=category" class="menu-item submenu-item {% if active_page == 'categories' %}active{% endif %}">
+                <span>{{ __( key="Categories") }}</span>
+            </a>
+            <a href="/wp-admin/edit-tags.php?taxonomy=post_tag" class="menu-item submenu-item {% if active_page == 'tags' %}active{% endif %}">
+                <span>{{ __( key="Tags") }}</span>
+            </a>
+            {% endif %}
+            {% if can_upload_files | default(value=true) %}
+            <a href="/wp-admin/upload.php" class="menu-item {% if active_page == 'media' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-media"></span>
+                <span>{{ __( key="Media") }}</span>
+            </a>
+            {% endif %}
+            {% if can_edit_pages | default(value=true) %}
+            <a href="/wp-admin/edit.php?post_type=page" class="menu-item {% if active_page == 'pages' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-page"></span>
+                <span>{{ __( key="Pages") }}</span>
+            </a>
+            {% endif %}
+            {% if can_moderate_comments | default(value=true) %}
+            <a href="/wp-admin/edit-comments.php" class="menu-item {% if active_page == 'comments' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-comments"></span>
+                <span>{{ __( key="Comments") }}</span>
+            </a>
+            {% endif %}
+            <div class="menu-sep"></div>
+            {% if can_edit_theme_options | default(value=true) %}
+            <a href="/wp-admin/themes.php" class="menu-item {% if active_page == 'themes' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-appearance"></span>
+                <span>{{ __( key="Appearance") }}</span>
+            </a>
+            <a href="/wp-admin/themes.php" class="menu-item submenu-item {% if active_page == 'themes-sub' %}active{% endif %}">
+                <span>{{ __( key="Themes") }}</span>
+            </a>
+            <a href="/wp-admin/nav-menus.php" class="menu-item submenu-item {% if active_page == 'menus' %}active{% endif %}">
+                <span>{{ __( key="Menus") }}</span>
+            </a>
+            <a href="/wp-admin/widgets.php" class="menu-item submenu-item {% if active_page == 'widgets' %}active{% endif %}">
+                <span>{{ __( key="Widgets") }}</span>
+            </a>
+            {% endif %}
+            {% if can_activate_plugins | default(value=true) %}
+            <a href="/wp-admin/plugins.php" class="menu-item {% if active_page == 'plugins' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-plugins"></span>
+                <span>{{ __( key="Plugins") }}</span>
+            </a>
+            {% endif %}
+            <div class="menu-sep"></div>
+            {% if can_list_users | default(value=true) %}
+            <a href="/wp-admin/users.php" class="menu-item {% if active_page == 'users' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-users"></span>
+                <span>{{ __( key="Users") }}</span>
+            </a>
+            <a href="/wp-admin/profile.php" class="menu-item submenu-item {% if active_page == 'profile' %}active{% endif %}">
+                <span>{{ __( key="Your Profile") }}</span>
+            </a>
+            {% endif %}
+            {% if can_manage_options | default(value=true) %}
+            <a href="/wp-admin/tools.php" class="menu-item {% if active_page == 'tools' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-tools"></span>
+                <span>{{ __( key="Tools") }}</span>
+            </a>
+            <a href="/wp-admin/options-general.php" class="menu-item {% if active_page == 'settings' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-settings"></span>
+                <span>{{ __( key="Settings") }}</span>
+            </a>
+            <a href="/wp-admin/options-general.php" class="menu-item submenu-item">
+                <span>{{ __( key="General") }}</span>
+            </a>
+            <a href="/wp-admin/options-writing.php" class="menu-item submenu-item">
+                <span>{{ __( key="Writing") }}</span>
+            </a>
+            <a href="/wp-admin/options-reading.php" class="menu-item submenu-item">
+                <span>{{ __( key="Reading") }}</span>
+            </a>
+            <a href="/wp-admin/options-discussion.php" class="menu-item submenu-item">
+                <span>{{ __( key="Discussion") }}</span>
+            </a>
+            <a href="/wp-admin/options-media.php" class="menu-item submenu-item">
+                <span>{{ __( key="Media") }}</span>
+            </a>
+            <a href="/wp-admin/options-permalink.php" class="menu-item submenu-item">
+                <span>{{ __( key="Permalinks") }}</span>
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+
+    <div id="wpcontent">
+        <div class="wrap">
+            {% block content %}{% endblock %}
+        </div>
+        <div id="wpfooter">
+            <p id="footer-thankyou">Thank you for creating with <a href="https://github.com/rustpress/rustpress">RustPress</a>.</p>
+        </div>
+    </div>
+
+    <script>
+    const RustPressAdmin = {
+        async apiCall(method, url, body) {
+            const opts = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+            };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(url, opts);
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || res.statusText);
+            }
+            if (res.status === 204) return null;
+            return res.json();
+        },
+        async createPost(data) { return this.apiCall('POST', '/admin/posts', data); },
+        async updatePost(id, data) { return this.apiCall('PUT', '/admin/posts/' + id, data); },
+        async deletePost(id) { return this.apiCall('DELETE', '/admin/posts/' + id); },
+    };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

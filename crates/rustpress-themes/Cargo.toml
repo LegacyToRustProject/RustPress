@@ -1,0 +1,21 @@
+[package]
+name = "rustpress-themes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Theme engine with WordPress template hierarchy for RustPress"
+
+[dependencies]
+rustpress-core = { workspace = true }
+rustpress-db = { workspace = true }
+rustpress-query = { workspace = true }
+tera = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+regex = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

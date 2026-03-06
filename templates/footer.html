@@ -1,0 +1,23 @@
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-branding">
+            <p class="footer-title">{{ site_name | default(value="RustPress") }}</p>
+            <p class="footer-description">{{ site_description | default(value="") }}</p>
+        </div>
+        <div class="footer-nav-columns">
+            <nav class="footer-nav">
+                {% if footer_menu is defined and footer_menu | length > 0 %}
+                    {% for item in footer_menu %}
+                        <a href="{{ item.url }}">{{ item.label }}</a>
+                    {% endfor %}
+                {% else %}
+                    <a href="/">Blog</a>
+                    <a href="/search">Search</a>
+                {% endif %}
+            </nav>
+        </div>
+        <div class="footer-credits">
+            <p>Designed with <a href="https://github.com/rustpress/rustpress">RustPress</a></p>
+        </div>
+    </div>
+</footer>

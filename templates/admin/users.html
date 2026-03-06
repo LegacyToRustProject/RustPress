@@ -1,0 +1,117 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<div class="wrap">
+    <h1 class="wp-heading-inline">Users</h1>
+    <a href="/wp-admin/user-new.php" class="page-title-action" style="display:inline-block;margin-left:4px;padding:4px 8px;font-size:13px;background:#f6f7f7;border:1px solid #2271b1;color:#2271b1;border-radius:3px;cursor:pointer;text-decoration:none;position:relative;top:-3px;">Add New User</a>
+    <hr class="wp-header-end" style="border:0;margin:0 0 8px;">
+
+    {% if deleted %}
+    <div class="notice notice-success">
+        <p>User deleted.</p>
+    </div>
+    {% endif %}
+
+    {% if error and error != "" %}
+    <div class="notice notice-error">
+        <p>{{ error }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Role filter -->
+    <ul class="subsubsub" style="list-style:none;display:flex;gap:0;padding:0;margin:8px 0;font-size:13px;color:#646970;flex-wrap:wrap;">
+        <li><a href="/wp-admin/users.php" {% if not role_filter or role_filter == "" %}style="font-weight:600;color:#1d2327"{% endif %}>All <span class="count">({{ users | length }})</span></a> |&nbsp;</li>
+        <li><a href="/wp-admin/users.php?role=administrator" {% if role_filter == "administrator" %}style="font-weight:600;color:#1d2327"{% endif %}>Administrator</a> |&nbsp;</li>
+        <li><a href="/wp-admin/users.php?role=editor" {% if role_filter == "editor" %}style="font-weight:600;color:#1d2327"{% endif %}>Editor</a> |&nbsp;</li>
+        <li><a href="/wp-admin/users.php?role=author" {% if role_filter == "author" %}style="font-weight:600;color:#1d2327"{% endif %}>Author</a> |&nbsp;</li>
+        <li><a href="/wp-admin/users.php?role=contributor" {% if role_filter == "contributor" %}style="font-weight:600;color:#1d2327"{% endif %}>Contributor</a> |&nbsp;</li>
+        <li><a href="/wp-admin/users.php?role=subscriber" {% if role_filter == "subscriber" %}style="font-weight:600;color:#1d2327"{% endif %}>Subscriber</a></li>
+    </ul>
+
+    <table class="wp-list-table" style="width:100%;">
+        <thead>
+            <tr>
+                <td id="cb" class="manage-column column-cb check-column" style="width:2.2em;padding:8px 2px;">
+                    <input type="checkbox" id="cb-select-all" title="Select All">
+                </td>
+                <th style="width:22%">Username</th>
+                <th style="width:18%">Name</th>
+                <th style="width:22%">Email</th>
+                <th style="width:13%">Role</th>
+                <th style="width:8%;text-align:center;">Posts</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% if users | length > 0 %}
+            {% for user in users %}
+            <tr>
+                <th scope="row" class="check-column" style="padding:8px 2px;">
+                    <input type="checkbox" name="users[]" value="{{ user.id }}">
+                </th>
+                <td class="column-title">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#c3c4c7;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;flex-shrink:0;">{{ user.login | first | upper }}</div>
+                        <div>
+                            <strong><a href="/wp-admin/user-edit.php?user_id={{ user.id }}">{{ user.login }}</a></strong>
+                            <div class="row-actions" style="font-size:12px;color:#646970;margin-top:2px;">
+                                <span class="edit"><a href="/wp-admin/user-edit.php?user_id={{ user.id }}">Edit</a></span>
+                                {% if user.id != current_user.user_id %}
+                                | <span class="delete"><a href="#" onclick="deleteUser({{ user.id }}, '{{ user.login }}'); return false;" style="color:#b32d2e;">Delete</a></span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ user.display_name }}</td>
+                <td><a href="mailto:{{ user.email }}">{{ user.email }}</a></td>
+                <td>{% if user.role %}{{ user.role | capitalize }}{% else %}Subscriber{% endif %}</td>
+                <td style="text-align:center;">
+                    {% if user.post_count is defined %}
+                    <a href="/wp-admin/edit.php?author={{ user.id }}">{{ user.post_count }}</a>
+                    {% else %}
+                    0
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:#646970">No users found.</td></tr>
+        {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteUser(userId, login) {
+    if (!confirm('Are you sure you want to delete user "' + login + '"? This action cannot be undone.')) {
+        return;
+    }
+    fetch('/wp-json/wp/v2/users/' + userId, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(resp) {
+        if (resp.ok) {
+            window.location.href = '/wp-admin/users.php?deleted=1';
+        } else {
+            return resp.text().then(function(t) { alert('Failed to delete user: ' + t); });
+        }
+    })
+    .catch(function(err) {
+        alert('Error: ' + err.message);
+    });
+}
+
+// Select all checkbox
+document.getElementById('cb-select-all').addEventListener('change', function() {
+    var checkboxes = document.querySelectorAll('input[name="users[]"]');
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = this.checked;
+    }
+});
+</script>
+{% endblock %}

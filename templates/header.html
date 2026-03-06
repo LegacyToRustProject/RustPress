@@ -1,0 +1,17 @@
+<header class="site-header">
+    <div class="header-inner">
+        <div class="site-branding">
+            <p class="site-title"><a href="/">{{ site_name | default(value="RustPress") }}</a></p>
+        </div>
+        <nav class="primary-navigation">
+            {% if header_menu is defined and header_menu | length > 0 %}
+                {% for item in header_menu %}
+                    <a href="{{ item.url }}">{{ item.label }}</a>
+                {% endfor %}
+            {% else %}
+                <a href="/">Blog</a>
+                <a href="/search">Search</a>
+            {% endif %}
+        </nav>
+    </div>
+</header>

@@ -1,0 +1,126 @@
+# version: "3.9"  # Obsolete field removed
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  RustPress E2E Test Environment
+#
+#  Services:
+#    db         - MySQL 8  (shared by WordPress AND RustPress)
+#    wordpress  - WordPress 6.x on port 8081  (reference implementation)
+#    rustpress  - RustPress on port 8080
+#    e2e        - Cargo test runner (--ignored)
+#
+#  Usage:
+#    docker compose up --build --abort-on-container-exit --exit-code-from e2e
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── MySQL ──────────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wpuser
+      MYSQL_PASSWORD: wppass
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d
+    # No host port mapping needed — containers communicate via service name 'db'
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ── WordPress (reference) ──────────────────────────────────────────────────
+  wordpress:
+    image: wordpress:6.7-php8.2-apache
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wpuser
+      WORDPRESS_DB_PASSWORD: wppass
+      WORDPRESS_DB_NAME: wordpress_ref
+      WORDPRESS_TABLE_PREFIX: wp_
+      WORDPRESS_DEBUG: "false"
+    volumes:
+      - wp_data:/var/www/html
+      - ./docker/wordpress-init.php:/var/www/html/wp-content/mu-plugins/rustpress-e2e-init.php
+    ports:
+      - "8081:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/wp-json/"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  # ── RustPress ──────────────────────────────────────────────────────────────
+  rustpress:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://wpuser:wppass@db:3306/wordpress
+      JWT_SECRET: e2e-test-jwt-secret-do-not-use-in-production
+      SITE_URL: http://localhost:8080
+      RUSTPRESS_HOST: 0.0.0.0
+      RUSTPRESS_PORT: 3000
+      TEMPLATES_DIR: /app/templates
+      STATIC_DIR: /app/static
+      UPLOADS_DIR: /app/wp-content/uploads
+      PLUGINS_DIR: /app/wp-content/plugins
+      RUST_LOG: rustpress=info
+    ports:
+      - "8080:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/wp-json/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # ── E2E Test Runner ────────────────────────────────────────────────────────
+  e2e:
+    image: rust:1.82-slim
+    depends_on:
+      wordpress:
+        condition: service_healthy
+      rustpress:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - cargo_cache:/usr/local/cargo/registry
+      - target_cache:/workspace/target
+    environment:
+      WORDPRESS_URL: http://wordpress:80
+      RUSTPRESS_URL: http://rustpress:3000
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: password
+    command: >
+      bash -c "
+        apt-get update -qq && apt-get install -y -qq pkg-config libssl-dev curl > /dev/null &&
+        echo '=== Waiting for servers ===' &&
+        until curl -sf http://wordpress:80/wp-json/ > /dev/null; do echo 'waiting for WordPress...'; sleep 3; done &&
+        until curl -sf http://rustpress:3000/wp-json/ > /dev/null; do echo 'waiting for RustPress...'; sleep 3; done &&
+        echo '=== Both servers ready. Running E2E tests ===' &&
+        cargo test -p rustpress-e2e -- --ignored --nocapture --test-threads=4 2>&1
+      "
+    profiles:
+      - e2e
+
+volumes:
+  db_data:
+  wp_data:
+  cargo_cache:
+  target_cache:

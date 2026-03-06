@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site_name | default(value="RustPress") }}{% endblock %}
+
+{% block content %}
+<div class="content-area">
+    <header class="page-header">
+        <h1 class="page-title">Blog</h1>
+    </header>
+
+    {% if have_posts %}
+    <div class="post-list">
+        {% for post in posts %}
+        <article class="post-entry">
+            <div class="entry-header">
+                <h2 class="entry-title">
+                    <a href="{{ post.permalink }}">{{ post.title }}</a>
+                </h2>
+            </div>
+            <div class="entry-meta">
+                <time datetime="{{ post.date }}">{{ post.date }}</time>
+            </div>
+            <div class="entry-excerpt">
+                <p>{{ post.excerpt }}</p>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+
+    {% if pagination and pagination.total_pages > 1 %}
+    <nav class="pagination" aria-label="Pagination">
+        {% if pagination.has_previous %}
+            <a href="/page/{{ pagination.previous_page }}" class="pagination-link pagination-prev">Newer posts</a>
+        {% endif %}
+        <span class="pagination-info">Page {{ pagination.current_page }} of {{ pagination.total_pages }}</span>
+        {% if pagination.has_next %}
+            <a href="/page/{{ pagination.next_page }}" class="pagination-link pagination-next">Older posts</a>
+        {% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <div class="no-results">
+        <p>No posts found.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

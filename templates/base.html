@@ -3,9 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}RustPress{% endblock %}</title>
+    <title>{% block title %}{{ site_name | default(value="RustPress") }}{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}{{ site_description | default(value="") }}{% endblock %}">
+    <link rel="canonical" href="{% block canonical %}{{ site_url | default(value="") }}{% endblock %}">
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="{{ site_name | default(value='RustPress') }}">
+    <meta property="og:title" content="{% block og_title %}{{ site_name | default(value='RustPress') }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ site_description | default(value='') }}{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ site_url | default(value='') }}{% endblock %}">
+    {% block og_image %}{% endblock %}
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block tw_title %}{{ site_name | default(value='RustPress') }}{% endblock %}">
+    <meta name="twitter:description" content="{% block tw_description %}{{ site_description | default(value='') }}{% endblock %}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="alternate" type="application/rss+xml" title="{{ site_name | default(value='RustPress') }} Feed" href="/feed/">
+    <link rel="EditURI" type="application/rsd+xml" title="RSD" href="/xmlrpc.php?rsd" />
+    <link rel="pingback" href="/xmlrpc.php" />
+    {{ wp_head | default(value="") | safe }}
+    {% block head %}{% endblock %}
 </head>
-<body>
-    {% block content %}{% endblock %}
+<body class="tt25">
+    <a class="skip-link" href="#main">Skip to content</a>
+    {% include "header.html" ignore missing %}
+    <main id="main" class="site-content">
+        <div class="site-content-inner{% if sidebar_widgets is defined and sidebar_widgets %} has-sidebar{% endif %}">
+            <div class="primary-content">
+                {% block content %}{% endblock %}
+            </div>
+            {% if sidebar_widgets is defined and sidebar_widgets %}
+            <aside class="sidebar widget-area" role="complementary">
+                {{ sidebar_widgets | safe }}
+            </aside>
+            {% endif %}
+        </div>
+    </main>
+    {% if footer_widgets is defined and footer_widgets %}
+    <div class="footer-widgets-area">
+        <div class="footer-widgets-inner">
+            {{ footer_widgets | safe }}
+        </div>
+    </div>
+    {% endif %}
+    {% include "footer.html" ignore missing %}
+    {{ wp_footer | default(value="") | safe }}
 </body>
 </html>

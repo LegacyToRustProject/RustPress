@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ __( key="Permalink Settings") }}{% endblock %}
+
+{% block content %}
+<h1>{{ __( key="Permalink Settings") }}</h1>
+
+{% if saved %}
+<div class="notice notice-success">{{ __( key="Settings saved.") }}</div>
+{% endif %}
+
+<form method="post" action="/wp-admin/options-permalink.php">
+    <table class="form-table">
+        <tr>
+            <th>{{ __( key="Common Settings") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label>
+                            <input type="radio" name="permalink_structure" value="" {% if permalink_structure == "" %}checked{% endif %}>
+                            {{ __( key="Plain") }}
+                        </label>
+                        <span style="color:#646970;margin-left:0.5rem"><code>?p=123</code></span>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="radio" name="permalink_structure" value="/%year%/%monthnum%/%day%/%postname%/" {% if permalink_structure == "/%year%/%monthnum%/%day%/%postname%/" %}checked{% endif %}>
+                            {{ __( key="Day and name") }}
+                        </label>
+                        <span style="color:#646970;margin-left:0.5rem"><code>/%year%/%monthnum%/%day%/sample-post/</code></span>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="radio" name="permalink_structure" value="/%year%/%monthnum%/%postname%/" {% if permalink_structure == "/%year%/%monthnum%/%postname%/" %}checked{% endif %}>
+                            {{ __( key="Month and name") }}
+                        </label>
+                        <span style="color:#646970;margin-left:0.5rem"><code>/%year%/%monthnum%/sample-post/</code></span>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="radio" name="permalink_structure" value="/archives/%post_id%" {% if permalink_structure == "/archives/%post_id%" %}checked{% endif %}>
+                            {{ __( key="Numeric") }}
+                        </label>
+                        <span style="color:#646970;margin-left:0.5rem"><code>/archives/123</code></span>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="radio" name="permalink_structure" value="/%postname%/" {% if permalink_structure == "/%postname%/" %}checked{% endif %}>
+                            {{ __( key="Post name") }}
+                        </label>
+                        <span style="color:#646970;margin-left:0.5rem"><code>/sample-post/</code></span>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="radio" name="permalink_structure" value="custom" id="custom_permalink_radio" {% if permalink_structure != "" and permalink_structure != "/%year%/%monthnum%/%day%/%postname%/" and permalink_structure != "/%year%/%monthnum%/%postname%/" and permalink_structure != "/archives/%post_id%" and permalink_structure != "/%postname%/" %}checked{% endif %}>
+                            {{ __( key="Custom Structure") }}
+                        </label>
+                        <input type="text" id="custom_permalink_input" name="custom_structure" value="{% if permalink_structure != '' and permalink_structure != '/%year%/%monthnum%/%day%/%postname%/' and permalink_structure != '/%year%/%monthnum%/%postname%/' and permalink_structure != '/archives/%post_id%' and permalink_structure != '/%postname%/' %}{{ permalink_structure }}{% endif %}" class="regular-text" style="max-width:300px;margin-left:0.5rem" placeholder="/%year%/%postname%/">
+                    </p>
+                </fieldset>
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top:1rem">
+        <button type="submit" class="button button-primary">{{ __( key="Save Changes") }}</button>
+    </div>
+</form>
+{% endblock %}

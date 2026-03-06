@@ -1,13 +1,31 @@
 use anyhow::Result;
+use std::sync::Arc;
 use tokio::net::TcpListener;
+use tokio::sync::RwLock;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 mod admin;
 mod config;
 mod error;
+pub mod i18n;
+pub mod media;
+pub mod middleware;
 mod routes;
+mod state;
 mod templates;
+pub mod widgets;
+
+use rustpress_api::ApiState;
+use rustpress_auth::{JwtManager, SessionManager};
+use rustpress_cache::{ObjectCache, PageCache, TransientCache};
+use rustpress_core::hooks::HookRegistry;
+use rustpress_core::nonce::NonceManager;
+use rustpress_cron::CronManager;
+use rustpress_db::{connection, options::OptionsManager};
+use rustpress_plugins::{PluginLoader, PluginRegistry};
+
+use state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -29,13 +47,384 @@ async fn main() -> Result<()> {
         config.port
     );
 
-    let app = routes::create_router();
+    // Connect to database
+    let db = connection::connect(&config.database_url).await?;
+
+    // Run migrations (create tables if not exist)
+    info!("Running database migrations...");
+    rustpress_migrate::create_wp_tables(&db).await?;
+    rustpress_migrate::insert_default_options(&db, &config.site_url, "RustPress").await?;
+
+    // Create default admin user with bcrypt hash of "password"
+    let admin_hash = "$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
+    rustpress_migrate::create_default_admin(&db, admin_hash).await?;
+
+    // Insert a sample post so there's something to see
+    {
+        use sea_orm::{ConnectionTrait, Statement};
+        let sample_post = "INSERT IGNORE INTO wp_posts (ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count) VALUES (1, 1, NOW(), NOW(), '<h2>Welcome to RustPress!</h2>\n<p>This is your first post, powered by <strong>Rust</strong>. RustPress is a WordPress-compatible CMS built entirely in Rust for blazing-fast performance.</p>\n<h3>Features</h3>\n<ul>\n<li>WordPress 6.9 database compatible</li>\n<li>WP REST API compatible (/wp-json/wp/v2/)</li>\n<li>Plugin system with WASM support</li>\n<li>Built with Axum, SeaORM, and Tera</li>\n</ul>\n<p>Edit or delete this post, then start writing!</p>', 'Hello RustPress!', 'Welcome to RustPress - a WordPress-compatible CMS built in Rust.', 'publish', 'open', 'open', '', 'hello-rustpress', '', '', NOW(), NOW(), '', 0, '', 0, 'post', '', 0)";
+        db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sample_post.to_string())).await.ok();
+    }
+
+    info!("Database ready");
+
+    // Initialize subsystems
+    let hooks = HookRegistry::new();
+
+    let options = OptionsManager::new(db.clone());
+    if let Err(e) = options.load_autoload_options().await {
+        tracing::warn!("Failed to load autoload options: {}", e);
+    }
+
+    let jwt = JwtManager::new(&config.jwt_secret, 24);
+    let sessions = SessionManager::with_db(24, db.clone());
+    sessions.load_from_db().await;
+
+    let object_cache = ObjectCache::new(10_000, 3600);
+    let page_cache = PageCache::new(1_000, 300);
+    let transients = TransientCache::new(5_000);
+
+    let plugin_registry = PluginRegistry::new();
+    let plugin_loader = PluginLoader::new(&config.plugins_dir);
+    if let Err(e) = plugin_loader.scan_and_register(&plugin_registry).await {
+        tracing::warn!("Plugin scan failed: {}", e);
+    }
+
+    let site_url = options
+        .get_siteurl()
+        .await
+        .unwrap_or_else(|_| config.site_url.clone());
+
+    // Initialize i18n translations
+    let wplang = options
+        .get_option("WPLANG")
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "en_US".to_string());
+    let translations = i18n::Translations::new("languages", &wplang);
+    info!("i18n locale: {}", wplang);
+
+    // Initialize theme engine for frontend
+    let mut theme_engine = templates::init_theme_engine(&config.templates_dir)
+        .expect("Failed to initialize theme engine");
+
+    // Register i18n functions on the theme engine's Tera instance
+    i18n::register_tera_i18n_functions(theme_engine.tera_mut(), &translations);
+    let theme_engine = Arc::new(RwLock::new(theme_engine));
+
+    // Initialize admin template engine
+    let mut admin_tera = templates::init_admin_tera("templates/admin")
+        .expect("Failed to initialize admin templates");
+
+    // Register i18n functions on the admin Tera instance
+    i18n::register_tera_i18n_functions(&mut admin_tera, &translations);
+    let admin_tera = Arc::new(admin_tera);
+
+    // Initialize rewrite rules from permalink_structure option
+    let permalink_structure = options
+        .get_option("permalink_structure")
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "/%postname%/".to_string());
+    let mut rewrite_rules = rustpress_core::rewrite::RewriteRules::new();
+    rewrite_rules.set_structure(&permalink_structure);
+    info!(structure = %permalink_structure, "permalink structure loaded");
+
+    // Initialize shortcode registry with built-in shortcodes
+    let shortcodes = rustpress_core::shortcode::ShortcodeRegistry::new();
+    register_builtin_shortcodes(&shortcodes);
+    info!("shortcode registry initialized with built-in shortcodes");
+
+    // Initialize cron system (before AppState so it can be stored in state)
+    let cron = Arc::new(CronManager::new());
+
+    // Build application state
+    let state = Arc::new(AppState {
+        db: db.clone(),
+        hooks: hooks.clone(),
+        options,
+        jwt: jwt.clone(),
+        sessions,
+        object_cache,
+        page_cache,
+        transients,
+        plugin_registry,
+        site_url: site_url.clone(),
+        theme_engine,
+        admin_tera,
+        translations,
+        nonces: Arc::new(NonceManager::new(&config.jwt_secret)),
+        rewrite_rules: Arc::new(RwLock::new(rewrite_rules)),
+        shortcodes,
+        cron: cron.clone(),
+    });
+
+    // Register session cleanup cron job (every hour)
+    {
+        let sessions_clone = state.sessions.clone();
+        cron.register_callback(
+            "session_cleanup",
+            Arc::new(move || {
+                // SessionManager::cleanup_expired is sync-compatible
+                let s = sessions_clone.clone();
+                tokio::spawn(async move {
+                    s.cleanup_expired().await;
+                });
+            }),
+        );
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        cron.schedule_event(now + 3600, "hourly", "session_cleanup", vec![]);
+    }
+
+    // Register publish_future_posts cron job (every minute)
+    // Equivalent to WordPress's wp_publish_post() called via missed schedule check
+    cron.add_schedule("minutely", 60, "Once Every Minute");
+    {
+        use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+        use rustpress_db::entities::wp_posts;
+
+        let db_clone = state.db.clone();
+        cron.register_callback(
+            "publish_future_posts",
+            Arc::new(move || {
+                let db = db_clone.clone();
+                tokio::spawn(async move {
+                    let now_utc = chrono::Utc::now().naive_utc();
+
+                    // Find all posts with status 'future' whose scheduled time has passed
+                    let future_posts = wp_posts::Entity::find()
+                        .filter(wp_posts::Column::PostStatus.eq("future"))
+                        .filter(wp_posts::Column::PostDateGmt.lte(now_utc))
+                        .all(&db)
+                        .await;
+
+                    match future_posts {
+                        Ok(posts) => {
+                            for post in posts {
+                                let post_id = post.id;
+                                let mut active: wp_posts::ActiveModel = post.into();
+                                active.post_status = Set("publish".to_string());
+                                active.post_modified = Set(now_utc);
+                                active.post_modified_gmt = Set(now_utc);
+                                match active.update(&db).await {
+                                    Ok(_) => {
+                                        tracing::info!(
+                                            post_id,
+                                            "publish_future_posts: published scheduled post"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        tracing::error!(
+                                            post_id,
+                                            error = %e,
+                                            "publish_future_posts: failed to publish post"
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                error = %e,
+                                "publish_future_posts: failed to query future posts"
+                            );
+                        }
+                    }
+                });
+            }),
+        );
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        cron.schedule_event(now + 60, "minutely", "publish_future_posts", vec![]);
+    }
+
+    // Start cron background runner
+    let _cron_handle = cron.clone().start_background_runner();
+    info!("Cron system started");
+
+    // Build router with all routes (includes frontend, health, API, admin dashboard)
+    let mut app = routes::create_router(state.clone());
+
+    // Mount admin CRUD API routes (protected by session/JWT)
+    app = app.merge(admin::create_admin_routes(&state));
+
+    // Mount WP REST API routes (GET = public, POST/PUT/DELETE = authenticated)
+    let api_state = ApiState {
+        db: db.clone(),
+        hooks: hooks.clone(),
+        jwt: jwt.clone(),
+        sessions: state.sessions.clone(),
+        site_url,
+        nonces: state.nonces.clone(),
+    };
+    app = app.merge(rustpress_api::routes(api_state));
+
+    // Static file serving
+    let static_dir = config.static_dir.clone();
+    if std::path::Path::new(&static_dir).exists() {
+        app = app.nest_service(
+            "/static",
+            tower_http::services::ServeDir::new(&static_dir),
+        );
+    }
+
+    // Uploads serving — always create directory and mount
+    let uploads_dir = config.uploads_dir.clone();
+    std::fs::create_dir_all(&uploads_dir).ok();
+    app = app.nest_service(
+        "/wp-content/uploads",
+        tower_http::services::ServeDir::new(&uploads_dir),
+    );
+
+    // Apply global middleware: security headers + gzip compression
+    app = app
+        .layer(axum::middleware::from_fn(
+            middleware::security_headers,
+        ))
+        .layer(tower_http::compression::CompressionLayer::new());
+
+    // Fire init hook
+    state.hooks.do_action("init", &serde_json::json!({}));
 
     let addr = format!("{}:{}", config.host, config.port);
     let listener = TcpListener::bind(&addr).await?;
-    info!("Listening on {}", addr);
+    info!("RustPress is ready at http://{}", addr);
+    info!("  Site:   http://{}/", addr);
+    info!("  Admin:  http://{}/wp-admin/", addr);
+    info!("  API:    http://{}/api/posts", addr);
+    info!("  REST:   http://{}/wp-json/wp/v2/posts", addr);
+    info!("  Health: http://{}/health", addr);
 
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+/// Register built-in WordPress shortcodes (caption, audio, video, gallery, embed).
+fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRegistry) {
+    use std::sync::Arc;
+
+    // [caption] — wraps image with figcaption
+    registry.add_shortcode(
+        "caption",
+        Arc::new(|attrs, content| {
+            let align = attrs.get("align").cloned().unwrap_or_default();
+            let align_class = if align.is_empty() {
+                String::new()
+            } else {
+                format!(" class=\"{}\"", align)
+            };
+            if let Some(img_end) = content.find("/>") {
+                let img = &content[..img_end + 2];
+                let caption_text = content[img_end + 2..].trim();
+                format!(
+                    "<figure{}>{}<figcaption>{}</figcaption></figure>",
+                    align_class, img, caption_text
+                )
+            } else {
+                format!("<figure{}>{}</figure>", align_class, content)
+            }
+        }),
+    );
+
+    // [audio] — HTML5 audio player
+    registry.add_shortcode(
+        "audio",
+        Arc::new(|attrs, _| {
+            let src = attrs.get("src").cloned().unwrap_or_default();
+            if src.is_empty() {
+                return String::new();
+            }
+            format!(
+                r#"<audio controls preload="metadata"><source src="{}">Your browser does not support audio.</audio>"#,
+                src
+            )
+        }),
+    );
+
+    // [video] — HTML5 video player
+    registry.add_shortcode(
+        "video",
+        Arc::new(|attrs, _| {
+            let src = attrs.get("src").cloned().unwrap_or_default();
+            let width = attrs.get("width").cloned().unwrap_or_else(|| "100%".to_string());
+            if src.is_empty() {
+                return String::new();
+            }
+            format!(
+                r#"<video controls preload="metadata" style="max-width:{};height:auto"><source src="{}">Your browser does not support video.</video>"#,
+                width, src
+            )
+        }),
+    );
+
+    // [gallery] — image gallery placeholder
+    registry.add_shortcode(
+        "gallery",
+        Arc::new(|attrs, _| {
+            let ids = attrs.get("ids").cloned().unwrap_or_default();
+            let columns = attrs
+                .get("columns")
+                .and_then(|s| s.parse::<usize>().ok())
+                .unwrap_or(3);
+            if ids.is_empty() {
+                return String::new();
+            }
+            let img_tags: String = ids
+                .split(',')
+                .map(|id| id.trim())
+                .filter(|id| !id.is_empty())
+                .map(|_| "<div class=\"gallery-item\"></div>".to_string())
+                .collect::<Vec<_>>()
+                .join("\n");
+            format!(
+                "<div class=\"gallery gallery-columns-{}\">{}</div>",
+                columns, img_tags
+            )
+        }),
+    );
+
+    // [embed] — oEmbed / basic URL embedding
+    registry.add_shortcode(
+        "embed",
+        Arc::new(|_, content| {
+            let url = content.trim();
+            if url.contains("youtube.com") || url.contains("youtu.be") {
+                // Extract YouTube video ID
+                let video_id = if let Some(pos) = url.find("youtu.be/") {
+                    let id = &url[pos + 9..];
+                    id.split(&['?', '&', '#'][..]).next().map(|s| s.to_string())
+                } else if let Some(pos) = url.find("v=") {
+                    let id = &url[pos + 2..];
+                    id.split(&['&', '#'][..]).next().map(|s| s.to_string())
+                } else {
+                    None
+                };
+                if let Some(vid) = video_id {
+                    format!(
+                        r#"<div class="wp-embed"><iframe width="560" height="315" src="https://www.youtube.com/embed/{}" frameborder="0" allowfullscreen></iframe></div>"#,
+                        vid
+                    )
+                } else {
+                    format!("<a href=\"{}\">{}</a>", url, url)
+                }
+            } else if url.contains("vimeo.com") {
+                // Vimeo embed
+                let vid = url.rsplit('/').next().unwrap_or("");
+                format!(
+                    r#"<div class="wp-embed"><iframe src="https://player.vimeo.com/video/{}" width="560" height="315" frameborder="0" allowfullscreen></iframe></div>"#,
+                    vid
+                )
+            } else {
+                format!("<a href=\"{}\">{}</a>", url, url)
+            }
+        }),
+    );
 }

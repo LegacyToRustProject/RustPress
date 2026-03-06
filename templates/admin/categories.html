@@ -1,0 +1,58 @@
+{% extends "admin/base.html" %}
+{% block title %}Categories &lsaquo; {{ site_name | default(value="RustPress") }} &mdash; Admin{% endblock %}
+{% block content %}
+<div class="admin-page admin-taxonomy-page">
+    <h1>Categories</h1>
+    <div class="taxonomy-layout">
+        <div class="add-term-form">
+            <h2>Add New Category</h2>
+            <form id="add-category-form">
+                <div class="form-field">
+                    <label for="cat-name">Name</label>
+                    <input type="text" id="cat-name" name="name" required>
+                    <p class="description">The name is how it appears on your site.</p>
+                </div>
+                <div class="form-field">
+                    <label for="cat-slug">Slug</label>
+                    <input type="text" id="cat-slug" name="slug">
+                    <p class="description">The "slug" is the URL-friendly version of the name.</p>
+                </div>
+                <div class="form-field">
+                    <label for="cat-description">Description</label>
+                    <textarea id="cat-description" name="description" rows="4"></textarea>
+                </div>
+                <button type="submit" class="button button-primary">Add New Category</button>
+            </form>
+        </div>
+        <div class="term-list">
+            <table class="wp-list-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Slug</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if terms %}
+                    {% for term in terms %}
+                    <tr>
+                        <td><strong>{{ term.name }}</strong>
+                            <div class="row-actions">
+                                <a href="/wp-admin/edit-tags.php?action=edit&term_id={{ term.term_id }}">Edit</a> |
+                                <a href="#" class="delete-term" data-id="{{ term.term_id }}">Delete</a>
+                            </div>
+                        </td>
+                        <td>{{ term.slug }}</td>
+                        <td>{{ term.count | default(value=0) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="3">No categories found.</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

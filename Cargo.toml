@@ -3,8 +3,18 @@ resolver = "2"
 members = [
     "crates/rustpress-core",
     "crates/rustpress-db",
+    "crates/rustpress-query",
+    "crates/rustpress-auth",
+    "crates/rustpress-themes",
+    "crates/rustpress-api",
+    "crates/rustpress-admin",
+    "crates/rustpress-plugins",
+    "crates/rustpress-migrate",
+    "crates/rustpress-cache",
+    "crates/rustpress-cron",
     "crates/rustpress-server",
     "crates/rustpress-cli",
+    "crates/rustpress-e2e",
 ]
 
 [workspace.package]
@@ -15,19 +25,29 @@ license = "GPL-2.0"
 description = "RustPress - A WordPress-compatible CMS built in Rust"
 
 [workspace.metadata.wp-compat]
-wordpress-db-schema = "6.x"
-target-compat = "read-only"
-phase = "0"
+wordpress-db-schema = "6.9"
+target-compat = "full"
+phase = "8"
 
 [workspace.dependencies]
 # Internal crates
 rustpress-core = { path = "crates/rustpress-core" }
 rustpress-db = { path = "crates/rustpress-db" }
+rustpress-query = { path = "crates/rustpress-query" }
+rustpress-auth = { path = "crates/rustpress-auth" }
+rustpress-themes = { path = "crates/rustpress-themes" }
+rustpress-api = { path = "crates/rustpress-api" }
+rustpress-admin = { path = "crates/rustpress-admin" }
+rustpress-plugins = { path = "crates/rustpress-plugins" }
+rustpress-migrate = { path = "crates/rustpress-migrate" }
+rustpress-cache = { path = "crates/rustpress-cache" }
+rustpress-cron = { path = "crates/rustpress-cron" }
 
 # Web framework
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.6", features = ["trace", "cors"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "fs", "compression-gzip", "set-header"] }
+tower = "0.5"
 
 # ORM (MySQL for WP database compatibility)
 sea-orm = { version = "1.1", features = [
@@ -42,6 +62,14 @@ tera = "1"
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_urlencoded = "0.7"
+chrono = { version = "0.4", features = ["serde"] }
+
+# Auth
+jsonwebtoken = "9"
+argon2 = "0.5"
+bcrypt = "0.15"
+uuid = { version = "1", features = ["v4", "serde"] }
 
 # Logging / tracing
 tracing = "0.1"
@@ -56,3 +84,24 @@ dotenvy = "0.15"
 
 # CLI
 clap = { version = "4", features = ["derive"] }
+
+# Cache
+moka = { version = "0.12", features = ["future"] }
+
+# Hashing
+md-5 = "0.10"
+
+# Base64 encoding/decoding (for XML-RPC media upload)
+base64 = "0.22"
+
+# Async
+async-trait = "0.1"
+
+# Regex
+regex = "1"
+
+# Image processing
+image = "0.25"
+
+# Email
+lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "smtp-transport"] }

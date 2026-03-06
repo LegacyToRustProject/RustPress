@@ -1,0 +1,59 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ __( key="Discussion Settings") }}{% endblock %}
+
+{% block content %}
+<h1>{{ __( key="Discussion Settings") }}</h1>
+
+{% if saved %}
+<div class="notice notice-success">{{ __( key="Settings saved.") }}</div>
+{% endif %}
+
+<form method="post" action="/wp-admin/options-discussion.php">
+    <table class="form-table">
+        <tr>
+            <th>{{ __( key="Default post settings") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label>
+                            <input type="checkbox" name="default_comment_status" value="open" {% if default_comment_status == "open" %}checked{% endif %}>
+                            {{ __( key="Allow people to submit comments on new posts") }}
+                        </label>
+                    </p>
+                </fieldset>
+            </td>
+        </tr>
+        <tr>
+            <th>{{ __( key="Other comment settings") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label>
+                            <input type="checkbox" name="require_name_email" value="1" {% if require_name_email == "1" %}checked{% endif %}>
+                            {{ __( key="Comment author must fill out name and email") }}
+                        </label>
+                    </p>
+                </fieldset>
+            </td>
+        </tr>
+        <tr>
+            <th>{{ __( key="Comment Moderation") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label>
+                            <input type="checkbox" name="comment_moderation" value="1" {% if comment_moderation == "1" %}checked{% endif %}>
+                            {{ __( key="Comment must be manually approved") }}
+                        </label>
+                    </p>
+                </fieldset>
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top:1rem">
+        <button type="submit" class="button button-primary">{{ __( key="Save Changes") }}</button>
+    </div>
+</form>
+{% endblock %}

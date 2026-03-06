@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use rustpress_core::error::RustPressError;
 
-/// HTTP error wrapper around `RustPressError` with `IntoResponse` for Axum.
+#[allow(dead_code)]
 pub struct AppError(pub RustPressError);
 
 impl IntoResponse for AppError {

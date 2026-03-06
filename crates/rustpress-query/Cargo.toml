@@ -1,0 +1,17 @@
+[package]
+name = "rustpress-query"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "WordPress-compatible query engine (WP_Query) for RustPress"
+
+[dependencies]
+rustpress-core = { workspace = true }
+rustpress-db = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }

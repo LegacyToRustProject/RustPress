@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name | default(value="RustPress") }}{% endblock %}
+{% block content %}
+<div class="front-page">
+    <header class="front-page-header">
+        <h1>{{ site_name | default(value="RustPress") }}</h1>
+        <p class="site-tagline">{{ site_description | default(value="") }}</p>
+    </header>
+    {% if posts %}
+    <div class="post-list">
+        {% for post in posts %}
+        <article class="post-entry">
+            <h2 class="entry-title"><a href="/{{ post.slug }}">{{ post.title }}</a></h2>
+            <div class="entry-meta">
+                <time datetime="{{ post.date }}">{{ post.date }}</time>
+            </div>
+            <div class="entry-excerpt">{{ post.excerpt | safe }}</div>
+            <a href="/{{ post.slug }}" class="read-more">Continue reading &rarr;</a>
+        </article>
+        {% endfor %}
+    </div>
+    {% if pagination %}
+    <nav class="pagination">
+        {% if pagination.has_previous %}<a href="/page/{{ pagination.previous_page }}" class="prev">&larr; Newer</a>{% endif %}
+        <span class="page-info">Page {{ pagination.current_page }} of {{ pagination.total_pages }}</span>
+        {% if pagination.has_next %}<a href="/page/{{ pagination.next_page }}" class="next">Older &rarr;</a>{% endif %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <p>No posts found.</p>
+    {% endif %}
+</div>
+{% endblock %}

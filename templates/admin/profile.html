@@ -1,0 +1,92 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<h1>Profile</h1>
+
+{% if saved %}
+<div class="notice notice-success">
+    <p>Profile updated.</p>
+</div>
+{% endif %}
+
+{% if error and error != "" %}
+<div class="notice notice-error">
+    <p>{{ error }}</p>
+</div>
+{% endif %}
+
+<form method="post" action="/wp-admin/profile.php">
+    <h2 style="font-size:1.1rem;font-weight:600;margin:1.5rem 0 0.5rem;color:#1d2327;">Name</h2>
+    <table class="form-table">
+        <tr>
+            <th><label for="user_login">Username</label></th>
+            <td>
+                <input type="text" id="user_login" value="{{ profile.login }}" disabled class="regular-text">
+                <p class="description" style="color:#646970;font-size:13px;margin-top:4px;">Usernames cannot be changed.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="display_name">Display Name</label></th>
+            <td>
+                <input type="text" name="display_name" id="display_name" value="{{ profile.display_name }}" class="regular-text">
+            </td>
+        </tr>
+        <tr>
+            <th><label for="first_name">First Name (Nickname)</label></th>
+            <td>
+                <input type="text" name="first_name" id="first_name" value="{{ profile.first_name }}" class="regular-text">
+            </td>
+        </tr>
+    </table>
+
+    <h2 style="font-size:1.1rem;font-weight:600;margin:1.5rem 0 0.5rem;color:#1d2327;">Contact Info</h2>
+    <table class="form-table">
+        <tr>
+            <th><label for="email">Email</label></th>
+            <td>
+                <input type="email" name="email" id="email" value="{{ profile.email }}" class="regular-text" required>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="user_url">Website</label></th>
+            <td>
+                <input type="url" name="user_url" id="user_url" value="{{ profile.user_url }}" class="regular-text" placeholder="https://">
+            </td>
+        </tr>
+    </table>
+
+    <h2 style="font-size:1.1rem;font-weight:600;margin:1.5rem 0 0.5rem;color:#1d2327;">About Yourself</h2>
+    <table class="form-table">
+        <tr>
+            <th><label for="description">Biographical Info</label></th>
+            <td>
+                <textarea name="description" id="description" rows="5" class="large-text">{{ profile.description }}</textarea>
+                <p class="description" style="color:#646970;font-size:13px;margin-top:4px;">Share a little biographical information to fill out your profile. This may be shown publicly.</p>
+            </td>
+        </tr>
+    </table>
+
+    <h2 style="font-size:1.1rem;font-weight:600;margin:1.5rem 0 0.5rem;color:#1d2327;">Account Management</h2>
+    <table class="form-table">
+        <tr>
+            <th><label for="new_password">New Password</label></th>
+            <td>
+                <input type="password" name="new_password" id="new_password" class="regular-text" autocomplete="new-password">
+                <p class="description" style="color:#646970;font-size:13px;margin-top:4px;">Leave blank to keep your current password.</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="confirm_password">Confirm New Password</label></th>
+            <td>
+                <input type="password" name="confirm_password" id="confirm_password" class="regular-text" autocomplete="new-password">
+            </td>
+        </tr>
+    </table>
+
+    <p class="submit" style="margin-top:1.5rem;">
+        <button type="submit" class="button button-primary">Update Profile</button>
+    </p>
+</form>
+{% endblock %}

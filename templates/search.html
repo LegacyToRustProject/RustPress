@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Search results for "{{ search_query | default(value="") }}" - {{ site_name | default(value="RustPress") }}{% endblock %}
+
+{% block content %}
+<div class="content-area">
+    <header class="page-header">
+        <h1 class="page-title">Search results for "{{ search_query | default(value="") }}"</h1>
+    </header>
+
+    <form class="search-form search-again" action="/search" method="get">
+        <label for="search-input" class="screen-reader-text">Search</label>
+        <input type="text" id="search-input" name="s" value="{{ search_query | default(value='') }}" placeholder="Search..." class="search-field">
+        <button type="submit" class="search-submit">Search</button>
+    </form>
+
+    {% if have_posts %}
+    <div class="post-list">
+        {% for post in posts %}
+        <article class="post-entry">
+            <div class="entry-header">
+                <h2 class="entry-title">
+                    <a href="{{ post.permalink }}">{{ post.title }}</a>
+                </h2>
+            </div>
+            <div class="entry-excerpt">
+                <p>{{ post.excerpt }}</p>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-results">
+        <p>No results found. Try a different search term.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
