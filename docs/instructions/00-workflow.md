@@ -267,5 +267,9 @@ git clone https://github.com/LegacyToRustProject/java-to-rust.git ~/java-to-rust
 git clone https://github.com/LegacyToRustProject/perl-to-rust.git ~/perl-to-rust
 ```
 
-変換エンジンはリポジトリが別なので、ブランチ運用は各担当者の判断に委ねる。
-ただし**mainは常にグリーン**のルールは同じ。
+変換エンジンもRustPress本体と同じルールで運用する:
+1. **mainに直接pushしない。** 必ずPR経由。
+2. **featureブランチで作業。** 例: `feat/next-iteration`
+3. **PRはQAレビュー + オーナー承認の2段階。**
+4. **mainは常にグリーン。** ビルド・テストが通らない状態にしない。
+5. **GitHub Actions CI** が全リポジトリに設定済み（check, test, fmt, clippy）。PRマージ前にCIグリーン必須。
