@@ -197,6 +197,55 @@ pub struct UserEditForm {
     pub confirm_password: Option<String>,
 }
 
+#[derive(Deserialize)]
+#[allow(dead_code)]
+pub struct PostSubmitForm {
+    pub post_id: Option<u64>,
+    pub post_title: Option<String>,
+    pub post_content: Option<String>,
+    pub post_excerpt: Option<String>,
+    pub post_status: Option<String>,
+    pub post_type: Option<String>,
+    pub post_name: Option<String>,
+    pub comment_status: Option<String>,
+    pub ping_status: Option<String>,
+    #[serde(rename = "_wpnonce")]
+    pub wpnonce: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+pub struct BulkActionForm {
+    pub action: Option<String>,
+    pub action2: Option<String>,
+    pub post: Option<Vec<u64>>,
+    pub post_type: Option<String>,
+    #[serde(rename = "_wpnonce")]
+    pub wpnonce: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+pub struct AdminPostForm {
+    pub action: Option<String>,
+    #[serde(rename = "_wpnonce")]
+    pub wpnonce: Option<String>,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, String>,
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+pub struct AdminAjaxForm {
+    pub action: Option<String>,
+    pub comment_id: Option<u64>,
+    pub comment_status: Option<String>,
+    pub content: Option<String>,
+    pub comment_post_id: Option<u64>,
+    #[serde(rename = "_ajax_nonce")]
+    pub ajax_nonce: Option<String>,
+}
+
 pub fn routes(state: Arc<AppState>) -> Router {
     let public = Router::new()
         .route(
@@ -301,15 +350,20 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/wp-admin", get(dashboard_redirect))
         .route("/wp-admin/", get(dashboard))
         .route("/wp-admin/index.php", get(dashboard))
-        .route("/wp-admin/edit.php", get(posts_list))
+        .route(
+            "/wp-admin/edit.php",
+            get(posts_list).post(bulk_action_posts),
+        )
         .route(
             "/wp-admin/post-new.php",
-            get(post_editor_new),
+            get(post_editor_new).post(post_submit),
         )
         .route(
             "/wp-admin/post.php",
-            get(post_editor_edit),
+            get(post_editor_edit).post(post_submit),
         )
+        .route("/wp-admin/admin-post.php", post(admin_post_handler))
+        .route("/wp-admin/admin-ajax.php", post(admin_ajax_handler))
         .route(
             "/wp-admin/upload.php",
             get(media_library).post(media_edit_save),
@@ -4167,10 +4221,13 @@ async fn post_submit(
     let title = form.post_title.as_deref().unwrap_or("");
     let content = form.post_content.as_deref().unwrap_or("");
     let excerpt = form.post_excerpt.as_deref().unwrap_or("");
-    let slug = form
-        .post_name
-        .clone()
-        .unwrap_or_else(|| rustpress_core::slugify(title));
+    let slug: String = form.post_name.clone().unwrap_or_else(|| {
+        title
+            .to_lowercase()
+            .chars()
+            .map(|c: char| if c.is_alphanumeric() { c } else { '-' })
+            .collect()
+    });
 
     if let Some(post_id) = form.post_id.filter(|&id| id > 0) {
         // Update existing post
@@ -4189,10 +4246,10 @@ async fn post_submit(
             active.post_modified = Set(now);
             active.post_modified_gmt = Set(now);
             if let Some(ref cs) = form.comment_status {
-                active.comment_status = Set(cs.clone());
+                active.comment_status = sea_orm::ActiveValue::Set(cs.to_string());
             }
             if let Some(ref ps) = form.ping_status {
-                active.ping_status = Set(ps.clone());
+                active.ping_status = sea_orm::ActiveValue::Set(ps.to_string());
             }
             let _ = active.update(&state.db).await;
         }
@@ -4344,11 +4401,7 @@ async fn admin_ajax_handler(
 
             match comment {
                 Some(c) => {
-                    let new_status = if c.comment_approved == "1" {
-                        "0"
-                    } else {
-                        "1"
-                    };
+                    let new_status = if c.comment_approved == "1" { "0" } else { "1" };
                     let mut active: wp_comments::ActiveModel = c.into();
                     active.comment_approved = Set(new_status.to_string());
                     let _ = active.update(&state.db).await;
@@ -4436,15 +4489,11 @@ async fn admin_ajax_handler(
         "replyto-comment" => {
             let post_id = match form.comment_post_id {
                 Some(id) => id,
-                None => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(
-                            serde_json::json!({"success": false, "data": "Missing comment_post_id"}),
-                        ),
-                    )
-                        .into_response()
-                }
+                None => return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"success": false, "data": "Missing comment_post_id"})),
+                )
+                    .into_response(),
             };
             let content = form.content.as_deref().unwrap_or("");
             if content.is_empty() {
