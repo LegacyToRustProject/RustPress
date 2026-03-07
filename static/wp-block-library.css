@@ -355,6 +355,10 @@
 	font-size: var(--wp--preset--font-size--x-large) !important;
 }
 
+.has-xx-large-font-size {
+	font-size: var(--wp--preset--font-size--xx-large) !important;
+}
+
 /* Color classes */
 .has-base-color { color: var(--wp--preset--color--base) !important; }
 .has-contrast-color { color: var(--wp--preset--color--contrast) !important; }

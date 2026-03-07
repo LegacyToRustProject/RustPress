@@ -25,7 +25,9 @@ use crate::widgets;
 
 #[derive(Deserialize)]
 pub struct LoginForm {
+    #[serde(alias = "log")]
     pub username: String,
+    #[serde(alias = "pwd")]
     pub password: String,
 }
 

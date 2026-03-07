@@ -641,6 +641,21 @@ h2.wp-block-post-title {
 	color: var(--wp--preset--color--contrast);
 }
 
+/* TT25 rounded search form variant (search results page) */
+.wp-block-search--rounded .wp-block-search__inside-wrapper {
+	gap: 0.5em;
+}
+
+.wp-block-search--rounded .wp-block-search__input {
+	border-radius: 60px;
+	padding: 15px 24px;
+}
+
+.wp-block-search--rounded .wp-block-search__button {
+	border-radius: 60px;
+	padding: 15px 24px;
+}
+
 /* Comments */
 .wp-block-post-comments-form .comment-respond {
 	margin-top: 0;
