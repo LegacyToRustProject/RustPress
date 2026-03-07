@@ -822,14 +822,14 @@ async fn category_archive(
     let (posts, pagination, term_id) =
         taxonomy_posts(&state, &slug, "category", params.page.unwrap_or(1)).await?;
 
-    let term_name = wp_terms::Entity::find()
+    let term_name = match wp_terms::Entity::find()
         .filter(wp_terms::Column::Slug.eq(&slug))
         .one(&state.db)
         .await
-        .ok()
-        .flatten()
-        .map(|t| t.name)
-        .unwrap_or_else(|| slug.replace('-', " "));
+    {
+        Ok(Some(t)) => t.name,
+        _ => slug.replace('-', " "),
+    };
     context.insert("term_name", &term_name);
     context.insert("archive_title", &format!("Category: {}", term_name));
     insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
