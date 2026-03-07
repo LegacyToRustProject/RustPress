@@ -91,6 +91,18 @@ fn theme_json(
         "tags": {"raw": [], "rendered": ""},
         "theme_uri": {"raw": base, "rendered": base},
         "status": status,
+        "theme_supports": {
+            "align-wide": true,
+            "responsive-embeds": true,
+            "editor-styles": true,
+            "wp-block-styles": true,
+            "editor-color-palette": [],
+            "editor-font-sizes": [],
+            "color-palette": [],
+            "custom-line-height": false,
+            "custom-spacing": false,
+            "custom-units": []
+        },
         "_links": {
             "self": [{"href": format!("{}/wp-json/wp/v2/themes/{}", base, slug)}],
             "collection": [{"href": format!("{}/wp-json/wp/v2/themes", base)}],

@@ -1,3 +1,5 @@
+#![recursion_limit = "256"]
+
 pub mod application_passwords;
 pub mod autosaves;
 pub mod batch;
@@ -153,7 +155,7 @@ async fn require_api_auth(
         }
     }
 
-    // Try session cookie
+    // Try session cookie (+ optional X-WP-Nonce for CSRF protection)
     if let Some(sid) = request
         .headers()
         .get(header::COOKIE)
@@ -168,6 +170,25 @@ async fn require_api_auth(
     {
         if let Some(session) = state.sessions.get_session(&sid).await {
             let user_id = session.user_id;
+
+            // If X-WP-Nonce header is present, validate it for CSRF protection.
+            // Gutenberg's api-fetch always sends this header; curl / direct API
+            // calls omit it and continue to pass via session cookie alone.
+            let nonce_header = request
+                .headers()
+                .get("x-wp-nonce")
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string());
+            if let Some(nonce_val) = nonce_header {
+                if state
+                    .nonces
+                    .verify_nonce(&nonce_val, "wp_rest", user_id)
+                    .is_none()
+                {
+                    return common::WpError::forbidden("Invalid or expired nonce").into_response();
+                }
+            }
+
             request.extensions_mut().insert(AuthUser {
                 user_id,
                 login: session.login,

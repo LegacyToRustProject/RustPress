@@ -37,6 +37,9 @@ pub struct WpUser {
     /// Only included when the request is authenticated.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roles: Option<Vec<String>>,
+    /// WordPress capability map — required by Gutenberg for permission checks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capabilities: Option<HashMap<String, bool>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -142,6 +145,55 @@ pub async fn build_wp_user(
         None
     };
 
+    // Build capabilities map (needed by Gutenberg for permission checks)
+    let capabilities = if authenticated {
+        let role_list = roles.as_deref().unwrap_or(&[]);
+        let mut caps: HashMap<String, bool> = HashMap::new();
+        for role in role_list {
+            caps.insert(role.clone(), true);
+            // Add WordPress capability level for the role
+            match role.as_str() {
+                "administrator" => {
+                    caps.insert("level_10".to_string(), true);
+                    caps.insert("manage_options".to_string(), true);
+                    caps.insert("edit_posts".to_string(), true);
+                    caps.insert("edit_others_posts".to_string(), true);
+                    caps.insert("publish_posts".to_string(), true);
+                    caps.insert("delete_posts".to_string(), true);
+                    caps.insert("upload_files".to_string(), true);
+                }
+                "editor" => {
+                    caps.insert("level_7".to_string(), true);
+                    caps.insert("edit_posts".to_string(), true);
+                    caps.insert("edit_others_posts".to_string(), true);
+                    caps.insert("publish_posts".to_string(), true);
+                    caps.insert("delete_posts".to_string(), true);
+                    caps.insert("upload_files".to_string(), true);
+                }
+                "author" => {
+                    caps.insert("level_2".to_string(), true);
+                    caps.insert("edit_posts".to_string(), true);
+                    caps.insert("publish_posts".to_string(), true);
+                    caps.insert("delete_posts".to_string(), true);
+                    caps.insert("upload_files".to_string(), true);
+                }
+                "contributor" => {
+                    caps.insert("level_1".to_string(), true);
+                    caps.insert("edit_posts".to_string(), true);
+                    caps.insert("delete_posts".to_string(), true);
+                }
+                "subscriber" => {
+                    caps.insert("level_0".to_string(), true);
+                    caps.insert("read".to_string(), true);
+                }
+                _ => {}
+            }
+        }
+        Some(caps)
+    } else {
+        None
+    };
+
     WpUser {
         id: user.id,
         name: user.display_name.clone(),
@@ -157,6 +209,7 @@ pub async fn build_wp_user(
         meta: vec![],
         _links: user_links(site_url, user.id),
         roles,
+        capabilities,
         email: if authenticated {
             Some(user.user_email.clone())
         } else {
