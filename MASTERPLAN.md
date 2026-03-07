@@ -2353,7 +2353,7 @@ rustpress-security    ← core, auth (WAF, セキュリティ)
 | **First Render** | ブラウザでブログ記事表示 | 4 |
 | **Limited Preview** | 招待制で限定公開 | 4完了時 |
 | **Auth & CRUD** | ログイン + 投稿編集 | 5 |
-| **Public Beta** | GitHub公開, HN投稿 | 5完了時 |
+| **Public Beta** | 下記Beta基準を全て達成 | 5完了時 |
 | **Plugin MVP** | WASMプラグイン + 主要プラグイン1つ | 6 |
 | **API Compat** | WP REST API互換 | 7 |
 | **v0.1.0** | 最初の正式リリース | 7完了時 |
@@ -2366,6 +2366,24 @@ rustpress-security    ← core, auth (WAF, セキュリティ)
 | **Verticals** | EC完全版, フォーラム, LMS, メンバーシップ | 11 |
 | **Enterprise** | VIP品質, コンプライアンス, WCAG | 11 |
 | **WordPress Killer** | 全世界の全WPサイト移行可能 | 11完了時 |
+
+---
+
+## 7.1 Beta 基準（AI開発前提の高水準）
+
+AI駆動開発ではBetaの基準を従来より大幅に引き上げる。「だいたい動く」ではなく「ほぼ完成品」をBetaとする。
+
+| # | 条件 | 検証方法 |
+|---|------|---------|
+| B-1 | WordPress上位100テーマが全て正常表示 | E2Eテスト: 各テーマで主要ページをレンダリングし表示崩れゼロ |
+| B-2 | WordPress上位50プラグインのデータが移行・表示可能 | 各プラグインのDB構造を読み取り、フロントエンドで表示 |
+| B-3 | WP REST API v2が100%互換 | WordPress公式テストスイート（wp-api-tests）全通過 |
+| B-4 | 全ページでWordPressと97%+ピクセルマッチ | Seleniumスクリーンショット比較、全テンプレート種別で検証 |
+| B-5 | `rustpress migrate` コマンド一発でWPサイトが稼働 | 新規ユーザーがREADME通りに実行して5分以内に動作 |
+| B-6 | OWASP Top 10全項目に対応 | セキュリティ監査チェックリスト通過 |
+| B-7 | CI/CDが完全稼働 | 全プッシュでテスト・ビルド・Clippy・フォーマットが自動実行 |
+
+従来の開発ではこれはRC（リリース候補）レベルだが、AI開発ではこの水準をBetaに設定し、到達速度で価値を証明する。
 
 ---
 

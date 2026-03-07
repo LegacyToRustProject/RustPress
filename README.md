@@ -118,6 +118,24 @@ RustPress site — 100x faster, structurally secure, single binary
 
 ---
 
+## Road to Beta
+
+**Our Beta isn't "mostly works." It's "nearly finished."** AI-driven development lets us set the bar higher.
+
+| # | Condition | Status |
+|---|-----------|--------|
+| B-1 | Top 100 WordPress themes render correctly | Planned |
+| B-2 | Top 50 WordPress plugins' data migrates and displays | Planned |
+| B-3 | WP REST API v2 — 100% compatible | In progress |
+| B-4 | 97%+ pixel match with WordPress on all pages | In progress |
+| B-5 | `rustpress migrate` — one command, working site in 5 min | Planned |
+| B-6 | OWASP Top 10 — all addressed | In progress |
+| B-7 | CI/CD fully operational | Planned |
+
+In traditional development, this would be RC-level. We set it as Beta because AI makes it achievable at speed.
+
+---
+
 ## Performance
 
 Benchmarked on the same machine, same MySQL database, same content.
