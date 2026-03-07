@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results for &#8220;{{ search_query | default(value="") }}&#8221; &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}search search-results{% endblock %}
+
+{% block content %}
+<header class="page-header">
+<h1 class="page-title">Search Results for: <span>{{ search_query | default(value="") }}</span></h1>
+</header>
+
+<form role="search" method="get" action="{{ site_url | default(value='') }}/" class="search-form">
+<label class="screen-reader-text" for="s">Search for:</label>
+<input type="search" id="s" class="search-field" name="s" value="{{ search_query | default(value='') }}" placeholder="Search&hellip;" required>
+<input type="submit" class="search-submit" value="Search">
+</form>
+
+{% if posts and posts | length > 0 %}
+{% for post in posts %}
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry">
+<header class="entry-header">
+<h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2>
+<div class="entry-meta"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></div>
+</header>
+<div class="entry-content">{{ post.excerpt | default(value="") | safe }}</div>
+</article>
+{% endfor %}
+{% else %}
+<p>Sorry, nothing matched your search. Please try with different keywords.</p>
+{% endif %}
+{% endblock %}

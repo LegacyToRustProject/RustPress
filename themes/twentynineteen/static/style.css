@@ -1,0 +1,394 @@
+/*
+Theme Name: Twenty Nineteen
+Text Domain: twentynineteen
+Version: 2.8
+Requires at least: 4.9.6
+Tested up to: 6.7
+Requires PHP: 5.2.4
+Description: Our 2019 default theme is designed to show off the power of the block editor. It features custom styles for all the default blocks, and is built so that what you see in the editor looks like what you'll see on your website. Twenty Nineteen is designed to be adaptable to a wide range of websites, whether you're running a photo blog, launching a new business, or supporting a non-profit. Featuring ample whitespace and modern sans-serif headlines paired with classic serif body text, it's built to be beautiful on all screen sizes.
+Author: WordPress.org
+Author URI: https://wordpress.org
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+*/
+
+/* === TT19 CSS Custom Properties === */
+:root {
+    --color-foreground: #111111;
+    --color-background: #ffffff;
+    --color-primary: #d1c522;
+    --color-primary-dark: #b5ab1d;
+    --color-secondary: #767676;
+    --color-border: #767676;
+    --color-border-light: #d1d1d1;
+    --color-subtle: #f5f5f5;
+
+    --font-body: Georgia, 'Times New Roman', Times, serif;
+    --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+
+    --font-size-small: 0.888rem;
+    --font-size-medium: 1.125rem;
+    --font-size-large: 1.5rem;
+    --font-size-larger: 2rem;
+    --font-size-huge: 2.8rem;
+
+    --content-width: 740px;
+    --wide-width: 1168px;
+    --column-gap: 2rem;
+}
+
+/* === Reset === */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    font-size: var(--font-size-medium);
+    line-height: 1.75;
+    margin: 0;
+    word-break: break-word;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-foreground);
+    margin-top: 0;
+    letter-spacing: -0.02em;
+}
+
+h1 { font-size: var(--font-size-huge); }
+h2 { font-size: var(--font-size-larger); }
+h3 { font-size: var(--font-size-large); }
+h4 { font-size: 1.25rem; }
+h5 { font-size: var(--font-size-medium); }
+h6 { font-size: var(--font-size-small); font-weight: 400; text-transform: uppercase; letter-spacing: 0.05em; }
+
+a {
+    color: var(--color-foreground);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+a:hover { color: var(--color-secondary); }
+
+p { margin-top: 0; margin-bottom: 1.5em; }
+img { max-width: 100%; height: auto; vertical-align: middle; }
+
+/* === Site Structure === */
+#page { min-height: 100vh; }
+
+.site-inner {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* === Header === */
+.site-header {
+    border-bottom: 1px solid var(--color-border);
+    padding: 0;
+}
+
+.site-header .site-branding-container {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 2rem 2rem 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+
+.site-title {
+    font-family: var(--font-ui);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+.site-title a { text-decoration: none; color: var(--color-foreground); }
+.site-title a:hover { text-decoration: underline; }
+
+.site-description {
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    color: var(--color-secondary);
+    margin: 0.25rem 0 0;
+}
+
+/* === Primary Navigation === */
+.primary-navigation {
+    border-top: 1px solid var(--color-border);
+    margin-top: 1.5rem;
+}
+
+.primary-navigation ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 0;
+}
+
+.primary-navigation li {
+    border-right: 1px solid var(--color-border);
+}
+.primary-navigation li:first-child { border-left: 1px solid var(--color-border); }
+
+.primary-navigation li a {
+    display: block;
+    padding: 0.75rem 1.25rem;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    text-decoration: none;
+    color: var(--color-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.primary-navigation li a:hover {
+    background-color: var(--color-primary);
+    color: var(--color-foreground);
+}
+
+/* === Content Area === */
+#content {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 3rem 2rem;
+}
+
+.content-area { max-width: var(--content-width); margin: 0 auto; }
+
+/* === Articles === */
+article.hentry {
+    margin-bottom: 4rem;
+    padding-bottom: 4rem;
+    border-bottom: 1px solid var(--color-border-light);
+}
+article.hentry:last-child { border-bottom: none; }
+
+.entry-header { margin-bottom: 1.5rem; }
+
+.entry-title { font-size: var(--font-size-larger); margin: 0; line-height: 1.2; }
+.entry-title a { text-decoration: none; color: var(--color-foreground); }
+.entry-title a:hover { text-decoration: underline; }
+
+.entry-meta {
+    color: var(--color-secondary);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    margin-top: 0.5rem;
+}
+.entry-meta a { color: var(--color-secondary); text-decoration: none; }
+.entry-meta a:hover { text-decoration: underline; }
+
+/* === Has-media layout (TT19 signature) === */
+.has-media .entry-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--column-gap);
+    align-items: start;
+}
+.has-media .post-thumbnail { margin-bottom: 0; }
+.has-media .post-thumbnail img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+
+.post-thumbnail { margin-bottom: 1.5rem; }
+.post-thumbnail img { width: 100%; }
+
+.entry-content { font-size: var(--font-size-medium); }
+.entry-content p { margin-bottom: 1.5em; }
+.entry-content ul, .entry-content ol { padding-left: 1.75rem; margin-bottom: 1.5em; }
+
+.entry-footer {
+    margin-top: 1.5rem;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    color: var(--color-secondary);
+}
+
+/* === Buttons === */
+.wp-block-button__link,
+button, input[type="submit"], .button {
+    background-color: var(--color-primary);
+    color: var(--color-foreground);
+    border: 2px solid var(--color-foreground);
+    padding: 0.6rem 1.2rem;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+}
+.wp-block-button__link:hover,
+button:hover, input[type="submit"]:hover {
+    background-color: var(--color-foreground);
+    color: var(--color-background);
+}
+
+/* === Search === */
+.search-form {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--color-border);
+    margin-bottom: 2rem;
+}
+.search-field {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    font-family: var(--font-body);
+    font-size: var(--font-size-medium);
+    background: var(--color-background);
+}
+.search-submit {
+    background: var(--color-primary);
+    border-left: 1px solid var(--color-border);
+    padding: 0.75rem 1.25rem;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.search-submit:hover { background-color: var(--color-foreground); color: var(--color-background); }
+
+/* === Pagination === */
+.pagination { padding: 2rem 0; border-top: 1px solid var(--color-border-light); }
+.pagination .nav-links { display: flex; justify-content: space-between; }
+.pagination a { font-family: var(--font-ui); font-size: var(--font-size-small); font-weight: 700; text-decoration: none; text-transform: uppercase; letter-spacing: 0.05em; }
+.pagination a:hover { text-decoration: underline; }
+
+/* === Post Navigation === */
+.post-navigation { padding: 2rem 0; border-top: 1px solid var(--color-border-light); }
+.post-navigation .nav-links { display: flex; justify-content: space-between; gap: 1rem; }
+.post-navigation a { font-family: var(--font-ui); font-size: var(--font-size-small); font-weight: 700; text-decoration: none; }
+.post-navigation a:hover { text-decoration: underline; }
+
+/* === Block Styles === */
+.wp-block-quote {
+    border-left: 4px solid var(--color-primary);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+    font-size: var(--font-size-large);
+}
+
+.wp-block-separator {
+    border: none;
+    border-top: 1px solid var(--color-border-light);
+    margin: 2rem auto;
+}
+.wp-block-separator.is-style-wide { border-color: var(--color-border); }
+.wp-block-separator.is-style-dots {
+    border: none;
+    text-align: center;
+}
+.wp-block-separator.is-style-dots::before {
+    content: '···';
+    font-size: 1.5rem;
+    letter-spacing: 1em;
+    color: var(--color-secondary);
+}
+
+.wp-block-code, pre {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    background: var(--color-subtle);
+    border: 1px solid var(--color-border-light);
+    padding: 1.25rem;
+    overflow-x: auto;
+    border-radius: 0;
+}
+
+/* === Comment Form (TT19 heavy styling) === */
+.comments-area { margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--color-border); }
+.comments-title {
+    font-size: var(--font-size-large);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+}
+.comment-list { list-style: none; padding: 0; margin: 0 0 2rem; }
+.comment-body { padding: 1.5rem 0; border-top: 1px solid var(--color-border-light); }
+.comment-author { font-family: var(--font-ui); font-weight: 700; font-size: var(--font-size-small); }
+.comment-metadata { font-family: var(--font-ui); font-size: var(--font-size-small); color: var(--color-secondary); margin-bottom: 0.75rem; }
+.comment-content { font-size: var(--font-size-medium); }
+
+.comment-respond { margin-top: 2rem; }
+.comment-reply-title { font-size: var(--font-size-large); margin-bottom: 1.5rem; }
+
+.comment-form label {
+    display: block;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.4rem;
+}
+.comment-form input[type="text"],
+.comment-form input[type="email"],
+.comment-form input[type="url"],
+.comment-form textarea {
+    width: 100%;
+    max-width: 600px;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-background);
+    font-family: var(--font-body);
+    font-size: var(--font-size-medium);
+    line-height: 1.5;
+    display: block;
+    margin-bottom: 1rem;
+}
+.comment-form input[type="text"]:focus,
+.comment-form input[type="email"]:focus,
+.comment-form textarea:focus {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -1px;
+}
+.comment-form textarea { min-height: 200px; }
+.comment-form p.form-submit { margin-top: 0.5rem; }
+
+/* === Footer === */
+.site-footer {
+    background-color: var(--color-foreground);
+    color: var(--color-background);
+    padding: 2rem 0;
+    margin-top: 3rem;
+}
+.site-footer .footer-inner {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+}
+.site-footer a { color: rgba(255,255,255,0.8); text-decoration: none; }
+.site-footer a:hover { color: var(--color-background); text-decoration: underline; }
+
+/* === Utility === */
+.screen-reader-text { position: absolute; left: -9999px; clip: rect(0,0,0,0); width: 1px; height: 1px; overflow: hidden; }
+.has-text-align-center { text-align: center; }
+.has-text-align-left { text-align: left; }
+.has-text-align-right { text-align: right; }
+
+/* === Responsive === */
+@media (max-width: 768px) {
+    #content { padding: 1.5rem 1rem; }
+    .has-media .entry-header { grid-template-columns: 1fr; }
+    .primary-navigation ul { flex-direction: column; }
+    .primary-navigation li, .primary-navigation li:first-child { border: none; border-bottom: 1px solid var(--color-border-light); }
+    .site-footer .footer-inner { flex-direction: column; gap: 0.75rem; text-align: center; }
+}

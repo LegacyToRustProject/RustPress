@@ -280,16 +280,24 @@ fn core_blocks() -> Vec<Value> {
         .iter()
         .map(|(name, title, category, description, is_dynamic)| {
             let (attributes, supports) = match *name {
-                "core/paragraph"  => (attrs_paragraph(), supports_text()),
-                "core/heading"    => (attrs_heading(),   supports_text()),
-                "core/image"      => (attrs_image(),     supports_media()),
-                "core/embed"      => (attrs_embed(),     supports_media()),
-                "core/buttons"    => (attrs_buttons(),   supports_design()),
-                "core/button"     => (attrs_button(),    supports_design()),
-                "core/group" | "core/columns" | "core/row" | "core/stack"
-                                  => (attrs_group(),     supports_design()),
-                "core/query"      => (attrs_query(),     supports_query()),
-                _                 => (attrs_empty(),     if category == &"theme" { supports_theme() } else { supports_minimal() }),
+                "core/paragraph" => (attrs_paragraph(), supports_text()),
+                "core/heading" => (attrs_heading(), supports_text()),
+                "core/image" => (attrs_image(), supports_media()),
+                "core/embed" => (attrs_embed(), supports_media()),
+                "core/buttons" => (attrs_buttons(), supports_design()),
+                "core/button" => (attrs_button(), supports_design()),
+                "core/group" | "core/columns" | "core/row" | "core/stack" => {
+                    (attrs_group(), supports_design())
+                }
+                "core/query" => (attrs_query(), supports_query()),
+                _ => (
+                    attrs_empty(),
+                    if category == &"theme" {
+                        supports_theme()
+                    } else {
+                        supports_minimal()
+                    },
+                ),
             };
 
             json!({
@@ -379,10 +387,7 @@ mod tests {
     #[test]
     fn test_key_blocks_exist() {
         let blocks = core_blocks();
-        let names: Vec<&str> = blocks
-            .iter()
-            .filter_map(|b| b["name"].as_str())
-            .collect();
+        let names: Vec<&str> = blocks.iter().filter_map(|b| b["name"].as_str()).collect();
         for required in &[
             "core/paragraph",
             "core/heading",

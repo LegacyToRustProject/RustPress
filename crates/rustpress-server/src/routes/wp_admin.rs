@@ -376,7 +376,6 @@ pub fn routes(state: Arc<AppState>) -> Router {
             get(post_editor_edit).post(post_submit),
         )
         .route("/wp-admin/admin-post.php", post(admin_post_handler))
-        .route("/wp-admin/admin-ajax.php", post(admin_ajax_handler))
         .route(
             "/wp-admin/upload.php",
             get(media_library).post(media_edit_save),
@@ -4678,7 +4677,7 @@ async fn admin_post_handler(
 }
 
 // --- POST /wp-admin/admin-ajax.php ---
-
+#[allow(dead_code)]
 async fn admin_ajax_handler(
     State(state): State<Arc<AppState>>,
     Extension(session): Extension<Session>,

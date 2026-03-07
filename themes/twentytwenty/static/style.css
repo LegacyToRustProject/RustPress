@@ -1,0 +1,341 @@
+/*
+Theme Name: Twenty Twenty
+Text Domain: twentytwenty
+Version: 2.7
+Requires at least: 4.7
+Tested up to: 6.7
+Requires PHP: 5.2.4
+Description: Our default theme for 2020 is designed to take full advantage of the flexibility of the block editor. Organizations and businesses have the ability to create dynamic landing pages with endless layouts using the group and column blocks. The centered content column and fine-tuned typography also makes it perfect for traditional blogs. Complete editor styles allow you to organize and add to your website's content directly in the editor. Twenty Twenty is designed and built by Anders Norén.
+Author: WordPress.org
+Author URI: https://wordpress.org
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+*/
+
+/* === TT20 CSS Custom Properties === */
+:root {
+    --color-foreground: #111111;
+    --color-background: #f5efe0;
+    --color-primary: #111111;
+    --color-secondary: #767676;
+    --color-subtle: #dcd7ca;
+    --color-border: #dcd7ca;
+    --color-white: #ffffff;
+
+    --font-heading: 'Noto Serif', serif;
+    --font-body: 'Noto Serif', serif;
+    --font-ui: 'Noto Sans', sans-serif;
+
+    --font-size-small: 0.875rem;
+    --font-size-medium: 1rem;
+    --font-size-large: 1.25rem;
+    --font-size-larger: 1.5rem;
+    --font-size-huge: 2.25rem;
+
+    --content-width: 700px;
+    --wide-width: 1200px;
+
+    --spacing-xs: 0.75rem;
+    --spacing-sm: 1.25rem;
+    --spacing-md: 2rem;
+    --spacing-lg: 3rem;
+    --spacing-xl: 5rem;
+}
+
+/* === Reset === */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    font-size: 1.125rem;
+    line-height: 1.65;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-foreground);
+    margin-top: 0;
+}
+
+h1 { font-size: var(--font-size-huge); }
+h2 { font-size: var(--font-size-larger); }
+h3 { font-size: var(--font-size-large); }
+h4 { font-size: 1.1rem; }
+h5 { font-size: var(--font-size-medium); }
+h6 { font-size: var(--font-size-small); }
+
+a { color: var(--color-foreground); text-decoration: underline; }
+a:hover { text-decoration: none; }
+
+img { max-width: 100%; height: auto; }
+p { margin-top: 0; margin-bottom: 1.4rem; }
+
+/* === Site Layout === */
+#page { min-height: 100vh; }
+
+/* === Header (Cover Style) === */
+.site-header {
+    background-color: var(--color-foreground);
+    color: var(--color-white);
+    position: relative;
+}
+
+.site-header .header-inner {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.site-header .site-title a {
+    color: var(--color-white);
+    text-decoration: none;
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: -0.01em;
+}
+.site-header .site-title a:hover { text-decoration: underline; }
+
+.site-header .site-description {
+    color: rgba(255,255,255,0.7);
+    font-size: var(--font-size-small);
+    font-family: var(--font-ui);
+    margin: 0;
+}
+
+/* === Cover Header === */
+.cover-header {
+    background-color: var(--color-foreground);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    min-height: 400px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.cover-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7) 100%);
+}
+
+.cover-header-inner {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 2rem;
+    color: #ffffff;
+}
+
+.cover-header-inner .entry-title {
+    color: #ffffff;
+    font-size: clamp(2rem, 6vw, 4rem);
+    margin: 0;
+}
+
+/* === Navigation === */
+.primary-navigation {
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+}
+
+.primary-navigation ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 1.5rem;
+}
+
+.primary-navigation li a {
+    color: var(--color-white);
+    text-decoration: none;
+}
+.primary-navigation li a:hover { text-decoration: underline; }
+
+/* === Content Area === */
+#content {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: var(--spacing-lg) 2rem;
+}
+
+.content-area {
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+/* === Articles === */
+article.hentry {
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-lg);
+    border-bottom: 1px solid var(--color-border);
+}
+article.hentry:last-child { border-bottom: none; }
+
+.entry-header { margin-bottom: var(--spacing-sm); }
+
+.entry-title { font-size: var(--font-size-larger); margin: 0; line-height: 1.25; }
+.entry-title a { text-decoration: none; color: var(--color-foreground); }
+.entry-title a:hover { text-decoration: underline; }
+
+.entry-meta {
+    color: var(--color-secondary);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    margin-top: 0.5rem;
+}
+.entry-meta a { color: var(--color-secondary); }
+
+.entry-content { margin-top: var(--spacing-sm); }
+.entry-content p { margin-bottom: 1.4rem; }
+.entry-content ul, .entry-content ol { padding-left: 1.5rem; margin-bottom: 1.4rem; }
+
+.entry-footer {
+    margin-top: var(--spacing-sm);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    color: var(--color-secondary);
+}
+
+/* === Featured Image === */
+.post-thumbnail { margin-bottom: var(--spacing-sm); }
+.post-thumbnail img { width: 100%; height: auto; display: block; }
+
+/* === Buttons === */
+.wp-block-button__link,
+button, input[type="submit"], .button {
+    background-color: var(--color-foreground);
+    color: var(--color-white);
+    border: 2px solid var(--color-foreground);
+    padding: 0.6rem 1.2rem;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.wp-block-button__link:hover,
+button:hover, input[type="submit"]:hover {
+    background-color: transparent;
+    color: var(--color-foreground);
+}
+
+/* === Search === */
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: var(--spacing-md);
+}
+.search-field {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-border);
+    font-family: var(--font-body);
+    font-size: var(--font-size-small);
+    background: var(--color-white);
+}
+
+/* === Pagination === */
+.pagination { padding: var(--spacing-md) 0; border-top: 1px solid var(--color-border); }
+.pagination .nav-links { display: flex; gap: 1rem; }
+.pagination a { font-family: var(--font-ui); font-size: var(--font-size-small); font-weight: 700; text-decoration: none; }
+.pagination a:hover { text-decoration: underline; }
+
+/* === Post Navigation === */
+.post-navigation { padding: var(--spacing-md) 0; border-top: 1px solid var(--color-border); }
+.post-navigation .nav-links { display: flex; justify-content: space-between; gap: 1rem; }
+.post-navigation a { font-family: var(--font-ui); font-size: var(--font-size-small); text-decoration: none; }
+.post-navigation a:hover { text-decoration: underline; }
+
+/* === Block Styles === */
+.wp-block-quote {
+    border-left: 4px solid var(--color-foreground);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin: var(--spacing-sm) 0;
+    font-style: italic;
+    font-size: var(--font-size-large);
+}
+
+.wp-block-separator {
+    border: none;
+    border-top: 1px solid var(--color-border);
+    margin: var(--spacing-md) 0;
+}
+
+.wp-block-code, pre, code {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    background: var(--color-subtle);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    overflow-x: auto;
+    border-radius: 2px;
+}
+
+/* === Comment Form === */
+.comment-form input[type="text"],
+.comment-form input[type="email"],
+.comment-form input[type="url"],
+.comment-form textarea {
+    border: 1px solid var(--color-border);
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+    max-width: 600px;
+    background: var(--color-white);
+    font-family: var(--font-body);
+    font-size: var(--font-size-medium);
+}
+.comment-respond { margin-top: var(--spacing-md); }
+.comment-list { list-style: none; padding: 0; margin: 0; }
+.comment-body { padding: var(--spacing-sm) 0; border-top: 1px solid var(--color-border); }
+.comment-author { font-weight: 700; font-family: var(--font-ui); }
+.comment-metadata { font-family: var(--font-ui); font-size: var(--font-size-small); color: var(--color-secondary); }
+
+/* === Footer === */
+.site-footer {
+    background-color: var(--color-foreground);
+    color: var(--color-white);
+    padding: var(--spacing-md) 0;
+}
+.site-footer .footer-inner {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-small);
+}
+.site-footer a { color: rgba(255,255,255,0.8); }
+.site-footer a:hover { color: var(--color-white); }
+
+/* === Utility === */
+.screen-reader-text { position: absolute; left: -9999px; }
+.has-text-align-center { text-align: center; }
+.has-text-align-left { text-align: left; }
+.has-text-align-right { text-align: right; }
+
+/* === Responsive === */
+@media (max-width: 768px) {
+    #content { padding: var(--spacing-md) 1rem; }
+    .site-header .header-inner { flex-direction: column; gap: 0.75rem; }
+    .primary-navigation ul { flex-wrap: wrap; gap: 0.75rem; }
+    .site-footer .footer-inner { flex-direction: column; gap: 0.75rem; text-align: center; }
+}
