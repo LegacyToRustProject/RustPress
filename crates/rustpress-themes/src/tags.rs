@@ -61,11 +61,7 @@ pub struct PostTemplateData {
 impl PostTemplateData {
     /// Convert a wp_posts model to template-friendly data.
     pub fn from_model(post: &wp_posts::Model, site_url: &str) -> Self {
-        let permalink = format!(
-            "{}/{}",
-            site_url.trim_end_matches('/'),
-            &post.post_name
-        );
+        let permalink = format!("{}/{}", site_url.trim_end_matches('/'), &post.post_name);
 
         Self {
             id: post.id,
@@ -196,8 +192,7 @@ pub fn insert_post_context_full(
     } else {
         super::formatting::apply_content_filters_with_hooks(&post.content, hooks)
     };
-    let processed_title =
-        super::formatting::apply_title_filters_with_hooks(&post.title, hooks);
+    let processed_title = super::formatting::apply_title_filters_with_hooks(&post.title, hooks);
     let processed_excerpt = if post.excerpt.is_empty() {
         String::new()
     } else {
@@ -556,7 +551,10 @@ mod tests {
     #[test]
     fn test_strip_html_tags() {
         assert_eq!(strip_html_tags("<p>Hello</p>"), "Hello");
-        assert_eq!(strip_html_tags("<b>Bold</b> and <i>italic</i>"), "Bold and italic");
+        assert_eq!(
+            strip_html_tags("<b>Bold</b> and <i>italic</i>"),
+            "Bold and italic"
+        );
         assert_eq!(strip_html_tags("No tags"), "No tags");
         assert_eq!(strip_html_tags(""), "");
     }
@@ -575,7 +573,10 @@ mod tests {
         let excerpt = generate_excerpt(&content, 10);
         assert!(excerpt.ends_with("[\u{2026}]"));
         // Count words before ellipsis suffix
-        let excerpt_words: Vec<&str> = excerpt.trim_end_matches(" [\u{2026}]").split_whitespace().collect();
+        let excerpt_words: Vec<&str> = excerpt
+            .trim_end_matches(" [\u{2026}]")
+            .split_whitespace()
+            .collect();
         assert_eq!(excerpt_words.len(), 10);
     }
 

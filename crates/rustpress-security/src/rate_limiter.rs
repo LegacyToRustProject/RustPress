@@ -80,21 +80,21 @@ impl RateLimiter {
         configs.insert(
             EndpointCategory::Login,
             RateLimitConfig {
-                max_requests: 30,
+                max_requests: 60,
                 window_secs: 60,
             },
         );
         configs.insert(
             EndpointCategory::Api,
             RateLimitConfig {
-                max_requests: 60,
+                max_requests: 300,
                 window_secs: 60,
             },
         );
         configs.insert(
             EndpointCategory::General,
             RateLimitConfig {
-                max_requests: 120,
+                max_requests: 600,
                 window_secs: 60,
             },
         );
@@ -213,7 +213,8 @@ impl RateLimiter {
 
     /// Reset rate limit counters for a specific IP.
     pub fn reset(&mut self, ip: &str) {
-        self.windows.retain(|key, _| !key.starts_with(&format!("{}:", ip)));
+        self.windows
+            .retain(|key, _| !key.starts_with(&format!("{}:", ip)));
     }
 
     /// Periodically remove expired entries to prevent memory growth.
@@ -228,7 +229,12 @@ impl RateLimiter {
         self.last_cleanup = now;
 
         // Find the maximum window size across all configs for cleanup threshold.
-        let max_window = self.configs.values().map(|c| c.window_secs).max().unwrap_or(60);
+        let max_window = self
+            .configs
+            .values()
+            .map(|c| c.window_secs)
+            .max()
+            .unwrap_or(60);
 
         self.windows.retain(|_, entry| {
             entry.prune_and_count(max_window, now);
@@ -253,8 +259,8 @@ mod tests {
         let result = limiter.check("192.168.1.1", "/hello");
         match result {
             RateLimitResult::Allowed { remaining } => {
-                // General limit is 120/min, first request => 119 remaining
-                assert_eq!(remaining, 119);
+                // General limit is 600/min, first request => 599 remaining
+                assert_eq!(remaining, 599);
             }
             _ => panic!("Expected Allowed"),
         }
@@ -263,17 +269,17 @@ mod tests {
     #[test]
     fn test_login_rate_limit() {
         let mut limiter = RateLimiter::new();
-        // Login limit is 30/min
-        for i in 0..30 {
+        // Login limit is 60/min
+        for i in 0..60 {
             let result = limiter.check("10.0.0.1", "/wp-login.php");
             match result {
                 RateLimitResult::Allowed { remaining } => {
-                    assert_eq!(remaining, 29 - i);
+                    assert_eq!(remaining, 59 - i);
                 }
                 _ => panic!("Expected Allowed on attempt {}", i),
             }
         }
-        // 31st attempt should be limited
+        // 61st attempt should be limited
         let result = limiter.check("10.0.0.1", "/wp-login.php");
         match result {
             RateLimitResult::Limited { retry_after } => {
@@ -321,8 +327,8 @@ mod tests {
     #[test]
     fn test_reset_clears_counters() {
         let mut limiter = RateLimiter::new();
-        // Exhaust login limit (30/min)
-        for _ in 0..30 {
+        // Exhaust login limit (60/min)
+        for _ in 0..60 {
             limiter.check("10.0.0.1", "/wp-login.php");
         }
         // Should be limited
