@@ -95,6 +95,7 @@
         <div class="widget-title">New Contact Form</div>
         <div class="widget-content">
             <form method="post" action="/wp-admin/admin-cf7.php">
+                <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                 <table class="form-table">
                     <tr>
                         <th><label for="form_title">Form Title</label></th>

@@ -17,6 +17,7 @@
             <div class="widget-title">Firewall (WAF)</div>
             <div class="widget-content">
                 <form method="post" action="/wp-admin/admin-security.php">
+                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                     <input type="hidden" name="section" value="firewall">
                     <table class="form-table">
                         <tr>
@@ -47,6 +48,7 @@
             <div class="widget-title">Rate Limiting</div>
             <div class="widget-content">
                 <form method="post" action="/wp-admin/admin-security.php">
+                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                     <input type="hidden" name="section" value="rate_limit">
                     <table class="form-table">
                         <tr>
@@ -73,6 +75,7 @@
             <div class="widget-title">Login Protection</div>
             <div class="widget-content">
                 <form method="post" action="/wp-admin/admin-security.php">
+                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                     <input type="hidden" name="section" value="login">
                     <table class="form-table">
                         <tr>
@@ -133,6 +136,7 @@
                 <p style="color:#646970;font-size:13px;margin:0">No IPs are currently blocked.</p>
                 {% endif %}
                 <form method="post" action="/wp-admin/admin-security.php" style="margin-top:0.75rem;display:flex;gap:0.5rem">
+                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                     <input type="hidden" name="section" value="block_ip">
                     <input type="text" name="block_ip" placeholder="IP address" class="regular-text" style="flex:1;font-size:12px">
                     <button type="submit" class="button button-secondary" style="font-size:12px">Block</button>
@@ -163,6 +167,7 @@
                 <p style="color:#646970;font-size:13px;margin:0">Run a security scan to check your site.</p>
                 {% endif %}
                 <form method="post" action="/wp-admin/admin-security.php" style="margin-top:0.75rem">
+                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                     <input type="hidden" name="section" value="scan">
                     <button type="submit" class="button button-secondary" style="font-size:12px;width:100%">Run Security Scan</button>
                 </form>

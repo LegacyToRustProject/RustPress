@@ -14,6 +14,7 @@
 </p>
 
 <form method="post" action="/wp-admin/nav-menus.php">
+    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_menus }}" />
     <table class="form-table">
         <tr>
             <th><label for="header_menu">Header Menu</label></th>

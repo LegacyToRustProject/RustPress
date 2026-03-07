@@ -10,6 +10,7 @@
 {% endif %}
 
 <form method="post" action="/wp-admin/options-permalink.php">
+    <input type="hidden" name="_wpnonce" value="{{ wpnonce_update_settings }}" />
     <table class="form-table">
         <tr>
             <th>{{ __( key="Common Settings") }}</th>

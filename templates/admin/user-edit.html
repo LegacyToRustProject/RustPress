@@ -19,6 +19,7 @@
     {% endif %}
 
     <form method="post" action="/wp-admin/user-edit.php?user_id={{ user.id }}">
+        <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_users }}" />
         <input type="hidden" name="user_id" value="{{ user.id }}">
 
         <h2 style="font-size:1.1rem;font-weight:600;margin:1.5rem 0 0.5rem;color:#1d2327;">Name</h2>

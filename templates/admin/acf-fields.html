@@ -65,6 +65,7 @@
         <div class="widget-title">New Field Group</div>
         <div class="widget-content">
             <form method="post" action="/wp-admin/admin-acf.php">
+                <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                 <table class="form-table">
                     <tr>
                         <th><label for="fg_title">Title</label></th>

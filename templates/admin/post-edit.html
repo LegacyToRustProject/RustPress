@@ -867,6 +867,7 @@
 <body>
 
 <form id="post-form" method="POST" action="/wp-admin/post.php">
+    <input type="hidden" name="_wpnonce" value="{{ wpnonce_save_post }}" />
     <input type="hidden" name="post_id" id="field-post-id" value="">
     <input type="hidden" name="post_content" id="field-post-content" value="">
     <input type="hidden" name="post_status" id="field-post-status" value="draft">

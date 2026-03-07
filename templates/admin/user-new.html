@@ -21,6 +21,7 @@
     {% endif %}
 
     <form method="post" action="/wp-admin/user-new.php">
+        <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_users }}" />
         <table class="form-table">
             <tr>
                 <th><label for="user_login">Username <span style="color:#d63638;">*</span></label></th>

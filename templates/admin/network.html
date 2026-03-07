@@ -23,6 +23,7 @@
             <!-- Add Site Form (hidden by default) -->
             <div id="add-site-form" style="display:none;padding:16px;border-bottom:1px solid #c3c4c7;background:#f6f7f7;">
                 <form method="POST" action="/wp-admin/network/add-site" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_network }}" />
                     <div>
                         <label style="display:block;font-weight:600;margin-bottom:4px;">Site Address (Path)</label>
                         <div style="display:flex;align-items:center;gap:4px;">
@@ -84,12 +85,14 @@
                             <div style="display:flex;gap:8px;">
                                 {% if not site.archived %}
                                 <form method="POST" action="/wp-admin/network/site-action" style="display:inline;">
+                                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_network }}" />
                                     <input type="hidden" name="blog_id" value="{{ site.blog_id }}">
                                     <input type="hidden" name="action" value="archive">
                                     <button type="submit" style="background:none;border:none;color:#996800;cursor:pointer;text-decoration:underline;padding:0;">Archive</button>
                                 </form>
                                 {% else %}
                                 <form method="POST" action="/wp-admin/network/site-action" style="display:inline;">
+                                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_network }}" />
                                     <input type="hidden" name="blog_id" value="{{ site.blog_id }}">
                                     <input type="hidden" name="action" value="unarchive">
                                     <button type="submit" style="background:none;border:none;color:#00a32a;cursor:pointer;text-decoration:underline;padding:0;">Activate</button>
@@ -97,6 +100,7 @@
                                 {% endif %}
                                 {% if not site.spam %}
                                 <form method="POST" action="/wp-admin/network/site-action" style="display:inline;">
+                                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_network }}" />
                                     <input type="hidden" name="blog_id" value="{{ site.blog_id }}">
                                     <input type="hidden" name="action" value="spam">
                                     <button type="submit" style="background:none;border:none;color:#dba617;cursor:pointer;text-decoration:underline;padding:0;">Spam</button>
@@ -104,6 +108,7 @@
                                 {% endif %}
                                 {% if not site.deleted %}
                                 <form method="POST" action="/wp-admin/network/site-action" style="display:inline;">
+                                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_network }}" />
                                     <input type="hidden" name="blog_id" value="{{ site.blog_id }}">
                                     <input type="hidden" name="action" value="delete">
                                     <button type="submit" style="background:none;border:none;color:#d63638;cursor:pointer;text-decoration:underline;padding:0;" onclick="return confirm('Delete this site?')">Delete</button>

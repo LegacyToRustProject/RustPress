@@ -217,6 +217,7 @@
         <p class="message">You are now logged out.</p>
         {% endif %}
         <form name="loginform" id="loginform" action="/wp-login.php" method="post">
+            <input type="hidden" name="_wpnonce" value="{{ wpnonce_login | default(value='') }}" />
             <p>
                 <label for="user_login">Username or Email Address</label>
                 <input type="text" name="log" id="user_login" class="input" value="" size="20" autocapitalize="off" autocomplete="username" required />

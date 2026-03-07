@@ -18,6 +18,7 @@
 {% endif %}
 
 <form method="post" action="/wp-admin/profile.php">
+    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_users }}" />
     <h2 style="font-size:1.1rem;font-weight:600;margin:1.5rem 0 0.5rem;color:#1d2327;">Name</h2>
     <table class="form-table">
         <tr>

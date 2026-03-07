@@ -15,6 +15,7 @@
         <div class="widget-title">General</div>
         <div class="widget-content">
             <form method="post" action="/wp-admin/admin-seo.php">
+                <input type="hidden" name="_wpnonce" value="{{ wpnonce_general }}" />
                 <table class="form-table">
                     <tr>
                         <th><label for="seo_title_separator">Title Separator</label></th>

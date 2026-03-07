@@ -145,6 +145,7 @@
                 <a href="/wp-admin/options-general.php" class="button button-secondary" style="margin-left:auto;">Customize</a>
             {% else %}
                 <form method="post" action="/wp-admin/themes.php?action=activate&theme={{ theme.slug }}" style="margin:0;">
+                    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_themes }}" />
                     <button type="submit" class="button button-primary">Activate</button>
                 </form>
             {% endif %}

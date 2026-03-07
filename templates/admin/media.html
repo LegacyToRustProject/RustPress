@@ -11,6 +11,7 @@
 </h1>
 
 <form method="post" action="/wp-admin/upload.php">
+    <input type="hidden" name="_wpnonce" value="{{ wpnonce_manage_media }}" />
     <input type="hidden" name="attachment_id" value="{{ media_item.id }}">
     <div style="display:flex;gap:2rem;margin-top:1rem;">
         <div style="flex:0 0 40%;max-width:40%;">
