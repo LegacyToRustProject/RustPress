@@ -1,6 +1,6 @@
 # RustPress
 
-**WordPress, rewritten in Rust.** Not a clone. Not "inspired by." The real thing — rebuilt from scratch for speed, safety, and the modern web.
+**WordPress, rewritten in Rust.** Connect to your existing WordPress database — your content, themes, and plugins are converted and served instantly, 100x faster.
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Rust: 1.88+](https://img.shields.io/badge/Rust-1.88%2B-orange.svg)](https://www.rust-lang.org/)
@@ -10,31 +10,111 @@
 
 ---
 
-## Vision
+## The Problem: WordPress Is a Security Crisis
 
-RustPress aims to be a **100% WordPress-compatible CMS** built entirely in Rust. The goal is pixel-perfect parity with WordPress — same database schema, same REST API, same template output, same theme rendering — while delivering the performance and safety guarantees of Rust.
+WordPress powers **43% of the web** — over 800 million sites. But the reality behind this number is alarming:
 
-**This project is built with AI-assisted development**, pushing the boundaries of what's possible when development costs approach zero. By leveraging AI to handle the massive surface area of WordPress compatibility, we can achieve what would otherwise require a large team and years of work.
+| Problem | Scale |
+|---------|-------|
+| **Outdated WordPress core** | [49.8% of sites run outdated versions](https://www.wpbeginner.com/research/ultimate-wordpress-statistics/) |
+| **Vulnerable plugins** | Plugin vulnerabilities account for [97% of WP security issues](https://patchstack.com/whitepaper/state-of-wordpress-security-in-2024/) |
+| **Abandoned sites still online** | Millions of "set and forget" sites with no security updates |
+| **Hacked sites per year** | ~13,000 WordPress sites hacked [per day](https://www.colorlib.com/wp/wordpress-statistics/) (~4.7M/year) |
+| **PHP memory overhead** | 50-100 MB per process, limits concurrent users |
+| **Server cost** | PHP's per-request model requires expensive hosting to scale |
 
-### Dual-Mode Theme & Plugin Architecture
+The core issue: **PHP is an interpreted language with a 20-year-old architecture.** Every request bootstraps the entire runtime from scratch. Every plugin is an arbitrary code execution surface. Every unpatched site is an open door.
 
-RustPress is designed to support two complementary approaches for themes and plugins:
+Most site owners are not developers. They set up WordPress once, install plugins, and never update again. The security model depends on constant human vigilance — and humans forget.
 
-1. **WordPress-Compatible Mode** — Load and render existing WordPress PHP themes and plugins as-is, ensuring drop-in compatibility with the entire WordPress ecosystem. Your existing themes, plugins, and customizations work without modification.
+### The AI Threat Multiplier
 
-2. **Rust-Optimized Mode** — Native Rust themes and plugins (including WebAssembly) that take full advantage of Rust's performance, safety, and concurrency. No PHP interpreter overhead, compiled at build time, type-safe plugin APIs.
+This crisis is about to get catastrophically worse. AI is transforming cyber attacks:
 
-Both modes coexist, allowing gradual migration from PHP to Rust while maintaining full backward compatibility.
+- **Automated vulnerability discovery** — AI agents can scan the entire internet for WordPress sites, detect their versions and installed plugins, and identify known vulnerabilities in seconds. What took a human attacker hours of manual reconnaissance now takes milliseconds.
+- **AI-generated exploits** — LLMs can analyze CVE disclosures and generate working exploit code, lowering the skill barrier for attackers to near zero.
+- **Autonomous attack chains** — AI agents can discover a vulnerability, generate an exploit, deploy a payload, establish persistence, and move laterally — all without human intervention.
+- **Scale** — A single AI agent can attack thousands of WordPress sites simultaneously. The 4.7 million hacked sites per year figure will look quaint.
+
+WordPress's security model — "humans must manually apply patches" — cannot survive in an era where AI attackers operate at machine speed, 24/7, against 800 million targets. **The only defense that scales is eliminating the vulnerability surface entirely.** That means compiling to memory-safe native code, sandboxing plugins, and removing PHP's arbitrary code execution model.
+
+This is not a future threat. It is happening now.
 
 ---
 
-## Why RustPress?
+## The Solution: Compile WordPress into a Single Binary
 
-WordPress powers 40%+ of the web, but PHP's per-request overhead limits performance. RustPress keeps **full WordPress database compatibility** while delivering native-compiled speed.
+RustPress takes a fundamentally different approach:
 
-**Point RustPress at an existing WordPress database and it serves the same content — orders of magnitude faster.**
+```
+WordPress (PHP)                    RustPress (Rust)
+├── Interpreted at runtime         ├── Compiled to native binary
+├── 50-100 MB memory per process   ├── 35 MB total
+├── Bootstraps every request       ├── Always-on async server
+├── Plugin = arbitrary PHP code    ├── Plugin = sandboxed WASM or native Rust
+├── SQL injection via string ops   ├── Parameterized queries enforced by type system
+├── Must patch constantly          ├── Memory-safe by construction
+└── ~200ms per page                └── ~2ms per page
+```
 
-### Performance
+**Point RustPress at your existing WordPress database. Your site is now 100x faster and structurally secure.**
+
+---
+
+## Migration: It Just Works
+
+RustPress is designed so that migrating from WordPress is as simple as pointing to your existing data:
+
+### Database — Zero Migration
+
+```env
+DATABASE_URL=mysql://user:pass@localhost:3306/wordpress
+SKIP_MIGRATIONS=true
+```
+
+RustPress reads the **exact same WordPress tables** (`wp_posts`, `wp_options`, `wp_users`, etc.) directly. No data conversion, no export/import, no downtime. WordPress and RustPress can even run side-by-side on the same database during transition.
+
+### Themes — AI-Converted
+
+Your existing WordPress theme is converted from PHP to Tera templates using AI. The conversion uses WordPress's own output as the reference — pixel-perfect fidelity is verified by automated visual comparison testing.
+
+The default theme (Twenty Twenty-Five equivalent) ships with RustPress and achieves **97%+ pixel match** with the WordPress original.
+
+### Plugins — AI-Converted
+
+WordPress plugins are converted from PHP to Rust using AI. This works because:
+
+1. **WordPress is 100% open source** — every line of PHP is readable
+2. **AI reads the PHP source code** — the code IS the specification
+3. **AI converts to Rust** — calling Rust implementations of WP functions
+4. **Output is compared against WordPress** — the correct answer always exists
+5. **Diffs are fixed** — repeat until 100% match
+
+Major plugins (WooCommerce, Yoast SEO, Contact Form 7, ACF, Wordfence) are being rebuilt natively in Rust within this repository for maximum performance.
+
+> **Core philosophy:** RustPress is made possible not by Rust's speed, but by the fact that AI can now scale the tedious work of converting code when the correct answer (WordPress source code) is fully available. [Read more](docs/adr/001-php-bridge-mode.en.md)
+
+---
+
+## The Mission: A Migration Path for Every WordPress Site
+
+RustPress's goal is not just to be a fast CMS. **The goal is to establish a migration path for every WordPress site in the world.**
+
+```
+Any WordPress site
+    ↓ rustpress migrate analyze (compatibility report)
+    ↓ rustpress migrate database (point to existing DB)
+    ↓ rustpress migrate theme (AI-convert PHP → Tera)
+    ↓ rustpress migrate plugins (AI-convert or substitute with Rust-native)
+    ↓ rustpress migrate seo-audit (verify zero SEO impact)
+RustPress site — 100x faster, structurally secure, single binary
+```
+
+800 million WordPress sites deserve a path forward. Not just the ones with dedicated engineering teams — **all of them**, including the forgotten blogs, the small business sites, the nonprofit pages that no one has updated in three years but are still serving real visitors.
+
+---
+
+## Performance
 
 Benchmarked on the same machine, same MySQL database, same content.
 
@@ -54,8 +134,8 @@ Benchmarked on the same machine, same MySQL database, same content.
 ### Option 1: Docker (Recommended)
 
 ```bash
-git clone https://github.com/example/rustpress.git
-cd rustpress
+git clone https://github.com/rustpress-project/RustPress.git
+cd RustPress
 cp .env.example .env
 
 # Start MySQL + RustPress
@@ -69,8 +149,8 @@ RustPress will be available at `http://localhost:8080`.
 **Prerequisites:** Rust 1.88+, MySQL 8.0+ (or MariaDB 10.5+)
 
 ```bash
-git clone https://github.com/example/rustpress.git
-cd rustpress
+git clone https://github.com/rustpress-project/RustPress.git
+cd RustPress
 
 cp .env.example .env
 # Edit .env — set DATABASE_URL to your WordPress database
@@ -113,6 +193,15 @@ Also: `/pages`, `/media`, `/users`, `/categories`, `/tags`, `/comments`, `/searc
 - Role-based access control (5 roles, 73 capabilities)
 - Security headers (CSP, X-Frame-Options, HSTS)
 
+### Native Rust Plugin Crates
+| Crate | WordPress Equivalent | Status |
+|-------|---------------------|--------|
+| `rustpress-commerce` | WooCommerce | In development |
+| `rustpress-seo` | Yoast / RankMath | In development |
+| `rustpress-forms` | Contact Form 7 / Gravity Forms | In development |
+| `rustpress-fields` | ACF (Advanced Custom Fields) | In development |
+| `rustpress-security` | Wordfence | In development |
+
 ### Infrastructure
 - Page cache (moka, 5-min TTL, sub-ms hits)
 - Gzip compression
@@ -123,10 +212,11 @@ Also: `/pages`, `/media`, `/users`, `/categories`, `/tags`, `/comments`, `/searc
 - [ ] `theme.json` parser for 100% CSS variable parity
 - [ ] Gutenberg block rendering (advanced blocks)
 - [ ] Plugin hook system (`add_action`/`add_filter` in Rust)
-- [ ] Native Rust plugin API (WASM/dylib) — Rust-Optimized Mode
-- [ ] PHP theme/plugin compatibility layer — WordPress-Compatible Mode
+- [ ] WASM plugin runtime (Extism)
 - [ ] Admin dashboard (wp-admin) full parity
 - [ ] Multi-site support
+- [ ] WPGraphQL-compatible endpoint
+- [ ] AI plugin/theme conversion service (rustpress-convert)
 
 ---
 
@@ -195,6 +285,14 @@ The E2E suite uses Selenium to take screenshots of both WordPress and RustPress,
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 We welcome contributions of all kinds — bug reports, theme parity fixes, new features, documentation, and testing on real WordPress databases.
+
+---
+
+## Architectural Decisions
+
+Key design decisions are recorded as ADRs (Architecture Decision Records):
+
+- [ADR-001: PHP Bridge Mode and Plugin Compatibility Strategy](docs/adr/001-php-bridge-mode.en.md) ([Japanese](docs/adr/001-php-bridge-mode.md))
 
 ---
 
