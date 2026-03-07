@@ -11,6 +11,7 @@ mod error;
 pub mod i18n;
 pub mod media;
 pub mod middleware;
+pub mod nav_menu;
 mod routes;
 mod state;
 mod templates;
@@ -27,7 +28,7 @@ use rustpress_db::{connection, options::OptionsManager};
 use rustpress_fields::{FieldGroupRegistry, FieldStorage};
 use rustpress_forms::SubmissionStore;
 use rustpress_plugins::{PluginLoader, PluginRegistry, WasmHost};
-use rustpress_security::{LoginProtection, RateLimiter, WafEngine};
+use rustpress_security::{AuditLog, LoginProtection, RateLimiter, WafEngine};
 
 use state::AppState;
 
@@ -126,9 +127,23 @@ async fn main() -> Result<()> {
     let translations = i18n::Translations::new("languages", &wplang);
     info!("i18n locale: {}", wplang);
 
+    // Determine active theme from DB or environment
+    let active_theme = if let Ok(t) = std::env::var("ACTIVE_THEME") {
+        t
+    } else {
+        options
+            .get_option("template")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| "default".to_string())
+    };
+    info!(theme = %active_theme, "active theme determined");
+
     // Initialize theme engine for frontend
-    let mut theme_engine = templates::init_theme_engine(&config.templates_dir)
-        .expect("Failed to initialize theme engine");
+    let mut theme_engine =
+        templates::init_theme_engine(&config.themes_dir, &config.templates_dir, &active_theme)
+            .expect("Failed to initialize theme engine");
 
     // Register i18n functions on the theme engine's Tera instance
     i18n::register_tera_i18n_functions(theme_engine.tera_mut(), &translations);
@@ -165,7 +180,8 @@ async fn main() -> Result<()> {
     let waf = Arc::new(RwLock::new(WafEngine::with_default_rules()));
     let rate_limiter = Arc::new(RwLock::new(RateLimiter::new()));
     let login_protection = Arc::new(RwLock::new(LoginProtection::new()));
-    info!("Security subsystems initialized (WAF, rate limiter, login protection)");
+    let audit_log = Arc::new(AuditLog::new(10_000));
+    info!("Security subsystems initialized (WAF, rate limiter, login protection, audit log)");
 
     // Initialize block renderer with all core WordPress blocks
     let block_renderer = Arc::new(rustpress_blocks::create_default_renderer());
@@ -319,6 +335,7 @@ async fn main() -> Result<()> {
         product_catalog,
         cart_manager,
         order_manager,
+        audit_log,
         wasm_host,
         multisite_resolver,
         multisite_network,
@@ -429,9 +446,13 @@ async fn main() -> Result<()> {
     };
     app = app.merge(rustpress_api::routes(api_state));
 
+    // Resolve theme-aware static dir and theme.json
+    let static_dir =
+        templates::resolve_theme_static_dir(&config.themes_dir, &active_theme, &config.static_dir);
+    let theme_json_path =
+        templates::resolve_theme_json_path(&config.themes_dir, &active_theme, &config.static_dir);
+
     // Generate CSS from theme.json if available
-    let static_dir = config.static_dir.clone();
-    let theme_json_path = std::path::Path::new(&static_dir).join("theme.json");
     if theme_json_path.exists() {
         match rustpress_themes::theme_json::ThemeJson::from_file(&theme_json_path) {
             Ok(theme) => {
@@ -460,8 +481,38 @@ async fn main() -> Result<()> {
         tower_http::services::ServeDir::new(&uploads_dir),
     );
 
-    // Apply global middleware: WAF + rate limiter + security headers + compression
+    // Theme assets serving — /wp-content/themes/{name}/ → themes/{name}/static/
+    let themes_dir_path = std::path::Path::new(&config.themes_dir);
+    if themes_dir_path.exists() {
+        if let Ok(entries) = std::fs::read_dir(themes_dir_path) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let slug = path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
+                    let static_path = path.join("static");
+                    if static_path.exists() {
+                        let route = format!("/wp-content/themes/{}", slug);
+                        app = app
+                            .nest_service(&route, tower_http::services::ServeDir::new(static_path));
+                    }
+                }
+            }
+        }
+    }
+
+    // Apply global middleware (order matters: outermost layer runs first)
+    // 1. Block sensitive files (.env, .git, etc.) — first line of defense
+    // 2. WAF — block malicious patterns
+    // 3. Rate limiter — prevent abuse
+    // 4. CORS — cross-origin policy
+    // 5. Security headers — defense-in-depth headers
+    // 6. ETag + compression — performance
     app = app
+        .layer(axum::middleware::from_fn(middleware::block_sensitive_files))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::waf_check,
@@ -469,6 +520,10 @@ async fn main() -> Result<()> {
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             middleware::rate_limit,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::cors_headers,
         ))
         .layer(axum::middleware::from_fn(middleware::security_headers))
         .layer(axum::middleware::from_fn(middleware::etag_headers))

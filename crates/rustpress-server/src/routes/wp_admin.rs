@@ -503,6 +503,8 @@ async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Re
     let user = match user {
         Ok(Some(u)) => u,
         _ => {
+            // Log failed login attempt (user not found — same error message to prevent enumeration)
+            state.audit_log.log_login_failure("unknown", &form.username);
             let mut ctx = tera::Context::new();
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
@@ -515,6 +517,8 @@ async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Re
     let valid = PasswordHasher::verify(&form.password, &user.user_pass).unwrap_or(false);
 
     if !valid {
+        // Log failed login attempt (wrong password)
+        state.audit_log.log_login_failure("unknown", &form.username);
         let mut ctx = tera::Context::new();
         let site_name = state.options.get_blogname().await.unwrap_or_default();
         ctx.insert("site_name", &site_name);
@@ -533,10 +537,21 @@ async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Re
         .create_session(user.id, &user.user_login, &role_str)
         .await;
 
-    // Set cookie and redirect
+    // Log successful login
+    state
+        .audit_log
+        .log_login_success("unknown", user.id, &user.user_login);
+
+    // Set cookie with security attributes (OWASP A07)
+    // Secure flag added when site_url starts with https
+    let secure_flag = if state.site_url.starts_with("https") {
+        "; Secure"
+    } else {
+        ""
+    };
     let cookie = format!(
-        "rustpress_session={}; HttpOnly; Path=/; SameSite=Lax",
-        session.id
+        "rustpress_session={}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400{}",
+        session.id, secure_flag
     );
 
     (

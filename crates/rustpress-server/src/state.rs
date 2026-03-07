@@ -16,7 +16,7 @@ use rustpress_db::options::OptionsManager;
 use rustpress_fields::{FieldGroupRegistry, FieldStorage};
 use rustpress_forms::SubmissionStore;
 use rustpress_plugins::{PluginRegistry, WasmHost};
-use rustpress_security::{LoginProtection, RateLimiter, WafEngine};
+use rustpress_security::{AuditLog, LoginProtection, RateLimiter, WafEngine};
 use rustpress_themes::ThemeEngine;
 
 use crate::i18n::Translations;
@@ -53,6 +53,8 @@ pub struct AppState {
     pub product_catalog: Arc<RwLock<ProductCatalog>>,
     pub cart_manager: Arc<RwLock<CartManager>>,
     pub order_manager: Arc<RwLock<OrderManager>>,
+    // Security audit log
+    pub audit_log: Arc<AuditLog>,
     // WASM plugin host
     pub wasm_host: Arc<RwLock<WasmHost>>,
     // Multisite support

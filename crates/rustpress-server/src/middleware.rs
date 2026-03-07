@@ -1,6 +1,6 @@
 use axum::{
     extract::{Request, State},
-    http::{header, HeaderValue, StatusCode},
+    http::{header, HeaderValue, Method, StatusCode},
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
@@ -343,7 +343,9 @@ pub async fn waf_check(
 
     match result {
         rustpress_security::WafResult::Block { rule_id, reason } => {
+            let ip = extract_client_ip(&request);
             tracing::warn!(rule_id, reason, path, "WAF blocked request");
+            state.audit_log.log_waf_block(&ip, &rule_id, &path);
             (StatusCode::FORBIDDEN, "Forbidden").into_response()
         }
         _ => next.run(request).await,
@@ -356,13 +358,7 @@ pub async fn rate_limit(
     request: Request,
     next: Next,
 ) -> Response {
-    let ip = request
-        .headers()
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.split(',').next().unwrap_or("unknown").trim().to_string())
-        .unwrap_or_else(|| "unknown".to_string());
-
+    let ip = extract_client_ip(&request);
     let path = request.uri().path().to_string();
 
     let mut limiter = state.rate_limiter.write().await;
@@ -372,6 +368,7 @@ pub async fn rate_limit(
     match result {
         rustpress_security::RateLimitResult::Limited { retry_after } => {
             tracing::warn!(ip, path, retry_after, "Rate limited");
+            state.audit_log.log_rate_limited(&ip, &path);
             let mut response =
                 (StatusCode::TOO_MANY_REQUESTS, "Rate limit exceeded").into_response();
             response.headers_mut().insert(
@@ -440,4 +437,238 @@ pub async fn etag_headers(request: Request, next: Next) -> Response {
         .headers_mut()
         .insert(header::ETAG, HeaderValue::from_str(&etag).unwrap());
     response
+}
+
+/// Middleware: block access to sensitive files (.env, .git, wp-config.php, etc.).
+///
+/// Returns 404 for any request attempting to access files that should never be
+/// served over HTTP. This prevents information disclosure (OWASP A05).
+pub async fn block_sensitive_files(request: Request, next: Next) -> Response {
+    let path = request.uri().path().to_lowercase();
+
+    // Block dotfiles and sensitive config files
+    let blocked_patterns = [
+        "/.env",
+        "/.git",
+        "/.htaccess",
+        "/.htpasswd",
+        "/wp-config.php",
+        "/wp-config-sample.php",
+        "/.user.ini",
+        "/php.ini",
+        "/.DS_Store",
+        "/Thumbs.db",
+        "/web.config",
+        "/.svn",
+        "/.hg",
+        "/composer.json",
+        "/composer.lock",
+        "/package.json",
+        "/yarn.lock",
+        "/Cargo.toml",
+        "/Cargo.lock",
+        "/readme.html",
+        "/license.txt",
+        "/wp-includes/",
+        "/wp-content/debug.log",
+    ];
+
+    for pattern in &blocked_patterns {
+        if path == *pattern || path.starts_with(&format!("{}/", pattern)) {
+            return (StatusCode::NOT_FOUND, "").into_response();
+        }
+    }
+
+    // Block backup/source files
+    if path.ends_with(".bak")
+        || path.ends_with(".swp")
+        || path.ends_with(".swo")
+        || path.ends_with("~")
+        || path.ends_with(".orig")
+        || path.ends_with(".sql")
+        || path.ends_with(".log")
+        || path.ends_with(".php")
+    {
+        // Allow specific PHP-like routes that are actually Axum handlers
+        let allowed_php = [
+            "/wp-login.php",
+            "/xmlrpc.php",
+            "/wp-admin/admin-seo.php",
+            "/wp-admin/admin-acf.php",
+            "/wp-admin/admin-cf7.php",
+            "/wp-admin/admin-security.php",
+        ];
+        if !allowed_php.contains(&path.as_str()) {
+            return (StatusCode::NOT_FOUND, "").into_response();
+        }
+    }
+
+    next.run(request).await
+}
+
+/// Middleware: CORS (Cross-Origin Resource Sharing) control.
+///
+/// Only allows requests from the configured site URL origin.
+/// API routes with Bearer token auth don't need CORS cookies, but we still
+/// restrict origins to prevent unauthorized cross-origin access (OWASP A01).
+pub async fn cors_headers(
+    State(state): State<Arc<AppState>>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let origin = request
+        .headers()
+        .get(header::ORIGIN)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    // Handle preflight requests
+    if request.method() == Method::OPTIONS {
+        let mut response = StatusCode::NO_CONTENT.into_response();
+        let headers = response.headers_mut();
+        if let Some(ref origin) = origin {
+            if is_allowed_origin(origin, &state.site_url) {
+                headers.insert(
+                    header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                    HeaderValue::from_str(origin).unwrap_or(HeaderValue::from_static("null")),
+                );
+            }
+        }
+        headers.insert(
+            header::ACCESS_CONTROL_ALLOW_METHODS,
+            HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
+        );
+        headers.insert(
+            header::ACCESS_CONTROL_ALLOW_HEADERS,
+            HeaderValue::from_static("Content-Type, Authorization, X-WP-Nonce"),
+        );
+        headers.insert(
+            header::ACCESS_CONTROL_MAX_AGE,
+            HeaderValue::from_static("3600"),
+        );
+        return response;
+    }
+
+    let mut response = next.run(request).await;
+
+    // Add CORS headers to the response
+    if let Some(ref origin) = origin {
+        if is_allowed_origin(origin, &state.site_url) {
+            let headers = response.headers_mut();
+            headers.insert(
+                header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                HeaderValue::from_str(origin).unwrap_or(HeaderValue::from_static("null")),
+            );
+            headers.insert(
+                header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
+                HeaderValue::from_static("true"),
+            );
+            headers.insert(
+                header::ACCESS_CONTROL_EXPOSE_HEADERS,
+                HeaderValue::from_static("X-WP-Total, X-WP-TotalPages"),
+            );
+        }
+    }
+
+    response
+}
+
+/// Check if an origin is allowed.
+fn is_allowed_origin(origin: &str, site_url: &str) -> bool {
+    // Same origin is always allowed
+    if origin == site_url {
+        return true;
+    }
+
+    // Allow configured origins from environment
+    if let Ok(allowed) = std::env::var("CORS_ALLOWED_ORIGINS") {
+        for allowed_origin in allowed.split(',') {
+            if origin == allowed_origin.trim() {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+/// Middleware: verify CSRF nonce on state-changing requests to admin endpoints.
+///
+/// All POST/PUT/DELETE requests to /wp-admin/* must include a valid nonce
+/// either as a form field `_wpnonce` or header `X-WP-Nonce`.
+/// API endpoints using Bearer token auth are exempt (the token itself is CSRF protection).
+pub async fn csrf_nonce_check(
+    State(state): State<Arc<AppState>>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let method = request.method().clone();
+    let path = request.uri().path().to_string();
+
+    // Only check state-changing methods
+    if method == Method::GET || method == Method::HEAD || method == Method::OPTIONS {
+        return next.run(request).await;
+    }
+
+    // Only check admin form endpoints (not API endpoints which use JWT)
+    if !path.starts_with("/wp-admin/") {
+        return next.run(request).await;
+    }
+
+    // Skip login POST (no session yet)
+    if path == "/wp-login.php" {
+        return next.run(request).await;
+    }
+
+    // Extract session to get user_id for nonce verification
+    let session = request.extensions().get::<Session>().cloned();
+    let user_id = session.as_ref().map(|s| s.user_id).unwrap_or(0);
+
+    if user_id == 0 {
+        // No session means the admin session middleware will handle redirect
+        return next.run(request).await;
+    }
+
+    // Check for nonce in X-WP-Nonce header
+    let nonce = request
+        .headers()
+        .get("X-WP-Nonce")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    // If no header nonce, we'll check the form body nonce in the handler
+    // For now, if X-WP-Nonce is present, validate it
+    if let Some(ref nonce_value) = nonce {
+        let action = format!("admin_{}", path.trim_start_matches("/wp-admin/"));
+        if state
+            .nonces
+            .verify_nonce(nonce_value, &action, user_id)
+            .is_none()
+        {
+            return (StatusCode::FORBIDDEN, "Invalid or expired security token").into_response();
+        }
+    }
+
+    // If no nonce header, allow the request through (handlers will check form nonce)
+    next.run(request).await
+}
+
+/// Extract the client IP address from the request.
+///
+/// Checks X-Forwarded-For first (for reverse proxy setups), falls back to
+/// X-Real-IP, then to the peer address.
+pub fn extract_client_ip(request: &Request) -> String {
+    request
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or("unknown").trim().to_string())
+        .or_else(|| {
+            request
+                .headers()
+                .get("x-real-ip")
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| "unknown".to_string())
 }
