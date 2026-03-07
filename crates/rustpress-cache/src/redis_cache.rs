@@ -83,7 +83,7 @@ impl RedisCache {
     pub async fn connect(&self) -> Result<(), String> {
         if let Some(ref url) = self.redis_url {
             if !(url.starts_with("redis://") || url.starts_with("rediss://")) {
-                return Err(format!("Invalid Redis URL: {}", url));
+                return Err(format!("Invalid Redis URL: {url}"));
             }
 
             #[cfg(feature = "redis-backend")]
@@ -473,7 +473,7 @@ impl RedisCache {
         }
 
         // In-memory fallback
-        let hash_key = format!("{}:{}", key, field);
+        let hash_key = format!("{key}:{field}");
         self.set(&hash_key, value, None).await;
     }
 
@@ -500,7 +500,7 @@ impl RedisCache {
         }
 
         // In-memory fallback
-        let hash_key = format!("{}:{}", key, field);
+        let hash_key = format!("{key}:{field}");
         self.get(&hash_key).await
     }
 
@@ -527,7 +527,7 @@ impl RedisCache {
         }
 
         // In-memory fallback
-        let hash_key = format!("{}:{}", key, field);
+        let hash_key = format!("{key}:{field}");
         self.del(&hash_key).await
     }
 

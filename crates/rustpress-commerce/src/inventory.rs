@@ -152,7 +152,7 @@ impl InventoryManager {
         let entry = self
             .stock
             .get_mut(&key)
-            .ok_or_else(|| format!("Product {} not found in inventory", product_id))?;
+            .ok_or_else(|| format!("Product {product_id} not found in inventory"))?;
 
         if entry.management == StockManagement::Unmanaged {
             return Ok(entry.quantity);
@@ -212,7 +212,7 @@ impl InventoryManager {
         let entry = self
             .stock
             .get_mut(&key)
-            .ok_or_else(|| format!("Product {} not found in inventory", product_id))?;
+            .ok_or_else(|| format!("Product {product_id} not found in inventory"))?;
 
         entry.quantity += quantity as i64;
 
@@ -247,12 +247,11 @@ impl InventoryManager {
         let entry = self
             .stock
             .get_mut(&key)
-            .ok_or_else(|| format!("Product {} not found in inventory", product_id))?;
+            .ok_or_else(|| format!("Product {product_id} not found in inventory"))?;
 
         if !entry.allow_backorder && entry.available() < quantity as i64 {
             return Err(format!(
-                "Insufficient stock to reserve for product {}",
-                product_id
+                "Insufficient stock to reserve for product {product_id}"
             ));
         }
 
@@ -375,7 +374,7 @@ impl InventoryManager {
 
     fn make_key(product_id: u64, variation_id: Option<u64>) -> String {
         match variation_id {
-            Some(vid) => format!("{}:{}", product_id, vid),
+            Some(vid) => format!("{product_id}:{vid}"),
             None => product_id.to_string(),
         }
     }

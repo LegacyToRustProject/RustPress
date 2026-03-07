@@ -21,7 +21,7 @@ async fn fetch_headers(client: &reqwest::Client, url: &str) -> Option<reqwest::h
         Err(_) => match client.get(url).send().await {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("[ERROR] Could not fetch headers from {}: {}", url, e);
+                eprintln!("[ERROR] Could not fetch headers from {url}: {e}");
                 return None;
             }
         },
@@ -41,7 +41,7 @@ async fn fetch_headers_get(
             Some((status, headers))
         }
         Err(e) => {
-            eprintln!("[ERROR] GET {} failed: {}", url, e);
+            eprintln!("[ERROR] GET {url} failed: {e}");
             None
         }
     }
@@ -162,7 +162,7 @@ async fn test_content_type_headers() {
         let wp = fetch_headers_get(&client, &wp_url).await;
         let rp = fetch_headers_get(&client, &rp_url).await;
 
-        eprintln!("\n  {} ({}):", label, path);
+        eprintln!("\n  {label} ({path}):");
 
         match (wp, rp) {
             (Some((_wp_status, wp_h)), Some((_rp_status, rp_h))) => {
@@ -175,9 +175,9 @@ async fn test_content_type_headers() {
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("(absent)");
 
-                eprintln!("    WP Content-Type:  {}", wp_ct);
-                eprintln!("    RP Content-Type:  {}", rp_ct);
-                eprintln!("    Expected contains: {}", expected_contains);
+                eprintln!("    WP Content-Type:  {wp_ct}");
+                eprintln!("    RP Content-Type:  {rp_ct}");
+                eprintln!("    Expected contains: {expected_contains}");
 
                 let rp_matches = rp_ct
                     .to_lowercase()
@@ -230,7 +230,7 @@ async fn test_cache_headers() {
         let wp = fetch_headers_get(&client, &wp_url).await;
         let rp = fetch_headers_get(&client, &rp_url).await;
 
-        eprintln!("\n  {} ({}):", label, path);
+        eprintln!("\n  {label} ({path}):");
 
         match (wp, rp) {
             (Some((_wp_status, wp_h)), Some((_rp_status, rp_h))) => {
@@ -245,7 +245,7 @@ async fn test_cache_headers() {
                         .unwrap_or("(absent)");
 
                     if wp_val != "(absent)" || rp_val != "(absent)" {
-                        eprintln!("    {} - WP: {}, RP: {}", header, wp_val, rp_val);
+                        eprintln!("    {header} - WP: {wp_val}, RP: {rp_val}");
                     }
                 }
             }
@@ -284,7 +284,7 @@ async fn test_rest_api_wp_headers() {
         let wp = fetch_headers_get(&client, &format!("{}{}", cfg.wordpress_url, path)).await;
         let rp = fetch_headers_get(&client, &format!("{}{}", cfg.rustpress_url, path)).await;
 
-        eprintln!("\n  {}:", path);
+        eprintln!("\n  {path}:");
 
         match (wp, rp) {
             (Some((_wp_status, wp_h)), Some((_rp_status, rp_h))) => {
@@ -359,12 +359,12 @@ async fn test_rest_api_expose_headers() {
     // WordPress exposes X-WP-Total and X-WP-TotalPages via
     // Access-Control-Expose-Headers so JavaScript clients can read them
     let wp = client
-        .get(&format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url))
         .header("Origin", "http://example.com")
         .send()
         .await;
     let rp = client
-        .get(&format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url))
         .header("Origin", "http://example.com")
         .send()
         .await;
@@ -383,8 +383,8 @@ async fn test_rest_api_expose_headers() {
                 .unwrap_or("(absent)");
 
             eprintln!("  Access-Control-Expose-Headers:");
-            eprintln!("    WP: {}", wp_expose);
-            eprintln!("    RP: {}", rp_expose);
+            eprintln!("    WP: {wp_expose}");
+            eprintln!("    RP: {rp_expose}");
 
             // Check if X-WP-Total is exposed
             let wp_exposes_total = wp_expose.to_lowercase().contains("x-wp-total");
@@ -444,7 +444,7 @@ async fn test_cors_headers() {
             .send()
             .await;
 
-        eprintln!("\n  {} :", path);
+        eprintln!("\n  {path} :");
 
         match (wp, rp) {
             (Ok(wp_resp), Ok(rp_resp)) => {
@@ -462,7 +462,7 @@ async fn test_cors_headers() {
                         .unwrap_or("(absent)");
 
                     if wp_val != "(absent)" || rp_val != "(absent)" {
-                        eprintln!("    {} - WP: {}, RP: {}", header, wp_val, rp_val);
+                        eprintln!("    {header} - WP: {wp_val}, RP: {rp_val}");
                     }
                 }
             }
@@ -541,7 +541,7 @@ async fn test_rest_api_error_json_content_type() {
 
     match (wp, rp) {
         (Some((wp_status, wp_h)), Some((rp_status, rp_h))) => {
-            eprintln!("  Status - WP: {}, RP: {}", wp_status, rp_status);
+            eprintln!("  Status - WP: {wp_status}, RP: {rp_status}");
             compare_header(&wp_h, &rp_h, "content-type");
 
             let rp_ct = rp_h
@@ -586,11 +586,11 @@ async fn test_redirect_headers() {
 
     // GET /wp-admin (without trailing slash) should redirect to /wp-admin/
     let wp = no_redirect_client
-        .get(&format!("{}/wp-admin", cfg.wordpress_url))
+        .get(format!("{}/wp-admin", cfg.wordpress_url))
         .send()
         .await;
     let rp = no_redirect_client
-        .get(&format!("{}/wp-admin", cfg.rustpress_url))
+        .get(format!("{}/wp-admin", cfg.rustpress_url))
         .send()
         .await;
 
@@ -599,7 +599,7 @@ async fn test_redirect_headers() {
             let wp_status = wp_resp.status();
             let rp_status = rp_resp.status();
 
-            eprintln!("  Status - WP: {}, RP: {}", wp_status, rp_status);
+            eprintln!("  Status - WP: {wp_status}, RP: {rp_status}");
 
             let wp_location = wp_resp
                 .headers()
@@ -612,7 +612,7 @@ async fn test_redirect_headers() {
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("(absent)");
 
-            eprintln!("  Location - WP: {}, RP: {}", wp_location, rp_location);
+            eprintln!("  Location - WP: {wp_location}, RP: {rp_location}");
 
             let rp_is_redirect = rp_status.as_u16() == 301 || rp_status.as_u16() == 302;
             eprintln!(
@@ -694,7 +694,7 @@ async fn test_rss_content_type() {
 
     match (wp, rp) {
         (Some((wp_status, wp_h)), Some((rp_status, rp_h))) => {
-            eprintln!("  Status - WP: {}, RP: {}", wp_status, rp_status);
+            eprintln!("  Status - WP: {wp_status}, RP: {rp_status}");
             compare_header(&wp_h, &rp_h, "content-type");
 
             let rp_ct = rp_h
@@ -737,7 +737,7 @@ async fn test_robots_content_type() {
 
     match (wp, rp) {
         (Some((wp_status, wp_h)), Some((rp_status, rp_h))) => {
-            eprintln!("  Status - WP: {}, RP: {}", wp_status, rp_status);
+            eprintln!("  Status - WP: {wp_status}, RP: {rp_status}");
             compare_header(&wp_h, &rp_h, "content-type");
 
             let rp_ct = rp_h
@@ -786,7 +786,7 @@ async fn test_rest_api_json_content_type() {
     for path in &api_endpoints {
         let rp = fetch_headers_get(&client, &format!("{}{}", cfg.rustpress_url, path)).await;
 
-        eprintln!("\n  {}:", path);
+        eprintln!("\n  {path}:");
 
         match rp {
             Some((rp_status, rp_h)) => {
@@ -795,8 +795,8 @@ async fn test_rest_api_json_content_type() {
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("(absent)");
 
-                eprintln!("    Status: {}", rp_status);
-                eprintln!("    Content-Type: {}", rp_ct);
+                eprintln!("    Status: {rp_status}");
+                eprintln!("    Content-Type: {rp_ct}");
 
                 let is_json = rp_ct.to_lowercase().contains("application/json");
                 eprintln!(
@@ -807,8 +807,7 @@ async fn test_rest_api_json_content_type() {
 
                 assert!(
                     is_json,
-                    "REST API endpoint {} should return application/json, got: {}",
-                    path, rp_ct
+                    "REST API endpoint {path} should return application/json, got: {rp_ct}"
                 );
             }
             None => eprintln!("    [SKIP] RustPress endpoint not available"),
@@ -843,12 +842,12 @@ async fn test_powered_by_header() {
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("(absent)");
 
-            eprintln!("  X-Powered-By - WP: {}, RP: {}", wp_powered, rp_powered);
+            eprintln!("  X-Powered-By - WP: {wp_powered}, RP: {rp_powered}");
 
             // WordPress typically has "PHP/x.x.x", RustPress may omit or customize
             let wp_has = has_header(&wp_h, "x-powered-by");
             let rp_has = has_header(&rp_h, "x-powered-by");
-            eprintln!("  Header present - WP: {}, RP: {}", wp_has, rp_has);
+            eprintln!("  Header present - WP: {wp_has}, RP: {rp_has}");
         }
         _ => eprintln!("[SKIP] Could not fetch from one or both servers"),
     }
@@ -883,8 +882,8 @@ async fn test_link_header_api_discovery() {
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("(absent)");
 
-            eprintln!("  Link header - WP: {}", wp_link);
-            eprintln!("  Link header - RP: {}", rp_link);
+            eprintln!("  Link header - WP: {wp_link}");
+            eprintln!("  Link header - RP: {rp_link}");
 
             let wp_has_api_discovery = wp_link.contains("https://api.w.org/");
             let rp_has_api_discovery = rp_link.contains("https://api.w.org/");
@@ -930,14 +929,14 @@ async fn test_rest_api_allow_header() {
     let wp = client
         .request(
             reqwest::Method::OPTIONS,
-            &format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url),
+            format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url),
         )
         .send()
         .await;
     let rp = client
         .request(
             reqwest::Method::OPTIONS,
-            &format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url),
+            format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url),
         )
         .send()
         .await;
@@ -955,8 +954,8 @@ async fn test_rest_api_allow_header() {
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("(absent)");
 
-            eprintln!("  Allow header - WP: {}", wp_allow);
-            eprintln!("  Allow header - RP: {}", rp_allow);
+            eprintln!("  Allow header - WP: {wp_allow}");
+            eprintln!("  Allow header - RP: {rp_allow}");
 
             // Check that GET is listed in the Allow header
             let rp_allows_get = rp_allow.to_uppercase().contains("GET");
@@ -1002,7 +1001,7 @@ async fn test_sitemap_content_type() {
 
     match (wp, rp) {
         (Some((wp_status, wp_h)), Some((rp_status, rp_h))) => {
-            eprintln!("  Status - WP: {}, RP: {}", wp_status, rp_status);
+            eprintln!("  Status - WP: {wp_status}, RP: {rp_status}");
             compare_header(&wp_h, &rp_h, "content-type");
 
             let rp_ct = rp_h
@@ -1020,8 +1019,7 @@ async fn test_sitemap_content_type() {
 
             assert!(
                 rp_is_xml,
-                "sitemap.xml should return application/xml or text/xml content-type, got: {}",
-                rp_ct
+                "sitemap.xml should return application/xml or text/xml content-type, got: {rp_ct}"
             );
         }
         _ => eprintln!("[SKIP] Could not fetch from one or both servers"),
@@ -1047,11 +1045,11 @@ async fn test_static_assets_cache_headers() {
     for path in &static_paths {
         let rp = fetch_headers_get(&client, &format!("{}{}", cfg.rustpress_url, path)).await;
 
-        eprintln!("\n  {}:", path);
+        eprintln!("\n  {path}:");
 
         match rp {
             Some((rp_status, rp_h)) => {
-                eprintln!("    Status: {}", rp_status);
+                eprintln!("    Status: {rp_status}");
 
                 let rp_cc = rp_h
                     .get("cache-control")
@@ -1062,8 +1060,8 @@ async fn test_static_assets_cache_headers() {
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("(absent)");
 
-                eprintln!("    Content-Type: {}", rp_ct);
-                eprintln!("    Cache-Control: {}", rp_cc);
+                eprintln!("    Content-Type: {rp_ct}");
+                eprintln!("    Cache-Control: {rp_cc}");
 
                 let has_cache_control = has_header(&rp_h, "cache-control");
                 eprintln!(
@@ -1076,8 +1074,7 @@ async fn test_static_assets_cache_headers() {
                 let has_etag = has_header(&rp_h, "etag");
                 let has_last_mod = has_header(&rp_h, "last-modified");
                 eprintln!(
-                    "    Has ETag: {}, Has Last-Modified: {}",
-                    has_etag, has_last_mod
+                    "    Has ETag: {has_etag}, Has Last-Modified: {has_last_mod}"
                 );
             }
             None => eprintln!("    [SKIP] RustPress static asset not available"),
@@ -1102,13 +1099,13 @@ async fn test_xmlrpc_content_type() {
     let xmlrpc_body = r#"<?xml version="1.0"?><methodCall><methodName>system.listMethods</methodName><params></params></methodCall>"#;
 
     let wp = client
-        .post(&format!("{}/xmlrpc.php", cfg.wordpress_url))
+        .post(format!("{}/xmlrpc.php", cfg.wordpress_url))
         .header("content-type", "text/xml")
         .body(xmlrpc_body)
         .send()
         .await;
     let rp = client
-        .post(&format!("{}/xmlrpc.php", cfg.rustpress_url))
+        .post(format!("{}/xmlrpc.php", cfg.rustpress_url))
         .header("content-type", "text/xml")
         .body(xmlrpc_body)
         .send()
@@ -1131,8 +1128,8 @@ async fn test_xmlrpc_content_type() {
                 .unwrap_or("(absent)")
                 .to_string();
 
-            eprintln!("  Status - WP: {}, RP: {}", wp_status, rp_status);
-            eprintln!("  Content-Type - WP: {}, RP: {}", wp_ct, rp_ct);
+            eprintln!("  Status - WP: {wp_status}, RP: {rp_status}");
+            eprintln!("  Content-Type - WP: {wp_ct}, RP: {rp_ct}");
 
             let rp_is_xml = rp_ct.to_lowercase().contains("text/xml")
                 || rp_ct.to_lowercase().contains("application/xml");

@@ -603,18 +603,18 @@ pub fn slugify(name: &str) -> String {
 pub fn md5_hex(input: &str) -> String {
     use md5::Digest;
     let hash = md5::Md5::digest(input.as_bytes());
-    hash.iter().map(|b| format!("{:02x}", b)).collect()
+    hash.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// Generate Gravatar avatar URLs for an email address.
 /// Returns a map with keys "24", "48", "96" pointing to Gravatar URLs.
 pub fn avatar_urls(email: &str) -> HashMap<String, String> {
     let hash = md5_hex(&email.to_lowercase());
-    let base = format!("https://secure.gravatar.com/avatar/{}", hash);
+    let base = format!("https://secure.gravatar.com/avatar/{hash}");
     let mut urls = HashMap::new();
-    urls.insert("24".to_string(), format!("{}?s=24&d=mm&r=g", base));
-    urls.insert("48".to_string(), format!("{}?s=48&d=mm&r=g", base));
-    urls.insert("96".to_string(), format!("{}?s=96&d=mm&r=g", base));
+    urls.insert("24".to_string(), format!("{base}?s=24&d=mm&r=g"));
+    urls.insert("48".to_string(), format!("{base}?s=48&d=mm&r=g"));
+    urls.insert("96".to_string(), format!("{base}?s=96&d=mm&r=g"));
     urls
 }
 

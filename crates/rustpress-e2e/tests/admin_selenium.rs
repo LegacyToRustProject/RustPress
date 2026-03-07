@@ -27,7 +27,7 @@ async fn create_driver(config: &TestConfig) -> Option<WebDriver> {
     match WebDriver::new(&config.webdriver_url, caps).await {
         Ok(driver) => Some(driver),
         Err(e) => {
-            eprintln!("[SKIP] Could not create WebDriver session: {}", e);
+            eprintln!("[SKIP] Could not create WebDriver session: {e}");
             None
         }
     }
@@ -35,9 +35,9 @@ async fn create_driver(config: &TestConfig) -> Option<WebDriver> {
 
 /// Log in to WordPress via the browser. WordPress login is at /wp-login.php.
 async fn wp_login(driver: &WebDriver, base_url: &str, user: &str, pass: &str) -> bool {
-    let url = format!("{}/wp-login.php", base_url);
+    let url = format!("{base_url}/wp-login.php");
     if driver.goto(&url).await.is_err() {
-        eprintln!("[ERROR] Could not navigate to {}", url);
+        eprintln!("[ERROR] Could not navigate to {url}");
         return false;
     }
 
@@ -51,7 +51,7 @@ async fn wp_login(driver: &WebDriver, base_url: &str, user: &str, pass: &str) ->
                 match driver.find(By::Name("username")).await {
                     Ok(el) => el,
                     Err(_) => {
-                        eprintln!("[ERROR] Could not find username field on {}", url);
+                        eprintln!("[ERROR] Could not find username field on {url}");
                         return false;
                     }
                 }
@@ -68,7 +68,7 @@ async fn wp_login(driver: &WebDriver, base_url: &str, user: &str, pass: &str) ->
                 match driver.find(By::Name("password")).await {
                     Ok(el) => el,
                     Err(_) => {
-                        eprintln!("[ERROR] Could not find password field on {}", url);
+                        eprintln!("[ERROR] Could not find password field on {url}");
                         return false;
                     }
                 }
@@ -88,10 +88,7 @@ async fn wp_login(driver: &WebDriver, base_url: &str, user: &str, pass: &str) ->
         Ok(el) => Some(el),
         Err(_) => match driver.find(By::Css("input[type=submit]")).await {
             Ok(el) => Some(el),
-            Err(_) => match driver.find(By::Css("button[type=submit]")).await {
-                Ok(el) => Some(el),
-                Err(_) => None,
-            },
+            Err(_) => (driver.find(By::Css("button[type=submit]")).await).ok(),
         },
     };
 
@@ -187,9 +184,9 @@ async fn test_login_page_renders() {
     .await;
 
     eprintln!("WordPress login:");
-    eprintln!("  Username field: {}", wp_has_user);
-    eprintln!("  Password field: {}", wp_has_pass);
-    eprintln!("  Submit button:  {}", wp_has_submit);
+    eprintln!("  Username field: {wp_has_user}");
+    eprintln!("  Password field: {wp_has_pass}");
+    eprintln!("  Submit button:  {wp_has_submit}");
 
     // Check RustPress login page
     let rp_url = format!("{}/wp-login.php", cfg.rustpress_url);
@@ -210,9 +207,9 @@ async fn test_login_page_renders() {
     .await;
 
     eprintln!("RustPress login:");
-    eprintln!("  Username field: {}", rp_has_user);
-    eprintln!("  Password field: {}", rp_has_pass);
-    eprintln!("  Submit button:  {}", rp_has_submit);
+    eprintln!("  Username field: {rp_has_user}");
+    eprintln!("  Password field: {rp_has_pass}");
+    eprintln!("  Submit button:  {rp_has_submit}");
 
     assert!(rp_has_user, "RustPress login should have username field");
     assert!(rp_has_pass, "RustPress login should have password field");
@@ -255,8 +252,7 @@ async fn test_login_redirects_to_dashboard() {
             .unwrap_or_default();
         let wp_is_admin = wp_current.contains("wp-admin");
         eprintln!(
-            "WordPress after login: {} (is admin: {})",
-            wp_current, wp_is_admin
+            "WordPress after login: {wp_current} (is admin: {wp_is_admin})"
         );
     }
 
@@ -279,8 +275,7 @@ async fn test_login_redirects_to_dashboard() {
             .unwrap_or_default();
         let rp_is_admin = rp_current.contains("wp-admin");
         eprintln!(
-            "RustPress after login: {} (is admin: {})",
-            rp_current, rp_is_admin
+            "RustPress after login: {rp_current} (is admin: {rp_is_admin})"
         );
         assert!(
             rp_is_admin,
@@ -494,9 +489,9 @@ async fn test_create_post_flow() {
     .await;
 
     eprintln!("RustPress post editor:");
-    eprintln!("  Title field:    {}", has_title);
-    eprintln!("  Content area:   {}", has_content);
-    eprintln!("  Publish button: {}", has_publish);
+    eprintln!("  Title field:    {has_title}");
+    eprintln!("  Content area:   {has_content}");
+    eprintln!("  Publish button: {has_publish}");
 
     if has_title && has_content {
         // Fill in title
@@ -962,7 +957,7 @@ async fn test_admin_sidebar_links() {
     // Count total sidebar links
     let wp_links = driver_count_elements(&wp_driver, "#adminmenu a, .admin-sidebar a, nav a").await;
     let rp_links = driver_count_elements(&rp_driver, "#adminmenu a, .admin-sidebar a, nav a").await;
-    eprintln!("  Total sidebar links - WP: {}, RP: {}", wp_links, rp_links);
+    eprintln!("  Total sidebar links - WP: {wp_links}, RP: {rp_links}");
 
     eprintln!("[PASS] Admin sidebar links compared");
     wp_driver.quit().await.ok();
@@ -1092,7 +1087,7 @@ async fn test_themes_page() {
     // Count available themes
     let wp_themes = driver_count_elements(&wp_driver, ".theme, .theme-card").await;
     let rp_themes = driver_count_elements(&rp_driver, ".theme, .theme-card").await;
-    eprintln!("  Theme count - WP: {}, RP: {}", wp_themes, rp_themes);
+    eprintln!("  Theme count - WP: {wp_themes}, RP: {rp_themes}");
 
     eprintln!("[PASS] Themes page compared");
     wp_driver.quit().await.ok();
@@ -1205,7 +1200,7 @@ async fn test_logout_flow() {
         .await
         .map(|u| u.to_string())
         .unwrap_or_default();
-    eprintln!("After login, URL: {}", current);
+    eprintln!("After login, URL: {current}");
 
     // Navigate to logout
     // WordPress: /wp-login.php?action=logout&_wpnonce=...
@@ -1225,7 +1220,7 @@ async fn test_logout_flow() {
             .await
             .map(|u| u.to_string())
             .unwrap_or_default();
-        eprintln!("After logout attempt, URL: {}", after_logout);
+        eprintln!("After logout attempt, URL: {after_logout}");
 
         // After logout, we should be redirected to login page or homepage
         if after_logout.contains("wp-login") || after_logout.contains("login") {
@@ -1249,8 +1244,7 @@ async fn test_logout_flow() {
             .unwrap_or_default();
         let redirected_to_login = after_admin.contains("wp-login") || after_admin.contains("login");
         eprintln!(
-            "After logout, accessing wp-admin redirects to login: {}",
-            redirected_to_login
+            "After logout, accessing wp-admin redirects to login: {redirected_to_login}"
         );
 
         assert!(
@@ -1543,7 +1537,7 @@ async fn test_post_editor_sidebar() {
         "#submitdiv, #publish, .publish-meta-box, .postbox .submit, input[value=Publish], button[type=submit]",
     )
     .await;
-    eprintln!("  Publish meta box / button: {}", has_publish);
+    eprintln!("  Publish meta box / button: {has_publish}");
 
     // Check for category checklist
     let has_categories = driver_has_element(
@@ -1551,7 +1545,7 @@ async fn test_post_editor_sidebar() {
         "#categorydiv, #categorychecklist, .category-checklist, input[name='post_category[]'], select[name=post_category]",
     )
     .await;
-    eprintln!("  Category checklist: {}", has_categories);
+    eprintln!("  Category checklist: {has_categories}");
 
     // Check for tags input
     let has_tags = driver_has_element(
@@ -1559,7 +1553,7 @@ async fn test_post_editor_sidebar() {
         "#tagsdiv-post_tag, #new-tag-post_tag, input[name=tags_input], input[name=newtag], input[name=tags], .tagadd",
     )
     .await;
-    eprintln!("  Tags input: {}", has_tags);
+    eprintln!("  Tags input: {has_tags}");
 
     // Check for post status selector
     let has_status = driver_has_element(
@@ -1567,7 +1561,7 @@ async fn test_post_editor_sidebar() {
         "#post_status, select[name=post_status], .post-status-select",
     )
     .await;
-    eprintln!("  Post status selector: {}", has_status);
+    eprintln!("  Post status selector: {has_status}");
 
     assert!(
         has_publish,
@@ -2104,12 +2098,12 @@ async fn test_admin_search_posts() {
         "input[name=s], #post-search-input, .search-box input",
     )
     .await;
-    eprintln!("  RustPress has search input: {}", rp_has_search);
+    eprintln!("  RustPress has search input: {rp_has_search}");
 
     // Count result rows (may be 0 if no posts match)
     let wp_rows = driver_count_elements(&wp_driver, "tbody tr, .post-row").await;
     let rp_rows = driver_count_elements(&rp_driver, "tbody tr, .post-row").await;
-    eprintln!("  Search result rows - WP: {}, RP: {}", wp_rows, rp_rows);
+    eprintln!("  Search result rows - WP: {wp_rows}, RP: {rp_rows}");
 
     eprintln!("[PASS] Admin search posts compared");
     wp_driver.quit().await.ok();

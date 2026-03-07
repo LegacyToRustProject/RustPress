@@ -20,13 +20,13 @@ impl PluginLoader {
         if !self.plugins_dir.exists() {
             info!(dir = ?self.plugins_dir, "plugins directory does not exist, creating");
             std::fs::create_dir_all(&self.plugins_dir)
-                .map_err(|e| format!("Failed to create plugins dir: {}", e))?;
+                .map_err(|e| format!("Failed to create plugins dir: {e}"))?;
             return Ok(0);
         }
 
         let mut count = 0;
         let entries = std::fs::read_dir(&self.plugins_dir)
-            .map_err(|e| format!("Failed to read plugins dir: {}", e))?;
+            .map_err(|e| format!("Failed to read plugins dir: {e}"))?;
 
         for entry in entries.flatten() {
             let path = entry.path();

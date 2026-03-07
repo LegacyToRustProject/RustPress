@@ -524,8 +524,7 @@ fn render_custom_html(title: &str, content: &str) -> String {
     }
     // CustomHTML: output raw HTML (not escaped)
     html.push_str(&format!(
-        "<div class=\"custom-html-widget\">{}</div>",
-        content
+        "<div class=\"custom-html-widget\">{content}</div>"
     ));
     html
 }
@@ -608,8 +607,7 @@ async fn render_calendar(title: &str, db: &DatabaseConnection) -> String {
     // Get days with posts this month
     use sea_orm::{ConnectionTrait, Statement};
     let sql = format!(
-        "SELECT DAY(post_date) AS d FROM wp_posts WHERE post_type='post' AND post_status='publish' AND YEAR(post_date)={} AND MONTH(post_date)={} GROUP BY d",
-        year, month
+        "SELECT DAY(post_date) AS d FROM wp_posts WHERE post_type='post' AND post_status='publish' AND YEAR(post_date)={year} AND MONTH(post_date)={month} GROUP BY d"
     );
     let mut post_days: std::collections::HashSet<u32> = std::collections::HashSet::new();
     if let Ok(rows) = db
@@ -658,11 +656,10 @@ async fn render_calendar(title: &str, db: &DatabaseConnection) -> String {
         }
         if post_days.contains(&day) {
             html.push_str(&format!(
-                "<td><a href=\"/{}/{:02}/{:02}/\">{}</a></td>",
-                year, m, day, day
+                "<td><a href=\"/{year}/{m:02}/{day:02}/\">{day}</a></td>"
             ));
         } else {
-            html.push_str(&format!("<td>{}</td>", day));
+            html.push_str(&format!("<td>{day}</td>"));
         }
         col += 1;
     }

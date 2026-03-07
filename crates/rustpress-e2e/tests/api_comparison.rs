@@ -22,7 +22,7 @@ async fn fetch_json(client: &reqwest::Client, url: &str) -> Option<Value> {
     let resp = match client.get(url).send().await {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[ERROR] GET {} failed: {}", url, e);
+            eprintln!("[ERROR] GET {url} failed: {e}");
             return None;
         }
     };
@@ -33,7 +33,7 @@ async fn fetch_json(client: &reqwest::Client, url: &str) -> Option<Value> {
     match resp.json::<Value>().await {
         Ok(v) => Some(v),
         Err(e) => {
-            eprintln!("[ERROR] Failed to parse JSON from {}: {}", url, e);
+            eprintln!("[ERROR] Failed to parse JSON from {url}: {e}");
             None
         }
     }
@@ -65,7 +65,7 @@ async fn post_json_auth(
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[ERROR] POST {} failed: {}", url, e);
+            eprintln!("[ERROR] POST {url} failed: {e}");
             return None;
         }
     };
@@ -90,7 +90,7 @@ async fn put_json_auth(
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[ERROR] PUT {} failed: {}", url, e);
+            eprintln!("[ERROR] PUT {url} failed: {e}");
             return None;
         }
     };
@@ -109,7 +109,7 @@ async fn delete_auth(client: &reqwest::Client, url: &str, auth_header: &str) -> 
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("[ERROR] DELETE {} failed: {}", url, e);
+            eprintln!("[ERROR] DELETE {url} failed: {e}");
             return None;
         }
     };
@@ -237,9 +237,9 @@ async fn test_rest_api_posts_fields() {
             let rp_keys = json_top_keys(&rp_post);
             for field in &expected_fields {
                 if rp_keys.contains(*field) {
-                    eprintln!("  [OK] RustPress has field: {}", field);
+                    eprintln!("  [OK] RustPress has field: {field}");
                 } else {
-                    eprintln!("  [MISSING] RustPress missing field: {}", field);
+                    eprintln!("  [MISSING] RustPress missing field: {field}");
                 }
             }
         }
@@ -285,9 +285,9 @@ async fn test_rest_api_users_list() {
                 let rp_keys = json_top_keys(rp_first);
                 for field in &expected {
                     if rp_keys.contains(*field) {
-                        eprintln!("  [OK] RustPress user has field: {}", field);
+                        eprintln!("  [OK] RustPress user has field: {field}");
                     } else {
-                        eprintln!("  [MISSING] RustPress user missing field: {}", field);
+                        eprintln!("  [MISSING] RustPress user missing field: {field}");
                     }
                 }
             }
@@ -433,9 +433,9 @@ async fn test_rest_api_post_create() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -469,7 +469,7 @@ async fn test_rest_api_post_create() {
 
             // Verify title was set
             if let Some(rp_title) = rp_post.get("title") {
-                eprintln!("RustPress created post title: {}", rp_title);
+                eprintln!("RustPress created post title: {rp_title}");
             }
             eprintln!("[PASS] Both created posts with matching structure");
 
@@ -521,9 +521,9 @@ async fn test_rest_api_post_update() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -628,9 +628,9 @@ async fn test_rest_api_post_delete() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -788,13 +788,13 @@ async fn test_rest_api_settings() {
     let wp_auth = wordpress_basic_auth(&cfg.admin_user, &cfg.admin_password);
 
     let wp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
 
     let rp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
         .send()
         .await;
 
@@ -851,13 +851,13 @@ async fn test_rest_api_statuses() {
             // Statuses is an object with keys like "publish", "draft", etc.
             let wp_keys = json_top_keys(&wp_val);
             let rp_keys = json_top_keys(&rp_val);
-            eprintln!("WordPress statuses: {:?}", wp_keys);
-            eprintln!("RustPress statuses: {:?}", rp_keys);
+            eprintln!("WordPress statuses: {wp_keys:?}");
+            eprintln!("RustPress statuses: {rp_keys:?}");
 
             let expected = ["publish"];
             for s in &expected {
-                assert!(rp_keys.contains(*s), "RustPress should have '{}' status", s);
-                eprintln!("  [OK] RustPress has status: {}", s);
+                assert!(rp_keys.contains(*s), "RustPress should have '{s}' status");
+                eprintln!("  [OK] RustPress has status: {s}");
             }
             eprintln!("[PASS] Statuses endpoint compared");
         }
@@ -891,16 +891,16 @@ async fn test_rest_api_post_types() {
         (Some(wp_val), Some(rp_val)) => {
             let wp_keys = json_top_keys(&wp_val);
             let rp_keys = json_top_keys(&rp_val);
-            eprintln!("WordPress types: {:?}", wp_keys);
-            eprintln!("RustPress types: {:?}", rp_keys);
+            eprintln!("WordPress types: {wp_keys:?}");
+            eprintln!("RustPress types: {rp_keys:?}");
 
             // At minimum, both should have "post" and "page"
             let required = ["post", "page"];
             for t in &required {
                 if rp_keys.contains(*t) {
-                    eprintln!("  [OK] RustPress has type: {}", t);
+                    eprintln!("  [OK] RustPress has type: {t}");
                 } else {
-                    eprintln!("  [MISSING] RustPress missing type: {}", t);
+                    eprintln!("  [MISSING] RustPress missing type: {t}");
                 }
             }
 
@@ -1078,7 +1078,7 @@ async fn test_rest_api_pagination_headers() {
         let wp_resp = client.get(&wp_url).send().await;
         let rp_resp = client.get(&rp_url).send().await;
 
-        eprintln!("\n  {}:", path);
+        eprintln!("\n  {path}:");
 
         match (wp_resp, rp_resp) {
             (Ok(wp_r), Ok(rp_r)) => {
@@ -1103,8 +1103,8 @@ async fn test_rest_api_pagination_headers() {
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("(absent)");
 
-                eprintln!("    X-WP-Total - WP: {}, RP: {}", wp_total, rp_total);
-                eprintln!("    X-WP-TotalPages - WP: {}, RP: {}", wp_pages, rp_pages);
+                eprintln!("    X-WP-Total - WP: {wp_total}, RP: {rp_total}");
+                eprintln!("    X-WP-TotalPages - WP: {wp_pages}, RP: {rp_pages}");
 
                 // RustPress should provide these headers
                 if rp_total != "(absent)" {
@@ -1167,7 +1167,7 @@ async fn test_rest_api_embed_parameter() {
 
             if let Some(rp_embedded) = rp_post.get("_embedded") {
                 let embed_keys = json_top_keys(rp_embedded);
-                eprintln!("  RustPress _embedded keys: {:?}", embed_keys);
+                eprintln!("  RustPress _embedded keys: {embed_keys:?}");
 
                 // WordPress embeds author, wp:term, etc.
                 let expected_embeds = ["author"];
@@ -1225,16 +1225,16 @@ async fn test_rest_api_fields_parameter() {
             let wp_keys = json_top_keys(&wp_post);
             let rp_keys = json_top_keys(&rp_post);
 
-            eprintln!("  WordPress keys with _fields={}: {:?}", fields, wp_keys);
-            eprintln!("  RustPress keys with _fields={}: {:?}", fields, rp_keys);
+            eprintln!("  WordPress keys with _fields={fields}: {wp_keys:?}");
+            eprintln!("  RustPress keys with _fields={fields}: {rp_keys:?}");
 
             // With _fields=id,title,slug, response should only have those fields
             let requested: Vec<&str> = fields.split(',').collect();
             for field in &requested {
                 if rp_keys.contains(*field) {
-                    eprintln!("    [OK] RustPress has requested field: {}", field);
+                    eprintln!("    [OK] RustPress has requested field: {field}");
                 } else {
-                    eprintln!("    [MISSING] RustPress missing requested field: {}", field);
+                    eprintln!("    [MISSING] RustPress missing requested field: {field}");
                 }
             }
 
@@ -1246,7 +1246,7 @@ async fn test_rest_api_fields_parameter() {
             if extra.is_empty() {
                 eprintln!("    [OK] No extra fields in response");
             } else {
-                eprintln!("    [WARN] Extra fields present: {:?}", extra);
+                eprintln!("    [WARN] Extra fields present: {extra:?}");
             }
 
             eprintln!("[PASS] _fields parameter compared");
@@ -1357,8 +1357,8 @@ async fn test_rest_api_links() {
                 let wp_link_keys = json_top_keys(wp_links);
                 let rp_link_keys = json_top_keys(rp_links);
 
-                eprintln!("  WordPress _links keys: {:?}", wp_link_keys);
-                eprintln!("  RustPress _links keys: {:?}", rp_link_keys);
+                eprintln!("  WordPress _links keys: {wp_link_keys:?}");
+                eprintln!("  RustPress _links keys: {rp_link_keys:?}");
 
                 // Common link types WordPress provides
                 let expected_links = ["self", "collection", "author"];
@@ -1401,9 +1401,9 @@ async fn test_rest_api_category_crud() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -1512,9 +1512,9 @@ async fn test_rest_api_tag_crud() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -1595,9 +1595,9 @@ async fn test_rest_api_comment_crud() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -1714,20 +1714,20 @@ async fn test_rest_api_users_me() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
 
     let wp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/users/me", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/users/me", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
     let rp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/users/me", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/users/me", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
@@ -1932,8 +1932,8 @@ async fn test_rest_api_posts_orderby() {
                 s
             };
 
-            eprintln!("WordPress titles (asc): {:?}", wp_titles);
-            eprintln!("RustPress titles (asc): {:?}", rp_titles);
+            eprintln!("WordPress titles (asc): {wp_titles:?}");
+            eprintln!("RustPress titles (asc): {rp_titles:?}");
 
             if wp_titles == wp_sorted {
                 eprintln!("  [OK] WordPress results are sorted by title asc");
@@ -1996,8 +1996,8 @@ async fn test_rest_api_posts_search() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress search results: {}", wp_count);
-            eprintln!("RustPress search results: {}", rp_count);
+            eprintln!("WordPress search results: {wp_count}");
+            eprintln!("RustPress search results: {rp_count}");
 
             // Both should return matching posts (likely the "Hello World" default post)
             if wp_count > 0 && rp_count > 0 {
@@ -2041,16 +2041,16 @@ async fn test_rest_api_posts_by_status() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
 
     // Drafts require authentication
     let wp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts?status=draft",
             cfg.wordpress_url
         ))
@@ -2058,7 +2058,7 @@ async fn test_rest_api_posts_by_status() {
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts?status=draft",
             cfg.rustpress_url
         ))
@@ -2158,8 +2158,8 @@ async fn test_rest_api_posts_per_page() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress count with per_page=1: {}", wp_count);
-            eprintln!("RustPress count with per_page=1: {}", rp_count);
+            eprintln!("WordPress count with per_page=1: {wp_count}");
+            eprintln!("RustPress count with per_page=1: {rp_count}");
 
             assert!(
                 wp_count <= 1,
@@ -2167,8 +2167,7 @@ async fn test_rest_api_posts_per_page() {
             );
             assert!(
                 rp_count <= 1,
-                "RustPress should return at most 1 post with per_page=1, got {}",
-                rp_count
+                "RustPress should return at most 1 post with per_page=1, got {rp_count}"
             );
 
             eprintln!("[PASS] per_page=1 correctly limits results");
@@ -2214,8 +2213,8 @@ async fn test_rest_api_posts_by_category() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress posts in category 1: {}", wp_count);
-            eprintln!("RustPress posts in category 1: {}", rp_count);
+            eprintln!("WordPress posts in category 1: {wp_count}");
+            eprintln!("RustPress posts in category 1: {rp_count}");
 
             // Verify all returned posts have category 1 in their categories array
             if let Some(rp_arr) = rp_val.as_array() {
@@ -2282,8 +2281,8 @@ async fn test_rest_api_posts_by_tag() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress posts with tag 1: {}", wp_count);
-            eprintln!("RustPress posts with tag 1: {}", rp_count);
+            eprintln!("WordPress posts with tag 1: {wp_count}");
+            eprintln!("RustPress posts with tag 1: {rp_count}");
 
             // May be empty -- that's fine, just compare structure if both have results
             if let (Some(wp_first), Some(rp_first)) = (
@@ -2345,8 +2344,8 @@ async fn test_rest_api_posts_exclude() {
                 .iter()
                 .any(|p| p.get("id").and_then(|v| v.as_u64()) == Some(1));
 
-            eprintln!("WordPress has post 1 in results: {}", wp_has_id_1);
-            eprintln!("RustPress has post 1 in results: {}", rp_has_id_1);
+            eprintln!("WordPress has post 1 in results: {wp_has_id_1}");
+            eprintln!("RustPress has post 1 in results: {rp_has_id_1}");
 
             if !wp_has_id_1 {
                 eprintln!("  [OK] WordPress correctly excludes post 1");
@@ -2399,8 +2398,8 @@ async fn test_rest_api_posts_slug() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress results for slug=hello-world: {}", wp_count);
-            eprintln!("RustPress results for slug=hello-world: {}", rp_count);
+            eprintln!("WordPress results for slug=hello-world: {wp_count}");
+            eprintln!("RustPress results for slug=hello-world: {rp_count}");
 
             // Verify slug matches in RustPress results
             if let Some(rp_arr) = rp_val.as_array() {
@@ -2410,7 +2409,7 @@ async fn test_rest_api_posts_slug() {
                             slug, "hello-world",
                             "RustPress returned post with wrong slug"
                         );
-                        eprintln!("  [OK] RustPress post slug: {}", slug);
+                        eprintln!("  [OK] RustPress post slug: {slug}");
                     }
                 }
             }
@@ -2470,7 +2469,7 @@ async fn test_rest_api_post_single() {
             // Verify ID is 1
             if let Some(rp_id) = rp_val.get("id").and_then(|v| v.as_u64()) {
                 assert_eq!(rp_id, 1, "RustPress should return post with id=1");
-                eprintln!("  [OK] RustPress post id: {}", rp_id);
+                eprintln!("  [OK] RustPress post id: {rp_id}");
             }
 
             let expected = [
@@ -2549,13 +2548,11 @@ async fn test_rest_api_page_single() {
                 (Some(wp_val), Some(rp_val)) => {
                     assert!(
                         wp_val.is_object(),
-                        "WordPress /pages/{} should return an object",
-                        wp_id
+                        "WordPress /pages/{wp_id} should return an object"
                     );
                     assert!(
                         rp_val.is_object(),
-                        "RustPress /pages/{} should return an object",
-                        rp_id
+                        "RustPress /pages/{rp_id} should return an object"
                     );
 
                     assert_json_keys_match(&wp_val, &rp_val);
@@ -2636,7 +2633,7 @@ async fn test_rest_api_user_single() {
             // Verify ID is 1
             if let Some(rp_id) = rp_val.get("id").and_then(|v| v.as_u64()) {
                 assert_eq!(rp_id, 1, "RustPress should return user with id=1");
-                eprintln!("  [OK] RustPress user id: {}", rp_id);
+                eprintln!("  [OK] RustPress user id: {rp_id}");
             }
 
             let expected = ["id", "name", "slug", "link", "avatar_urls"];
@@ -2698,7 +2695,7 @@ async fn test_rest_api_category_single() {
             // Verify ID is 1
             if let Some(rp_id) = rp_val.get("id").and_then(|v| v.as_u64()) {
                 assert_eq!(rp_id, 1, "RustPress should return category with id=1");
-                eprintln!("  [OK] RustPress category id: {}", rp_id);
+                eprintln!("  [OK] RustPress category id: {rp_id}");
             }
 
             let expected = ["id", "count", "name", "slug", "taxonomy", "parent"];
@@ -2860,9 +2857,9 @@ async fn test_rest_api_media_crud() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -2871,12 +2868,12 @@ async fn test_rest_api_media_crud() {
     // Multipart upload requires the "multipart" feature in reqwest, so we
     // focus on comparing the GET /media response structure with auth.
     let wp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/media", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/media", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
     let rp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/media", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/media", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
@@ -2975,20 +2972,20 @@ async fn test_rest_api_settings_read() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
 
     let wp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
     let rp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
@@ -3066,16 +3063,16 @@ async fn test_rest_api_settings_update() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
 
     // First, read the current description so we can restore it
     let wp_original = client
-        .get(&format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await
@@ -3088,7 +3085,7 @@ async fn test_rest_api_settings_update() {
             }
         });
     let rp_original = client
-        .get(&format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await
@@ -3156,7 +3153,7 @@ async fn test_rest_api_settings_update() {
                 if rp_desc == "E2E test description update" {
                     eprintln!("  [OK] RustPress description updated successfully");
                 } else {
-                    eprintln!("  [WARN] RustPress description: {}", rp_desc);
+                    eprintln!("  [WARN] RustPress description: {rp_desc}");
                 }
             }
 
@@ -3207,9 +3204,9 @@ async fn test_rest_api_user_create() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -3246,7 +3243,7 @@ async fn test_rest_api_user_create() {
 
             // Verify username
             if let Some(rp_slug) = rp_user.get("slug").and_then(|v| v.as_str()) {
-                eprintln!("  [OK] RustPress created user slug: {}", rp_slug);
+                eprintln!("  [OK] RustPress created user slug: {rp_slug}");
             }
 
             // DELETE -- WordPress requires ?force=true&reassign=1 for user deletion
@@ -3329,13 +3326,13 @@ async fn test_rest_api_comment_create_anonymous() {
 
     // POST without auth header
     let wp_resp = client
-        .post(&format!("{}/wp-json/wp/v2/comments", cfg.wordpress_url))
+        .post(format!("{}/wp-json/wp/v2/comments", cfg.wordpress_url))
         .header("Content-Type", "application/json")
         .json(&wp_comment_body)
         .send()
         .await;
     let rp_resp = client
-        .post(&format!("{}/wp-json/wp/v2/comments", cfg.rustpress_url))
+        .post(format!("{}/wp-json/wp/v2/comments", cfg.rustpress_url))
         .header("Content-Type", "application/json")
         .json(&rp_comment_body)
         .send()
@@ -3344,8 +3341,8 @@ async fn test_rest_api_comment_create_anonymous() {
     let wp_status = wp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
     let rp_status = rp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
 
-    eprintln!("WordPress anonymous comment status: {}", wp_status);
-    eprintln!("RustPress anonymous comment status: {}", rp_status);
+    eprintln!("WordPress anonymous comment status: {wp_status}");
+    eprintln!("RustPress anonymous comment status: {rp_status}");
 
     // Both should either allow (201) or reject (401/403) anonymous comments
     let wp_val: Option<Value> = match wp_resp {
@@ -3376,7 +3373,7 @@ async fn test_rest_api_comment_create_anonymous() {
             )
             .await
             {
-                Ok(t) => format!("Bearer {}", t),
+                Ok(t) => format!("Bearer {t}"),
                 Err(_) => return,
             };
 
@@ -3446,9 +3443,9 @@ async fn test_rest_api_post_revisions() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -3482,7 +3479,7 @@ async fn test_rest_api_post_revisions() {
 
     // Revisions endpoint requires authentication
     let wp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts/{}/revisions",
             cfg.wordpress_url, wp_post_id
         ))
@@ -3490,7 +3487,7 @@ async fn test_rest_api_post_revisions() {
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts/{}/revisions",
             cfg.rustpress_url, rp_post_id
         ))
@@ -3511,13 +3508,11 @@ async fn test_rest_api_post_revisions() {
         (Some(ref wp_revisions), Some(ref rp_revisions)) => {
             assert!(
                 wp_revisions.is_array(),
-                "WordPress /posts/{}/revisions should be an array",
-                wp_post_id
+                "WordPress /posts/{wp_post_id}/revisions should be an array"
             );
             assert!(
                 rp_revisions.is_array(),
-                "RustPress /posts/{}/revisions should be an array",
-                rp_post_id
+                "RustPress /posts/{rp_post_id}/revisions should be an array"
             );
 
             eprintln!(
@@ -3568,19 +3563,19 @@ async fn test_rest_api_error_not_found() {
 
     // Request a non-existent post
     let wp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/posts/999999", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/posts/999999", cfg.wordpress_url))
         .send()
         .await;
     let rp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/posts/999999", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/posts/999999", cfg.rustpress_url))
         .send()
         .await;
 
     let wp_status = wp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
     let rp_status = rp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
 
-    eprintln!("WordPress 404 status: {}", wp_status);
-    eprintln!("RustPress 404 status: {}", rp_status);
+    eprintln!("WordPress 404 status: {wp_status}");
+    eprintln!("RustPress 404 status: {rp_status}");
 
     // Both should return 404
     assert_eq!(
@@ -3644,13 +3639,13 @@ async fn test_rest_api_error_unauthorized() {
     });
 
     let wp_resp = client
-        .post(&format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url))
+        .post(format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url))
         .header("Content-Type", "application/json")
         .json(&post_body)
         .send()
         .await;
     let rp_resp = client
-        .post(&format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url))
+        .post(format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url))
         .header("Content-Type", "application/json")
         .json(&post_body)
         .send()
@@ -3659,8 +3654,8 @@ async fn test_rest_api_error_unauthorized() {
     let wp_status = wp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
     let rp_status = rp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
 
-    eprintln!("WordPress unauthorized status: {}", wp_status);
-    eprintln!("RustPress unauthorized status: {}", rp_status);
+    eprintln!("WordPress unauthorized status: {wp_status}");
+    eprintln!("RustPress unauthorized status: {rp_status}");
 
     // WordPress returns 401, RustPress should too
     assert!(
@@ -3669,8 +3664,7 @@ async fn test_rest_api_error_unauthorized() {
     );
     assert!(
         rp_status == 401 || rp_status == 403,
-        "RustPress should return 401 or 403 for unauthorized POST, got {}",
-        rp_status
+        "RustPress should return 401 or 403 for unauthorized POST, got {rp_status}"
     );
 
     // Compare error JSON structure
@@ -3718,14 +3712,14 @@ async fn test_rest_api_error_invalid_param() {
 
     // per_page=invalid should return a 400 error
     let wp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts?per_page=invalid",
             cfg.wordpress_url
         ))
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts?per_page=invalid",
             cfg.rustpress_url
         ))
@@ -3735,8 +3729,8 @@ async fn test_rest_api_error_invalid_param() {
     let wp_status = wp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
     let rp_status = rp_resp.as_ref().map(|r| r.status().as_u16()).unwrap_or(0);
 
-    eprintln!("WordPress invalid param status: {}", wp_status);
-    eprintln!("RustPress invalid param status: {}", rp_status);
+    eprintln!("WordPress invalid param status: {wp_status}");
+    eprintln!("RustPress invalid param status: {rp_status}");
 
     // WordPress returns 400 for invalid parameters
     assert_eq!(
@@ -3745,8 +3739,7 @@ async fn test_rest_api_error_invalid_param() {
     );
     assert_eq!(
         rp_status, 400,
-        "RustPress should return 400 for invalid per_page, got {}",
-        rp_status
+        "RustPress should return 400 for invalid per_page, got {rp_status}"
     );
 
     // Compare error JSON structure
@@ -3932,16 +3925,16 @@ async fn test_rest_api_taxonomies_structure() {
 
             let wp_keys = json_top_keys(&wp_val);
             let rp_keys = json_top_keys(&rp_val);
-            eprintln!("WordPress taxonomies: {:?}", wp_keys);
-            eprintln!("RustPress taxonomies: {:?}", rp_keys);
+            eprintln!("WordPress taxonomies: {wp_keys:?}");
+            eprintln!("RustPress taxonomies: {rp_keys:?}");
 
             // Should have "category" and "post_tag" at minimum
             let required = ["category", "post_tag"];
             for t in &required {
                 if rp_keys.contains(*t) {
-                    eprintln!("  [OK] RustPress has taxonomy: {}", t);
+                    eprintln!("  [OK] RustPress has taxonomy: {t}");
                 } else {
-                    eprintln!("  [MISSING] RustPress missing taxonomy: {}", t);
+                    eprintln!("  [MISSING] RustPress missing taxonomy: {t}");
                 }
             }
 
@@ -4044,8 +4037,8 @@ async fn test_rest_api_categories_orderby() {
                 s
             };
 
-            eprintln!("WordPress category names (asc): {:?}", wp_names);
-            eprintln!("RustPress category names (asc): {:?}", rp_names);
+            eprintln!("WordPress category names (asc): {wp_names:?}");
+            eprintln!("RustPress category names (asc): {rp_names:?}");
 
             if rp_names == rp_sorted {
                 eprintln!("  [OK] RustPress categories are sorted by name asc");
@@ -4103,8 +4096,8 @@ async fn test_rest_api_tags_search() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress tags search results: {}", wp_count);
-            eprintln!("RustPress tags search results: {}", rp_count);
+            eprintln!("WordPress tags search results: {wp_count}");
+            eprintln!("RustPress tags search results: {rp_count}");
 
             // Compare structure if both have results
             if let (Some(wp_first), Some(rp_first)) = (
@@ -4175,8 +4168,8 @@ async fn test_rest_api_users_orderby() {
                 })
                 .collect();
 
-            eprintln!("WordPress users ordered by name: {:?}", wp_names);
-            eprintln!("RustPress users ordered by name: {:?}", rp_names);
+            eprintln!("WordPress users ordered by name: {wp_names:?}");
+            eprintln!("RustPress users ordered by name: {rp_names:?}");
 
             // Compare structure
             if let (Some(wp_first), Some(rp_first)) = (
@@ -4212,9 +4205,9 @@ async fn test_rest_api_page_crud() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -4260,7 +4253,7 @@ async fn test_rest_api_page_crud() {
             )
             .await;
             let rp_read_resp = client
-                .get(&format!(
+                .get(format!(
                     "{}/wp-json/wp/v2/pages/{}?context=edit",
                     cfg.rustpress_url, rp_id
                 ))
@@ -4281,7 +4274,7 @@ async fn test_rest_api_page_crud() {
 
             // For read, just fetch with auth from WP too
             let wp_read_resp = client
-                .get(&format!(
+                .get(format!(
                     "{}/wp-json/wp/v2/pages/{}?context=edit",
                     cfg.wordpress_url, wp_id
                 ))
@@ -4380,16 +4373,16 @@ async fn test_rest_api_post_context_edit() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
 
     // GET /posts/1?context=edit with auth -- reveals additional fields like "raw"
     let wp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts/1?context=edit",
             cfg.wordpress_url
         ))
@@ -4397,7 +4390,7 @@ async fn test_rest_api_post_context_edit() {
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/posts/1?context=edit",
             cfg.rustpress_url
         ))
@@ -4504,14 +4497,14 @@ async fn test_rest_api_posts_sticky() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress sticky posts: {}", wp_count);
-            eprintln!("RustPress sticky posts: {}", rp_count);
+            eprintln!("WordPress sticky posts: {wp_count}");
+            eprintln!("RustPress sticky posts: {rp_count}");
 
             // Verify all returned posts have sticky=true
             if let Some(rp_arr) = rp_val.as_array() {
                 for (i, post) in rp_arr.iter().enumerate() {
                     if let Some(sticky) = post.get("sticky").and_then(|v| v.as_bool()) {
-                        eprintln!("  Post {}: sticky={}", i, sticky);
+                        eprintln!("  Post {i}: sticky={sticky}");
                         assert!(sticky, "All posts with sticky=true filter should be sticky");
                     }
                 }
@@ -4665,8 +4658,7 @@ async fn test_rest_api_embed_replies() {
                     let rp_is_array = rp_r.is_array();
 
                     eprintln!(
-                        "  replies is array - WP: {}, RP: {}",
-                        wp_is_array, rp_is_array
+                        "  replies is array - WP: {wp_is_array}, RP: {rp_is_array}"
                     );
 
                     // Check first reply comment structure
@@ -4752,14 +4744,14 @@ async fn test_rest_api_posts_after_before() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!("WordPress posts in date range: {}", wp_count);
-            eprintln!("RustPress posts in date range: {}", rp_count);
+            eprintln!("WordPress posts in date range: {wp_count}");
+            eprintln!("RustPress posts in date range: {rp_count}");
 
             // Verify dates are within range for RustPress results
             if let Some(rp_arr) = rp_val.as_array() {
                 for (i, post) in rp_arr.iter().enumerate() {
                     if let Some(date) = post.get("date").and_then(|v| v.as_str()) {
-                        eprintln!("  Post {}: date={}", i, date);
+                        eprintln!("  Post {i}: date={date}");
                         // Basic check: date should be after 2020 and before 2030
                         if date >= after && date <= before {
                             eprintln!("    [OK] Date is within range");
@@ -5014,9 +5006,9 @@ async fn test_rest_api_templates_list() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -5026,14 +5018,14 @@ async fn test_rest_api_templates_list() {
 
     // WordPress templates
     let wp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/templates", cfg.wordpress_url))
+        .get(format!("{}/wp-json/wp/v2/templates", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
 
     // RustPress templates
     let rp_resp = client
-        .get(&format!("{}/wp-json/wp/v2/templates", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/templates", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
@@ -5042,14 +5034,13 @@ async fn test_rest_api_templates_list() {
         (Ok(wp_r), Ok(rp_r)) => {
             let wp_status = wp_r.status();
             let rp_status = rp_r.status();
-            eprintln!("WordPress /templates -> {}", wp_status);
-            eprintln!("RustPress /templates -> {}", rp_status);
+            eprintln!("WordPress /templates -> {wp_status}");
+            eprintln!("RustPress /templates -> {rp_status}");
 
             // Both should respond with 2xx (or 401 if auth not working)
             assert!(
                 rp_status.is_success() || rp_status.as_u16() == 401,
-                "Expected 200 or 401 from /templates, got {}",
-                rp_status
+                "Expected 200 or 401 from /templates, got {rp_status}"
             );
 
             if rp_status.is_success() {
@@ -5093,9 +5084,9 @@ async fn test_rest_api_application_passwords_crud() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            eprintln!("[SKIP] Could not get RustPress token: {e}");
             return;
         }
     };
@@ -5106,7 +5097,7 @@ async fn test_rest_api_application_passwords_crud() {
     // First, get current user ID from /users/me
     let rp_user_id = {
         let r = client
-            .get(&format!("{}/wp-json/wp/v2/users/me", cfg.rustpress_url))
+            .get(format!("{}/wp-json/wp/v2/users/me", cfg.rustpress_url))
             .header("Authorization", &rp_token)
             .send()
             .await;
@@ -5121,7 +5112,7 @@ async fn test_rest_api_application_passwords_crud() {
         }
     };
 
-    eprintln!("RustPress user id: {}", rp_user_id);
+    eprintln!("RustPress user id: {rp_user_id}");
 
     // CREATE app password
     let create_body = serde_json::json!({"name": "E2E Test Password"});
@@ -5139,7 +5130,7 @@ async fn test_rest_api_application_passwords_crud() {
     match rp_created {
         Some(rp_ap) => {
             let ap_keys = json_top_keys(&rp_ap);
-            eprintln!("App password keys: {:?}", ap_keys);
+            eprintln!("App password keys: {ap_keys:?}");
 
             // WordPress app password response has: uuid, name, password, created, last_used, last_ip
             for field in &["uuid", "name", "password"] {
@@ -5157,7 +5148,7 @@ async fn test_rest_api_application_passwords_crud() {
             // Also compare with WordPress structure
             let wp_user_id = {
                 let r = client
-                    .get(&format!("{}/wp-json/wp/v2/users/me", cfg.wordpress_url))
+                    .get(format!("{}/wp-json/wp/v2/users/me", cfg.wordpress_url))
                     .header("Authorization", &wp_auth)
                     .send()
                     .await;
@@ -5238,9 +5229,9 @@ async fn test_rest_api_application_passwords_list() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] {}", e);
+            eprintln!("[SKIP] {e}");
             return;
         }
     };
@@ -5249,7 +5240,7 @@ async fn test_rest_api_application_passwords_list() {
 
     let user_id = {
         let r = client
-            .get(&format!("{}/wp-json/wp/v2/users/me", cfg.rustpress_url))
+            .get(format!("{}/wp-json/wp/v2/users/me", cfg.rustpress_url))
             .header("Authorization", &rp_token)
             .send()
             .await;
@@ -5265,7 +5256,7 @@ async fn test_rest_api_application_passwords_list() {
     };
 
     let resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/users/{}/application-passwords",
             cfg.rustpress_url, user_id
         ))
@@ -5276,14 +5267,14 @@ async fn test_rest_api_application_passwords_list() {
     match resp {
         Ok(r) => {
             let status = r.status();
-            eprintln!("GET /application-passwords -> {}", status);
-            assert!(status.is_success(), "Should return 200, got {}", status);
+            eprintln!("GET /application-passwords -> {status}");
+            assert!(status.is_success(), "Should return 200, got {status}");
 
             let body: Value = r.json().await.unwrap_or(Value::Null);
             assert!(body.is_array(), "Should return array");
             eprintln!("[PASS] Application passwords list returns array");
         }
-        Err(e) => eprintln!("[SKIP] {}", e),
+        Err(e) => eprintln!("[SKIP] {e}"),
     }
 }
 
@@ -5308,9 +5299,9 @@ async fn test_rest_api_batch() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] {}", e);
+            eprintln!("[SKIP] {e}");
             return;
         }
     };
@@ -5328,7 +5319,7 @@ async fn test_rest_api_batch() {
 
     // WordPress batch
     let wp_resp = client
-        .post(&format!("{}/wp-json/batch/v1", cfg.wordpress_url))
+        .post(format!("{}/wp-json/batch/v1", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .json(&batch_body)
         .send()
@@ -5336,7 +5327,7 @@ async fn test_rest_api_batch() {
 
     // RustPress batch
     let rp_resp = client
-        .post(&format!("{}/wp-json/batch/v1", cfg.rustpress_url))
+        .post(format!("{}/wp-json/batch/v1", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .json(&batch_body)
         .send()
@@ -5346,13 +5337,12 @@ async fn test_rest_api_batch() {
         (Ok(wp_r), Ok(rp_r)) => {
             let wp_status = wp_r.status();
             let rp_status = rp_r.status();
-            eprintln!("WordPress /batch/v1 -> {}", wp_status);
-            eprintln!("RustPress /batch/v1 -> {}", rp_status);
+            eprintln!("WordPress /batch/v1 -> {wp_status}");
+            eprintln!("RustPress /batch/v1 -> {rp_status}");
 
             assert!(
                 rp_status.is_success(),
-                "RustPress batch should return 2xx, got {}",
-                rp_status
+                "RustPress batch should return 2xx, got {rp_status}"
             );
 
             let rp_body: Value = rp_r.json().await.unwrap_or(Value::Null);
@@ -5374,7 +5364,7 @@ async fn test_rest_api_batch() {
                 // Each response should have status
                 for (i, resp) in responses.iter().enumerate() {
                     let status = resp.get("status").and_then(|v| v.as_u64()).unwrap_or(0);
-                    eprintln!("  Response {}: status={}", i, status);
+                    eprintln!("  Response {i}: status={status}");
                 }
             }
 
@@ -5385,8 +5375,8 @@ async fn test_rest_api_batch() {
 
             eprintln!("[PASS] Batch API works");
         }
-        (_, Err(e)) => eprintln!("[SKIP] Could not reach RustPress batch endpoint: {}", e),
-        (Err(e), _) => eprintln!("[SKIP] Could not reach WordPress batch endpoint: {}", e),
+        (_, Err(e)) => eprintln!("[SKIP] Could not reach RustPress batch endpoint: {e}"),
+        (Err(e), _) => eprintln!("[SKIP] Could not reach WordPress batch endpoint: {e}"),
     }
 }
 
@@ -5411,9 +5401,9 @@ async fn test_rest_api_patch_post() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] {}", e);
+            eprintln!("[SKIP] {e}");
             return;
         }
     };
@@ -5429,8 +5419,7 @@ async fn test_rest_api_patch_post() {
     .await
     .and_then(|v| {
         v.as_array()
-            .and_then(|a| a.first().and_then(|p| p.get("id")))
-            .map(|v| v.clone())
+            .and_then(|a| a.first().and_then(|p| p.get("id"))).cloned()
     })
     .and_then(|v| v.as_u64())
     .unwrap_or(1);
@@ -5442,8 +5431,7 @@ async fn test_rest_api_patch_post() {
     .await
     .and_then(|v| {
         v.as_array()
-            .and_then(|a| a.first().and_then(|p| p.get("id")))
-            .map(|v| v.clone())
+            .and_then(|a| a.first().and_then(|p| p.get("id"))).cloned()
     })
     .and_then(|v| v.as_u64())
     .unwrap_or(1);
@@ -5452,7 +5440,7 @@ async fn test_rest_api_patch_post() {
 
     // WordPress PATCH
     let wp_resp = client
-        .patch(&format!(
+        .patch(format!(
             "{}/wp-json/wp/v2/posts/{}",
             cfg.wordpress_url, wp_id
         ))
@@ -5463,7 +5451,7 @@ async fn test_rest_api_patch_post() {
 
     // RustPress PATCH
     let rp_resp = client
-        .patch(&format!(
+        .patch(format!(
             "{}/wp-json/wp/v2/posts/{}",
             cfg.rustpress_url, rp_id
         ))
@@ -5476,13 +5464,12 @@ async fn test_rest_api_patch_post() {
         (Ok(wp_r), Ok(rp_r)) => {
             let wp_status = wp_r.status();
             let rp_status = rp_r.status();
-            eprintln!("WordPress PATCH /posts/{} -> {}", wp_id, wp_status);
-            eprintln!("RustPress PATCH /posts/{} -> {}", rp_id, rp_status);
+            eprintln!("WordPress PATCH /posts/{wp_id} -> {wp_status}");
+            eprintln!("RustPress PATCH /posts/{rp_id} -> {rp_status}");
 
             assert!(
                 rp_status.is_success(),
-                "RustPress PATCH should return 2xx, got {}",
-                rp_status
+                "RustPress PATCH should return 2xx, got {rp_status}"
             );
 
             let rp_body: Value = rp_r.json().await.unwrap_or(Value::Null);
@@ -5512,9 +5499,9 @@ async fn test_rest_api_patch_category() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] {}", e);
+            eprintln!("[SKIP] {e}");
             return;
         }
     };
@@ -5548,7 +5535,7 @@ async fn test_rest_api_patch_category() {
             let patch_body = serde_json::json!({"description": "patched description"});
 
             let wp_patch = client
-                .patch(&format!(
+                .patch(format!(
                     "{}/wp-json/wp/v2/categories/{}",
                     cfg.wordpress_url, wp_id
                 ))
@@ -5558,7 +5545,7 @@ async fn test_rest_api_patch_category() {
                 .await;
 
             let rp_patch = client
-                .patch(&format!(
+                .patch(format!(
                     "{}/wp-json/wp/v2/categories/{}",
                     cfg.rustpress_url, rp_id
                 ))
@@ -5622,9 +5609,9 @@ async fn test_rest_api_xwp_nonce_header() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] {}", e);
+            eprintln!("[SKIP] {e}");
             return;
         }
     };
@@ -5633,7 +5620,7 @@ async fn test_rest_api_xwp_nonce_header() {
 
     // Authenticated requests should return X-WP-Nonce header
     let resp = client
-        .get(&format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url))
+        .get(format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
@@ -5647,8 +5634,8 @@ async fn test_rest_api_xwp_nonce_header() {
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("(absent)");
 
-            eprintln!("Status: {}", status);
-            eprintln!("X-WP-Nonce: {}", nonce);
+            eprintln!("Status: {status}");
+            eprintln!("X-WP-Nonce: {nonce}");
 
             assert!(status.is_success(), "Should return 2xx");
             assert_ne!(
@@ -5659,7 +5646,7 @@ async fn test_rest_api_xwp_nonce_header() {
 
             eprintln!("[PASS] X-WP-Nonce header present on authenticated responses");
         }
-        Err(e) => eprintln!("[SKIP] {}", e),
+        Err(e) => eprintln!("[SKIP] {e}"),
     }
 }
 
@@ -5684,9 +5671,9 @@ async fn test_rest_api_global_styles() {
     )
     .await
     {
-        Ok(t) => format!("Bearer {}", t),
+        Ok(t) => format!("Bearer {t}"),
         Err(e) => {
-            eprintln!("[SKIP] {}", e);
+            eprintln!("[SKIP] {e}");
             return;
         }
     };
@@ -5695,7 +5682,7 @@ async fn test_rest_api_global_styles() {
 
     // GET global styles for the active theme
     let resp = client
-        .get(&format!(
+        .get(format!(
             "{}/wp-json/wp/v2/global-styles/themes/default",
             cfg.rustpress_url
         ))
@@ -5706,16 +5693,15 @@ async fn test_rest_api_global_styles() {
     match resp {
         Ok(r) => {
             let status = r.status();
-            eprintln!("GET /global-styles/themes/default -> {}", status);
+            eprintln!("GET /global-styles/themes/default -> {status}");
             // 200 or 404 are both acceptable (404 = no active theme named "default")
             assert!(
                 status.is_success() || status.as_u16() == 404,
-                "Expected 200 or 404, got {}",
-                status
+                "Expected 200 or 404, got {status}"
             );
             eprintln!("[PASS] Global styles endpoint responds");
         }
-        Err(e) => eprintln!("[SKIP] {}", e),
+        Err(e) => eprintln!("[SKIP] {e}"),
     }
 }
 
@@ -5759,7 +5745,7 @@ async fn test_rest_api_fields_parameter_detailed() {
 
             if let Some(rp_post) = rp_first {
                 let rp_keys = json_top_keys(&rp_post);
-                eprintln!("RustPress _fields response keys: {:?}", rp_keys);
+                eprintln!("RustPress _fields response keys: {rp_keys:?}");
 
                 // Should only have the requested fields
                 assert!(
@@ -5827,14 +5813,14 @@ async fn test_xmlrpc_get_terms() {
     );
 
     let rp_resp = client
-        .post(&format!("{}/xmlrpc.php", cfg.rustpress_url))
+        .post(format!("{}/xmlrpc.php", cfg.rustpress_url))
         .header("Content-Type", "text/xml")
         .body(xmlrpc_body.clone())
         .send()
         .await;
 
     let wp_resp = client
-        .post(&format!("{}/xmlrpc.php", cfg.wordpress_url))
+        .post(format!("{}/xmlrpc.php", cfg.wordpress_url))
         .header("Content-Type", "text/xml")
         .body(xmlrpc_body)
         .send()
@@ -5844,8 +5830,8 @@ async fn test_xmlrpc_get_terms() {
         (Ok(wp_r), Ok(rp_r)) => {
             let wp_status = wp_r.status();
             let rp_status = rp_r.status();
-            eprintln!("WordPress wp.getTerms -> {}", wp_status);
-            eprintln!("RustPress wp.getTerms -> {}", rp_status);
+            eprintln!("WordPress wp.getTerms -> {wp_status}");
+            eprintln!("RustPress wp.getTerms -> {rp_status}");
 
             let rp_body = rp_r.text().await.unwrap_or_default();
 
@@ -5892,7 +5878,7 @@ async fn test_xmlrpc_get_taxonomies() {
     );
 
     let rp_resp = client
-        .post(&format!("{}/xmlrpc.php", cfg.rustpress_url))
+        .post(format!("{}/xmlrpc.php", cfg.rustpress_url))
         .header("Content-Type", "text/xml")
         .body(xmlrpc_body)
         .send()
@@ -5901,7 +5887,7 @@ async fn test_xmlrpc_get_taxonomies() {
     match rp_resp {
         Ok(r) => {
             let status = r.status();
-            eprintln!("RustPress wp.getTaxonomies -> {}", status);
+            eprintln!("RustPress wp.getTaxonomies -> {status}");
             let body = r.text().await.unwrap_or_default();
 
             assert!(!body.contains("<fault>"), "Should not return fault");
@@ -5910,7 +5896,7 @@ async fn test_xmlrpc_get_taxonomies() {
             }
             eprintln!("[PASS] XML-RPC wp.getTaxonomies responded");
         }
-        Err(e) => eprintln!("[SKIP] {}", e),
+        Err(e) => eprintln!("[SKIP] {e}"),
     }
 }
 
@@ -5941,7 +5927,7 @@ async fn test_xmlrpc_suggest_categories() {
     );
 
     let rp_resp = client
-        .post(&format!("{}/xmlrpc.php", cfg.rustpress_url))
+        .post(format!("{}/xmlrpc.php", cfg.rustpress_url))
         .header("Content-Type", "text/xml")
         .body(xmlrpc_body)
         .send()
@@ -5953,6 +5939,6 @@ async fn test_xmlrpc_suggest_categories() {
             assert!(!body.contains("<fault>"), "Should not return fault");
             eprintln!("[PASS] XML-RPC wp.suggestCategories responded");
         }
-        Err(e) => eprintln!("[SKIP] {}", e),
+        Err(e) => eprintln!("[SKIP] {e}"),
     }
 }

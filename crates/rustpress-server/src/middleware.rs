@@ -422,11 +422,11 @@ pub async fn etag_headers(request: Request, next: Next) -> Response {
     let mut hasher = Md5::new();
     hasher.update(&bytes);
     let hash = hasher.finalize();
-    let etag = format!("\"{:x}\"", hash);
+    let etag = format!("\"{hash:x}\"");
 
     // Check If-None-Match
     if let Some(inm) = if_none_match {
-        if inm == etag || inm == format!("W/{}", etag) {
+        if inm == etag || inm == format!("W/{etag}") {
             return (StatusCode::NOT_MODIFIED, [(header::ETAG, etag)]).into_response();
         }
     }
@@ -474,7 +474,7 @@ pub async fn block_sensitive_files(request: Request, next: Next) -> Response {
     ];
 
     for pattern in &blocked_patterns {
-        if path == *pattern || path.starts_with(&format!("{}/", pattern)) {
+        if path == *pattern || path.starts_with(&format!("{pattern}/")) {
             return (StatusCode::NOT_FOUND, "").into_response();
         }
     }

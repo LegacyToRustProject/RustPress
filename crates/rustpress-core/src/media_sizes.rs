@@ -88,7 +88,7 @@ pub fn default_image_sizes() -> Vec<ImageSize> {
 pub fn generate_srcset(sizes: &[(String, u32)]) -> String {
     sizes
         .iter()
-        .map(|(url, w)| format!("{} {}w", url, w))
+        .map(|(url, w)| format!("{url} {w}w"))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -98,7 +98,7 @@ pub fn generate_srcset(sizes: &[(String, u32)]) -> String {
 /// WordPress uses a simple heuristic: the image can be up to 100 vw on
 /// screens narrower than `max_width`, and exactly `max_width` px otherwise.
 pub fn generate_sizes_attr(max_width: u32) -> String {
-    format!("(max-width: {}px) 100vw, {}px", max_width, max_width)
+    format!("(max-width: {max_width}px) 100vw, {max_width}px")
 }
 
 /// Calculate proportional (aspect-ratio-preserving) output dimensions for a

@@ -78,10 +78,10 @@ pub fn parse_blocks(content: &str) -> Vec<Block> {
 
             // Build full block name
             let full_name = if namespace.is_empty() {
-                format!("core/{}", block_name_short)
+                format!("core/{block_name_short}")
             } else {
                 // namespace includes trailing slash, e.g. "core/"
-                format!("{}{}", namespace, block_name_short)
+                format!("{namespace}{block_name_short}")
             };
 
             // Parse attributes JSON

@@ -18,22 +18,20 @@ pub fn serialize_block(block: &Block) -> String {
     if block.is_self_closing() {
         // Self-closing block: <!-- wp:name {"attrs":"val"} /-->
         if attrs_str.is_empty() {
-            format!("<!-- wp:{} /-->", comment_name)
+            format!("<!-- wp:{comment_name} /-->")
         } else {
-            format!("<!-- wp:{} {} /-->", comment_name, attrs_str)
+            format!("<!-- wp:{comment_name} {attrs_str} /-->")
         }
     } else if !block.inner_blocks.is_empty() {
         // Block with inner blocks: serialize children recursively
         let inner = serialize_blocks(&block.inner_blocks);
         if attrs_str.is_empty() {
             format!(
-                "<!-- wp:{} -->{}<!-- /wp:{} -->",
-                comment_name, inner, comment_name
+                "<!-- wp:{comment_name} -->{inner}<!-- /wp:{comment_name} -->"
             )
         } else {
             format!(
-                "<!-- wp:{} {} -->{}<!-- /wp:{} -->",
-                comment_name, attrs_str, inner, comment_name
+                "<!-- wp:{comment_name} {attrs_str} -->{inner}<!-- /wp:{comment_name} -->"
             )
         }
     } else {

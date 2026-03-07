@@ -50,7 +50,7 @@ async fn search(
     let page = params.page.unwrap_or(1).max(1);
     let subtype = params.subtype.unwrap_or_else(|| "any".to_string());
 
-    let pattern = format!("%{}%", search_term);
+    let pattern = format!("%{search_term}%");
 
     let mut condition = Condition::all().add(
         Condition::any()

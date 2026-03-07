@@ -1,0 +1,10 @@
+[advisories]
+# rsa 0.9.x: Marvin Attack timing side-channel — no fixed version available upstream.
+# RustPress uses rsa only as a transitive dependency (via jsonwebtoken).
+# Risk is acceptable for Alpha; revisit when rsa publishes a fix.
+ignore = ["RUSTSEC-2023-0071"]
+
+[output]
+# fxhash and paste are flagged as "unmaintained" — no known vulnerabilities.
+# They are transitive dependencies we cannot remove directly.
+informational_advisories = "warn"

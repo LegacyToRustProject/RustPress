@@ -181,7 +181,7 @@ impl SessionManager {
     async fn delete_session_from_db(&self, session_id: &str) {
         let Some(ref db) = self.db else { return };
 
-        let option_name = format!("_rustpress_session_{}", session_id);
+        let option_name = format!("_rustpress_session_{session_id}");
         let _ = wp_options::Entity::delete_many()
             .filter(wp_options::Column::OptionName.eq(option_name))
             .exec(db)

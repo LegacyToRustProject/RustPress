@@ -251,9 +251,7 @@ document.getElementById('checkout-form').addEventListener('submit', function(e) 
   }})
   .catch(err => alert('Error: ' + err));
 }});
-</script>"#,
-                items_html = items_html,
-                total = total
+</script>"#
             )
         }
     );

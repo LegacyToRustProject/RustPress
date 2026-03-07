@@ -94,7 +94,7 @@ async fn list_terms(
             wp_terms::Entity::find().filter(wp_terms::Column::TermId.is_in(term_ids));
 
         if let Some(ref search) = params.search {
-            let pattern = format!("%{}%", search);
+            let pattern = format!("%{search}%");
             term_query = term_query.filter(wp_terms::Column::Name.like(&pattern));
         }
 
@@ -136,7 +136,7 @@ async fn list_terms(
     let mut query = wp_terms::Entity::find();
 
     if let Some(ref search) = params.search {
-        let pattern = format!("%{}%", search);
+        let pattern = format!("%{search}%");
         query = query.filter(wp_terms::Column::Name.like(&pattern));
     }
 

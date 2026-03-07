@@ -64,16 +64,16 @@ impl RobotsGenerator {
         lines.push(format!("User-agent: {}", self.user_agent));
 
         for path in &self.disallow {
-            lines.push(format!("Disallow: {}", path));
+            lines.push(format!("Disallow: {path}"));
         }
 
         for path in &self.allow {
-            lines.push(format!("Allow: {}", path));
+            lines.push(format!("Allow: {path}"));
         }
 
         if let Some(ref url) = self.sitemap_url {
             lines.push(String::new()); // blank line before Sitemap
-            lines.push(format!("Sitemap: {}", url));
+            lines.push(format!("Sitemap: {url}"));
         }
 
         let mut output = lines.join("\n");

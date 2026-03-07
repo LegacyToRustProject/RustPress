@@ -244,7 +244,7 @@ mod tests {
             "the_title",
             Arc::new(|value| {
                 if let Value::String(s) = value {
-                    Value::String(format!("{} - Modified", s))
+                    Value::String(format!("{s} - Modified"))
                 } else {
                     value
                 }
@@ -264,7 +264,7 @@ mod tests {
             "the_content",
             Arc::new(|value| {
                 if let Value::String(s) = value {
-                    Value::String(format!("<p>{}</p>", s))
+                    Value::String(format!("<p>{s}</p>"))
                 } else {
                     value
                 }
@@ -276,7 +276,7 @@ mod tests {
             "the_content",
             Arc::new(|value| {
                 if let Value::String(s) = value {
-                    Value::String(format!("<div>{}</div>", s))
+                    Value::String(format!("<div>{s}</div>"))
                 } else {
                     value
                 }

@@ -100,8 +100,7 @@ pub fn generate_breadcrumb_schema(items: Vec<BreadcrumbItem>) -> String {
 fn wrap_json_ld(value: &serde_json::Value) -> String {
     let json_str = serde_json::to_string_pretty(value).expect("valid JSON serialization");
     format!(
-        "<script type=\"application/ld+json\">\n{}\n</script>",
-        json_str
+        "<script type=\"application/ld+json\">\n{json_str}\n</script>"
     )
 }
 

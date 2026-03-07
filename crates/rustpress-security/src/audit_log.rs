@@ -159,7 +159,7 @@ impl AuditLog {
             ip_address: ip.to_string(),
             user_id: Some(user_id),
             username: Some(username.to_string()),
-            description: format!("Successful login for user '{}'", username),
+            description: format!("Successful login for user '{username}'"),
             metadata: None,
         });
     }
@@ -173,7 +173,7 @@ impl AuditLog {
             ip_address: ip.to_string(),
             user_id: None,
             username: Some(username.to_string()),
-            description: format!("Failed login attempt for user '{}'", username),
+            description: format!("Failed login attempt for user '{username}'"),
             metadata: None,
         });
     }
@@ -187,8 +187,8 @@ impl AuditLog {
             ip_address: ip.to_string(),
             user_id: None,
             username: None,
-            description: format!("WAF blocked request to '{}' (rule: {})", path, rule_id),
-            metadata: Some(format!("rule_id={}", rule_id)),
+            description: format!("WAF blocked request to '{path}' (rule: {rule_id})"),
+            metadata: Some(format!("rule_id={rule_id}")),
         });
     }
 
@@ -201,7 +201,7 @@ impl AuditLog {
             ip_address: ip.to_string(),
             user_id: None,
             username: None,
-            description: format!("Rate limited request to '{}'", path),
+            description: format!("Rate limited request to '{path}'"),
             metadata: None,
         });
     }
@@ -215,7 +215,7 @@ impl AuditLog {
             ip_address: ip.to_string(),
             user_id: None,
             username: None,
-            description: format!("Brute force attack detected from {}", ip),
+            description: format!("Brute force attack detected from {ip}"),
             metadata: None,
         });
     }
@@ -249,7 +249,7 @@ impl AuditLog {
             ip_address: ip.to_string(),
             user_id: Some(user_id),
             username: None,
-            description: format!("Settings changed: {}", setting),
+            description: format!("Settings changed: {setting}"),
             metadata: None,
         });
     }
@@ -323,7 +323,7 @@ mod tests {
     fn test_audit_log_capacity() {
         let log = AuditLog::new(3);
         for i in 0..5 {
-            log.log_login_failure(&format!("10.0.0.{}", i), "test");
+            log.log_login_failure(&format!("10.0.0.{i}"), "test");
         }
         let recent = log.recent(10);
         assert_eq!(recent.len(), 3);

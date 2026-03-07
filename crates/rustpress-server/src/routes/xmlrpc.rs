@@ -113,7 +113,7 @@ async fn xmlrpc_post_handler(State(state): State<Arc<AppState>>, body: Body) -> 
     // Parse the XML-RPC request
     let (method_name, params) = match parse_xml_rpc_request(body_str) {
         Ok(r) => r,
-        Err(e) => return xml_response(xml_rpc_fault(400, &format!("Parse error: {}", e))),
+        Err(e) => return xml_response(xml_rpc_fault(400, &format!("Parse error: {e}"))),
     };
 
     debug!(
@@ -189,7 +189,7 @@ async fn dispatch_method(state: &AppState, method: &str, params: &[XmlRpcValue])
 
         _ => {
             warn!("Unknown XML-RPC method: {}", method);
-            xml_rpc_fault(405, &format!("Method not found: {}", method))
+            xml_rpc_fault(405, &format!("Method not found: {method}"))
         }
     }
 }
@@ -299,8 +299,8 @@ fn parse_xml_rpc_request(xml: &str) -> Result<(String, Vec<XmlRpcValue>), String
 }
 
 fn extract_tag_content<'a>(xml: &'a str, tag: &str) -> Option<&'a str> {
-    let open = format!("<{}", tag);
-    let close = format!("</{}>", tag);
+    let open = format!("<{tag}");
+    let close = format!("</{tag}>");
     let start_pos = xml.find(&open)?;
     // Find the end of the opening tag (handle attributes)
     let after_open = &xml[start_pos + open.len()..];
@@ -350,7 +350,7 @@ fn parse_value(value_xml: &str) -> Result<XmlRpcValue, String> {
             let n = content
                 .trim()
                 .parse::<i64>()
-                .map_err(|e| format!("Invalid int: {}", e))?;
+                .map_err(|e| format!("Invalid int: {e}"))?;
             Ok(XmlRpcValue::Int(n))
         }
         Some("i4") => {
@@ -358,7 +358,7 @@ fn parse_value(value_xml: &str) -> Result<XmlRpcValue, String> {
             let n = content
                 .trim()
                 .parse::<i64>()
-                .map_err(|e| format!("Invalid i4: {}", e))?;
+                .map_err(|e| format!("Invalid i4: {e}"))?;
             Ok(XmlRpcValue::Int(n))
         }
         Some("boolean") => {
@@ -371,7 +371,7 @@ fn parse_value(value_xml: &str) -> Result<XmlRpcValue, String> {
             let d = content
                 .trim()
                 .parse::<f64>()
-                .map_err(|e| format!("Invalid double: {}", e))?;
+                .map_err(|e| format!("Invalid double: {e}"))?;
             Ok(XmlRpcValue::Double(d))
         }
         Some("dateTime.iso8601") => {
@@ -453,8 +453,8 @@ fn detect_first_tag(xml: &str) -> Option<String> {
 /// Find the end position (byte offset from start of `xml`) of the first
 /// nesting-aware matched closing tag for `tag`.  Returns 0 if not found.
 fn find_closing_tag_end(xml: &str, tag: &str) -> usize {
-    let open = format!("<{}", tag);
-    let close = format!("</{}>", tag);
+    let open = format!("<{tag}");
+    let close = format!("</{tag}>");
     let start_pos = match xml.find(&open) {
         Some(p) => p,
         None => return 0,
@@ -541,7 +541,7 @@ fn value_string(s: &str) -> String {
 }
 
 fn value_int(i: i64) -> String {
-    format!("<value><int>{}</int></value>", i)
+    format!("<value><int>{i}</int></value>")
 }
 
 fn value_bool(b: bool) -> String {
@@ -613,12 +613,12 @@ async fn authenticate(
         .filter(wp_users::Column::UserLogin.eq(username))
         .one(&state.db)
         .await
-        .map_err(|e| format!("Database error: {}", e))?;
+        .map_err(|e| format!("Database error: {e}"))?;
 
     let user = user.ok_or_else(|| "Invalid username".to_string())?;
 
     let valid = PasswordHasher::verify(password, &user.user_pass)
-        .map_err(|e| format!("Password check error: {}", e))?;
+        .map_err(|e| format!("Password check error: {e}"))?;
 
     if !valid {
         return Err("Invalid password".to_string());
@@ -713,7 +713,7 @@ async fn handle_get_users_blogs(state: &AppState, params: &[XmlRpcValue]) -> Str
         ("blogid", value_string("1")),
         ("blogName", value_string(&blog_name)),
         ("url", value_string(site_url)),
-        ("xmlrpc", value_string(&format!("{}/xmlrpc.php", site_url))),
+        ("xmlrpc", value_string(&format!("{site_url}/xmlrpc.php"))),
     ]);
 
     xml_rpc_response(&value_array(&[blog]))
@@ -731,7 +731,7 @@ async fn handle_get_post(state: &AppState, params: &[XmlRpcValue]) -> String {
     let post = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     xml_rpc_response(&post_to_xmlrpc(&post, &state.site_url))
@@ -772,7 +772,7 @@ async fn handle_get_posts(state: &AppState, params: &[XmlRpcValue]) -> String {
 
     let posts = match query.offset(offset).limit(number).all(&state.db).await {
         Ok(p) => p,
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let items: Vec<String> = posts
@@ -855,7 +855,7 @@ async fn handle_new_post(state: &AppState, params: &[XmlRpcValue]) -> String {
 
             xml_rpc_response(&value_string(&inserted.id.to_string()))
         }
-        Err(e) => xml_rpc_fault(500, &format!("Failed to create post: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to create post: {e}")),
     }
 }
 
@@ -871,7 +871,7 @@ async fn handle_edit_post(state: &AppState, params: &[XmlRpcValue]) -> String {
     let existing = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let content = match params.get(4) {
@@ -901,7 +901,7 @@ async fn handle_edit_post(state: &AppState, params: &[XmlRpcValue]) -> String {
 
     match active.update(&state.db).await {
         Ok(_) => xml_rpc_response(&value_bool(true)),
-        Err(e) => xml_rpc_fault(500, &format!("Failed to update post: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to update post: {e}")),
     }
 }
 
@@ -918,7 +918,7 @@ async fn handle_delete_post(state: &AppState, params: &[XmlRpcValue]) -> String 
     let existing = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let mut active: wp_posts::ActiveModel = existing.into();
@@ -929,7 +929,7 @@ async fn handle_delete_post(state: &AppState, params: &[XmlRpcValue]) -> String 
 
     match active.update(&state.db).await {
         Ok(_) => xml_rpc_response(&value_bool(true)),
-        Err(e) => xml_rpc_fault(500, &format!("Failed to delete post: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to delete post: {e}")),
     }
 }
 
@@ -953,7 +953,7 @@ async fn handle_get_taxonomies(state: &AppState, params: &[XmlRpcValue], method:
         .await
     {
         Ok(t) => t,
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     // Build a map of term_id -> term_taxonomy, then fetch the term names
@@ -1111,7 +1111,7 @@ async fn handle_get_users(state: &AppState, params: &[XmlRpcValue]) -> String {
 
     let users = match wp_users::Entity::find().limit(limit).all(&state.db).await {
         Ok(u) => u,
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let items: Vec<String> = users
@@ -1176,7 +1176,7 @@ async fn handle_metaweblog_get_post(state: &AppState, params: &[XmlRpcValue]) ->
     let post = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     xml_rpc_response(&post_to_metaweblog(&post, &state.site_url))
@@ -1199,7 +1199,7 @@ async fn handle_metaweblog_get_recent_posts(state: &AppState, params: &[XmlRpcVa
         .await
     {
         Ok(p) => p,
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let items: Vec<String> = posts
@@ -1267,7 +1267,7 @@ async fn handle_metaweblog_new_post(state: &AppState, params: &[XmlRpcValue]) ->
 
             xml_rpc_response(&value_string(&inserted.id.to_string()))
         }
-        Err(e) => xml_rpc_fault(500, &format!("Failed to create post: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to create post: {e}")),
     }
 }
 
@@ -1283,7 +1283,7 @@ async fn handle_metaweblog_edit_post(state: &AppState, params: &[XmlRpcValue]) -
     let existing = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let content = match params.get(3) {
@@ -1318,7 +1318,7 @@ async fn handle_metaweblog_edit_post(state: &AppState, params: &[XmlRpcValue]) -
 
     match active.update(&state.db).await {
         Ok(_) => xml_rpc_response(&value_bool(true)),
-        Err(e) => xml_rpc_fault(500, &format!("Failed to update post: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to update post: {e}")),
     }
 }
 
@@ -1365,7 +1365,7 @@ async fn handle_get_comments(state: &AppState, params: &[XmlRpcValue]) -> String
 
     let comments = match query.all(&state.db).await {
         Ok(c) => c,
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let items: Vec<String> = comments.iter().map(comment_to_xmlrpc).collect();
@@ -1416,7 +1416,7 @@ async fn handle_new_comment(state: &AppState, params: &[XmlRpcValue]) -> String 
 
     match new_comment.insert(&state.db).await {
         Ok(inserted) => xml_rpc_response(&value_int(inserted.comment_id as i64)),
-        Err(e) => xml_rpc_fault(500, &format!("Failed to create comment: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to create comment: {e}")),
     }
 }
 
@@ -1434,7 +1434,7 @@ async fn handle_edit_comment(state: &AppState, params: &[XmlRpcValue]) -> String
     {
         Ok(Some(c)) => c,
         Ok(None) => return xml_rpc_fault(404, "Comment not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let comment_struct = match params.get(4) {
@@ -1468,7 +1468,7 @@ async fn handle_edit_comment(state: &AppState, params: &[XmlRpcValue]) -> String
 
     match active.update(&state.db).await {
         Ok(_) => xml_rpc_response(&value_bool(true)),
-        Err(e) => xml_rpc_fault(500, &format!("Failed to update comment: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to update comment: {e}")),
     }
 }
 
@@ -1486,7 +1486,7 @@ async fn handle_delete_comment(state: &AppState, params: &[XmlRpcValue]) -> Stri
     {
         Ok(Some(c)) => c,
         Ok(None) => return xml_rpc_fault(404, "Comment not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let mut active: wp_comments::ActiveModel = existing.into();
@@ -1494,7 +1494,7 @@ async fn handle_delete_comment(state: &AppState, params: &[XmlRpcValue]) -> Stri
 
     match active.update(&state.db).await {
         Ok(_) => xml_rpc_response(&value_bool(true)),
-        Err(e) => xml_rpc_fault(500, &format!("Failed to delete comment: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to delete comment: {e}")),
     }
 }
 
@@ -1558,7 +1558,7 @@ async fn handle_upload_file(
         .decode(bits_b64.replace(['\n', '\r', ' '], "").as_bytes())
     {
         Ok(b) => b,
-        Err(e) => return xml_rpc_fault(400, &format!("Invalid base64: {}", e)),
+        Err(e) => return xml_rpc_fault(400, &format!("Invalid base64: {e}")),
     };
 
     // Determine upload path (uploads/YYYY/MM/)
@@ -1566,7 +1566,7 @@ async fn handle_upload_file(
     let sub_dir = now.format("%Y/%m").to_string();
     let upload_dir = std::path::PathBuf::from("wp-content/uploads").join(&sub_dir);
     if let Err(e) = std::fs::create_dir_all(&upload_dir) {
-        return xml_rpc_fault(500, &format!("Failed to create upload dir: {}", e));
+        return xml_rpc_fault(500, &format!("Failed to create upload dir: {e}"));
     }
 
     // Sanitize filename
@@ -1583,7 +1583,7 @@ async fn handle_upload_file(
     let file_path = upload_dir.join(&safe_name);
 
     if let Err(e) = std::fs::write(&file_path, &file_bytes) {
-        return xml_rpc_fault(500, &format!("Failed to write file: {}", e));
+        return xml_rpc_fault(500, &format!("Failed to write file: {e}"));
     }
 
     let file_url = format!(
@@ -1634,7 +1634,7 @@ async fn handle_upload_file(
             meta_id: sea_orm::ActiveValue::NotSet,
             post_id: Set(attachment_id),
             meta_key: Set(Some("_wp_attached_file".to_string())),
-            meta_value: Set(Some(format!("{}/{}", sub_dir, safe_name))),
+            meta_value: Set(Some(format!("{sub_dir}/{safe_name}"))),
         };
         let _ = meta.insert(&state.db).await;
     }
@@ -1663,7 +1663,7 @@ async fn handle_get_media_item(state: &AppState, params: &[XmlRpcValue]) -> Stri
         Ok(Some(p)) if p.post_type == "attachment" => p,
         Ok(Some(_)) => return xml_rpc_fault(404, "Not an attachment"),
         Ok(None) => return xml_rpc_fault(404, "Media item not found"),
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     xml_rpc_response(&media_item_to_xmlrpc(&post))
@@ -1695,7 +1695,7 @@ async fn handle_get_media_library(state: &AppState, params: &[XmlRpcValue]) -> S
         // Allow prefix match: "image" matches "image/jpeg", "image/png", etc.
         if !mime_type_filter.contains('/') {
             query = query
-                .filter(wp_posts::Column::PostMimeType.like(format!("{}/%", mime_type_filter)));
+                .filter(wp_posts::Column::PostMimeType.like(format!("{mime_type_filter}/%")));
         } else {
             query = query.filter(wp_posts::Column::PostMimeType.eq(&mime_type_filter));
         }
@@ -1703,7 +1703,7 @@ async fn handle_get_media_library(state: &AppState, params: &[XmlRpcValue]) -> S
 
     let attachments = match query.all(&state.db).await {
         Ok(a) => a,
-        Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Database error: {e}")),
     };
 
     let items: Vec<String> = attachments.iter().map(media_item_to_xmlrpc).collect();
@@ -1793,8 +1793,7 @@ async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> Strin
     // Insert pingback comment
     let now = chrono::Utc::now().naive_utc();
     let pingback_content = format!(
-        "[…] <a href=\"{}\">Pingback from {}</a> […]",
-        source_uri, source_uri
+        "[…] <a href=\"{source_uri}\">Pingback from {source_uri}</a> […]"
     );
 
     let new_pingback = wp_comments::ActiveModel {
@@ -1817,7 +1816,7 @@ async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> Strin
 
     match new_pingback.insert(&state.db).await {
         Ok(_) => xml_rpc_response(&value_string("Pingback registered.")),
-        Err(e) => xml_rpc_fault(500, &format!("Failed to register pingback: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to register pingback: {e}")),
     }
 }
 
@@ -2114,7 +2113,7 @@ async fn handle_new_term(state: &AppState, params: &[XmlRpcValue]) -> String {
     };
     let inserted = match new_term.insert(&state.db).await {
         Ok(t) => t,
-        Err(e) => return xml_rpc_fault(500, &format!("Failed to insert term: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Failed to insert term: {e}")),
     };
 
     // Insert into wp_term_taxonomy
@@ -2127,7 +2126,7 @@ async fn handle_new_term(state: &AppState, params: &[XmlRpcValue]) -> String {
         count: Set(0),
     };
     if let Err(e) = new_tt.insert(&state.db).await {
-        return xml_rpc_fault(500, &format!("Failed to insert term taxonomy: {}", e));
+        return xml_rpc_fault(500, &format!("Failed to insert term taxonomy: {e}"));
     }
 
     xml_rpc_response(&value_string(&inserted.term_id.to_string()))
@@ -2165,7 +2164,7 @@ async fn handle_edit_term(state: &AppState, params: &[XmlRpcValue]) -> String {
     }
 
     if let Err(e) = active.update(&state.db).await {
-        return xml_rpc_fault(500, &format!("Failed to update term: {}", e));
+        return xml_rpc_fault(500, &format!("Failed to update term: {e}"));
     }
 
     // Update term_taxonomy
@@ -2234,7 +2233,7 @@ async fn handle_delete_term(state: &AppState, params: &[XmlRpcValue]) -> String 
     if let Ok(Some(term)) = wp_terms::Entity::find_by_id(term_id).one(&state.db).await {
         let active: wp_terms::ActiveModel = term.into();
         if let Err(e) = active.delete(&state.db).await {
-            return xml_rpc_fault(500, &format!("Failed to delete term: {}", e));
+            return xml_rpc_fault(500, &format!("Failed to delete term: {e}"));
         }
     } else {
         return xml_rpc_fault(404, "Term not found");
@@ -2285,7 +2284,7 @@ async fn handle_new_category(state: &AppState, params: &[XmlRpcValue]) -> String
     };
     let inserted = match new_term.insert(&state.db).await {
         Ok(t) => t,
-        Err(e) => return xml_rpc_fault(500, &format!("Failed to create category: {}", e)),
+        Err(e) => return xml_rpc_fault(500, &format!("Failed to create category: {e}")),
     };
 
     let new_tt = wp_term_taxonomy::ActiveModel {
@@ -2454,7 +2453,7 @@ async fn handle_edit_profile(state: &AppState, params: &[XmlRpcValue]) -> String
             }
             xml_rpc_response(&value_bool(true))
         }
-        Err(e) => xml_rpc_fault(500, &format!("Failed to update profile: {}", e)),
+        Err(e) => xml_rpc_fault(500, &format!("Failed to update profile: {e}")),
     }
 }
 
@@ -2652,7 +2651,7 @@ mod tests {
 
         let (_, params) = parse_xml_rpc_request(xml).unwrap();
         assert_eq!(params[0].as_i64(), 42);
-        assert_eq!(params[1].as_bool(), true);
+        assert!(params[1].as_bool());
         assert_eq!(params[2].as_i64(), -7);
     }
 

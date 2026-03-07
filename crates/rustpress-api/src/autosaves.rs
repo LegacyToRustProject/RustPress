@@ -67,7 +67,7 @@ async fn list_autosaves(
         .map_err(|e| WpError::internal(e.to_string()))?
         .ok_or_else(|| WpError::not_found("Post not found"))?;
 
-    let autosave_name = format!("{}-autosave-v1", parent_id);
+    let autosave_name = format!("{parent_id}-autosave-v1");
 
     let revisions = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostParent.eq(parent_id))
@@ -126,7 +126,7 @@ async fn create_autosave(
         .ok_or_else(|| WpError::not_found("Post not found"))?;
 
     let now = chrono::Utc::now().naive_utc();
-    let autosave_name = format!("{}-autosave-v1", parent_id);
+    let autosave_name = format!("{parent_id}-autosave-v1");
 
     let title = body.title.unwrap_or_else(|| parent.post_title.clone());
     let content = body.content.unwrap_or_else(|| parent.post_content.clone());

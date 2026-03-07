@@ -99,8 +99,7 @@ fn analyze_title(input: &AnalysisInput, recs: &mut Vec<SeoRecommendation>) {
             category: "Title".into(),
             score: SeoScore::Ok,
             message: format!(
-                "Title is too short ({} chars). Aim for 50-60 characters.",
-                title_len
+                "Title is too short ({title_len} chars). Aim for 50-60 characters."
             ),
         });
     } else if title_len > 60 {
@@ -108,15 +107,14 @@ fn analyze_title(input: &AnalysisInput, recs: &mut Vec<SeoRecommendation>) {
             category: "Title".into(),
             score: SeoScore::Ok,
             message: format!(
-                "Title is too long ({} chars). Keep it under 60 characters to avoid truncation in search results.",
-                title_len
+                "Title is too long ({title_len} chars). Keep it under 60 characters to avoid truncation in search results."
             ),
         });
     } else {
         recs.push(SeoRecommendation {
             category: "Title".into(),
             score: SeoScore::Good,
-            message: format!("Title length is good ({} chars).", title_len),
+            message: format!("Title length is good ({title_len} chars)."),
         });
     }
 
@@ -151,8 +149,7 @@ fn analyze_meta_description(input: &AnalysisInput, recs: &mut Vec<SeoRecommendat
             category: "Meta Description".into(),
             score: SeoScore::Ok,
             message: format!(
-                "Meta description is short ({} chars). Aim for 150-160 characters.",
-                desc_len
+                "Meta description is short ({desc_len} chars). Aim for 150-160 characters."
             ),
         });
     } else if desc_len > 160 {
@@ -160,15 +157,14 @@ fn analyze_meta_description(input: &AnalysisInput, recs: &mut Vec<SeoRecommendat
             category: "Meta Description".into(),
             score: SeoScore::Ok,
             message: format!(
-                "Meta description is too long ({} chars). Keep it under 160 characters.",
-                desc_len
+                "Meta description is too long ({desc_len} chars). Keep it under 160 characters."
             ),
         });
     } else {
         recs.push(SeoRecommendation {
             category: "Meta Description".into(),
             score: SeoScore::Good,
-            message: format!("Meta description length is good ({} chars).", desc_len),
+            message: format!("Meta description length is good ({desc_len} chars)."),
         });
     }
 
@@ -205,22 +201,21 @@ fn analyze_keyword(
         recs.push(SeoRecommendation {
             category: "Keyword Density".into(),
             score: SeoScore::NeedsImprovement,
-            message: format!("Keyword density is low ({:.1}%). Aim for 1-3%.", density),
+            message: format!("Keyword density is low ({density:.1}%). Aim for 1-3%."),
         });
     } else if density > 3.0 {
         recs.push(SeoRecommendation {
             category: "Keyword Density".into(),
             score: SeoScore::NeedsImprovement,
             message: format!(
-                "Keyword density is too high ({:.1}%). This may look like keyword stuffing. Aim for 1-3%.",
-                density
+                "Keyword density is too high ({density:.1}%). This may look like keyword stuffing. Aim for 1-3%."
             ),
         });
     } else {
         recs.push(SeoRecommendation {
             category: "Keyword Density".into(),
             score: SeoScore::Good,
-            message: format!("Keyword density is good ({:.1}%).", density),
+            message: format!("Keyword density is good ({density:.1}%)."),
         });
     }
 
@@ -251,8 +246,7 @@ fn analyze_content_length(word_count: usize, recs: &mut Vec<SeoRecommendation>) 
             category: "Content Length".into(),
             score: SeoScore::NeedsImprovement,
             message: format!(
-                "Content is too short ({} words). Aim for at least 300 words.",
-                word_count
+                "Content is too short ({word_count} words). Aim for at least 300 words."
             ),
         });
     } else if word_count < 600 {
@@ -260,15 +254,14 @@ fn analyze_content_length(word_count: usize, recs: &mut Vec<SeoRecommendation>) 
             category: "Content Length".into(),
             score: SeoScore::Ok,
             message: format!(
-                "Content length is acceptable ({} words). Longer content (1000+) tends to rank better.",
-                word_count
+                "Content length is acceptable ({word_count} words). Longer content (1000+) tends to rank better."
             ),
         });
     } else {
         recs.push(SeoRecommendation {
             category: "Content Length".into(),
             score: SeoScore::Good,
-            message: format!("Content length is good ({} words).", word_count),
+            message: format!("Content length is good ({word_count} words)."),
         });
     }
 }
@@ -279,8 +272,7 @@ fn analyze_readability_score(score: f64, recs: &mut Vec<SeoRecommendation>) {
             category: "Readability".into(),
             score: SeoScore::Good,
             message: format!(
-                "Readability score is good ({:.0}). Content is easy to read.",
-                score
+                "Readability score is good ({score:.0}). Content is easy to read."
             ),
         });
     } else if score >= 30.0 {
@@ -288,8 +280,7 @@ fn analyze_readability_score(score: f64, recs: &mut Vec<SeoRecommendation>) {
             category: "Readability".into(),
             score: SeoScore::Ok,
             message: format!(
-                "Readability score is average ({:.0}). Consider using shorter sentences.",
-                score
+                "Readability score is average ({score:.0}). Consider using shorter sentences."
             ),
         });
     } else {
@@ -297,8 +288,7 @@ fn analyze_readability_score(score: f64, recs: &mut Vec<SeoRecommendation>) {
             category: "Readability".into(),
             score: SeoScore::NeedsImprovement,
             message: format!(
-                "Readability score is low ({:.0}). Use shorter sentences and simpler words.",
-                score
+                "Readability score is low ({score:.0}). Use shorter sentences and simpler words."
             ),
         });
     }
@@ -591,8 +581,7 @@ mod tests {
         let score = calculate_readability(text);
         assert!(
             score > 50.0,
-            "Simple text should have high readability: {}",
-            score
+            "Simple text should have high readability: {score}"
         );
     }
 

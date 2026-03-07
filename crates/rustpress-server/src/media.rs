@@ -77,7 +77,7 @@ pub fn process_image(
     upload_dir: &Path,
     sizes: &[ImageSize],
 ) -> Result<ImageMetadata, String> {
-    let img = image::open(file_path).map_err(|e| format!("Failed to open image: {}", e))?;
+    let img = image::open(file_path).map_err(|e| format!("Failed to open image: {e}"))?;
 
     let original_width = img.width();
     let original_height = img.height();
@@ -124,7 +124,7 @@ pub fn process_image(
             img.resize(new_width, new_height, FilterType::Lanczos3)
         };
 
-        let size_filename = format!("{}-{}x{}.{}", file_stem, new_width, new_height, extension);
+        let size_filename = format!("{file_stem}-{new_width}x{new_height}.{extension}");
         let size_path = upload_dir.join(&size_filename);
 
         match resized.save(&size_path) {
@@ -207,7 +207,7 @@ fn mime_from_extension(ext: &str) -> String {
         "webp" => "image/webp".to_string(),
         "bmp" => "image/bmp".to_string(),
         "svg" => "image/svg+xml".to_string(),
-        _ => format!("image/{}", ext),
+        _ => format!("image/{ext}"),
     }
 }
 

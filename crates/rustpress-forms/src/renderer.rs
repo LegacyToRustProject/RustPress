@@ -115,7 +115,7 @@ pub fn render_field(field: &FieldConfig) -> String {
         }
         FormField::Radio => {
             for (i, opt) in field.options.iter().enumerate() {
-                let radio_id = format!("{}-{}", id, i);
+                let radio_id = format!("{id}-{i}");
                 let checked = if Some(opt.as_str()) == field.default_value.as_deref() {
                     " checked"
                 } else {
@@ -150,7 +150,7 @@ pub fn render_field(field: &FieldConfig) -> String {
             } else {
                 // Multiple checkboxes
                 for (i, opt) in field.options.iter().enumerate() {
-                    let cb_id = format!("{}-{}", id, i);
+                    let cb_id = format!("{id}-{i}");
                     html.push_str(&format!(
                         "    <label class=\"checkbox-label\"><input type=\"checkbox\" id=\"{}\" name=\"{}[]\" value=\"{}\"> {}</label>\n",
                         esc_attr(&cb_id),
@@ -181,16 +181,16 @@ pub fn render_field(field: &FieldConfig) -> String {
             for rule in &field.validation_rules {
                 match rule {
                     crate::validation::ValidationRule::MinLength(n) => {
-                        extra_attrs.push_str(&format!(" minlength=\"{}\"", n));
+                        extra_attrs.push_str(&format!(" minlength=\"{n}\""));
                     }
                     crate::validation::ValidationRule::MaxLength(n) => {
-                        extra_attrs.push_str(&format!(" maxlength=\"{}\"", n));
+                        extra_attrs.push_str(&format!(" maxlength=\"{n}\""));
                     }
                     crate::validation::ValidationRule::Min(n) => {
-                        extra_attrs.push_str(&format!(" min=\"{}\"", n));
+                        extra_attrs.push_str(&format!(" min=\"{n}\""));
                     }
                     crate::validation::ValidationRule::Max(n) => {
-                        extra_attrs.push_str(&format!(" max=\"{}\"", n));
+                        extra_attrs.push_str(&format!(" max=\"{n}\""));
                     }
                     crate::validation::ValidationRule::Pattern(p) => {
                         extra_attrs.push_str(&format!(" pattern=\"{}\"", esc_attr(p)));

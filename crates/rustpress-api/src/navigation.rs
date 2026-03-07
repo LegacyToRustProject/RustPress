@@ -148,7 +148,7 @@ async fn list_navigation(
 
     // Search filter
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{search}%")));
     }
 
     // Slug filter

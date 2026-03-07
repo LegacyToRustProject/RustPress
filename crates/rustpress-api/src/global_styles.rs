@@ -92,7 +92,7 @@ async fn get_theme_global_styles(
     State(state): State<ApiState>,
     Path(stylesheet): Path<String>,
 ) -> Result<Json<Value>, WpError> {
-    let id = format!("wp-global-styles-{}", stylesheet);
+    let id = format!("wp-global-styles-{stylesheet}");
     let base = state.site_url.trim_end_matches('/').to_string();
     let mut gs = default_global_styles(&id, &stylesheet);
     if let Some(obj) = gs.as_object_mut() {
@@ -158,7 +158,7 @@ async fn update_global_styles(
     use sea_orm::ActiveModelTrait;
     use sea_orm::ActiveValue::Set;
 
-    let option_key = format!("wp_global_styles_{}", id);
+    let option_key = format!("wp_global_styles_{id}");
     let serialized = serde_json::to_string(&body).unwrap_or_else(|_| "{}".to_string());
 
     // Upsert into wp_options

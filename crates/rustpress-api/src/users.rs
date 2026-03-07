@@ -234,7 +234,7 @@ fn serialize_wp_capabilities(roles: &[String]) -> String {
     for role in roles {
         inner.push_str(&format!("s:{}:\"{}\";b:1;", role.len(), role));
     }
-    format!("a:{}:{{{}}}", count, inner)
+    format!("a:{count}:{{{inner}}}")
 }
 
 async fn list_users(
@@ -257,7 +257,7 @@ async fn list_users(
 
     // Filter: search (on user_login, display_name, user_email)
     if let Some(ref search) = params.search {
-        let pattern = format!("%{}%", search);
+        let pattern = format!("%{search}%");
         count_query = count_query.filter(
             sea_orm::Condition::any()
                 .add(wp_users::Column::UserLogin.like(&pattern))
@@ -636,8 +636,7 @@ async fn delete_user(
 
         if target.is_none() {
             return Err(WpError::bad_request(format!(
-                "Reassign target user {} not found.",
-                reassign_id
+                "Reassign target user {reassign_id} not found."
             )));
         }
 

@@ -63,8 +63,7 @@ pub async fn insert_default_options(
 
     for (name, value) in defaults {
         let sql = format!(
-            "INSERT IGNORE INTO wp_options (option_name, option_value, autoload) VALUES ('{}', '{}', 'yes')",
-            name, value
+            "INSERT IGNORE INTO wp_options (option_name, option_value, autoload) VALUES ('{name}', '{value}', 'yes')"
         );
         db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
             .await?;
@@ -80,8 +79,7 @@ pub async fn create_default_admin(
     password_hash: &str,
 ) -> Result<(), DbErr> {
     let sql = format!(
-        "INSERT IGNORE INTO wp_users (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_activation_key, user_status, display_name) VALUES ('admin', '{}', 'admin', 'admin@example.com', '', NOW(), '', 0, 'Admin')",
-        password_hash
+        "INSERT IGNORE INTO wp_users (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_activation_key, user_status, display_name) VALUES ('admin', '{password_hash}', 'admin', 'admin@example.com', '', NOW(), '', 0, 'Admin')"
     );
 
     db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))

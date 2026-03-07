@@ -394,7 +394,7 @@ mod tests {
         let total_pages = if total == 0 {
             0
         } else {
-            (total + per_page - 1) / per_page
+            total.div_ceil(per_page)
         };
         PaginatedResult {
             items: Vec::new(),

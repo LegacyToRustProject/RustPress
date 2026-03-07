@@ -25,9 +25,9 @@ const DEFAULT_PREFIX: &str = "wp";
 /// ```
 pub fn table_name(blog_id: u64, base_table: &str) -> String {
     if is_main_site(blog_id) {
-        format!("{}_{}", DEFAULT_PREFIX, base_table)
+        format!("{DEFAULT_PREFIX}_{base_table}")
     } else {
-        format!("{}_{}_{}", DEFAULT_PREFIX, blog_id, base_table)
+        format!("{DEFAULT_PREFIX}_{blog_id}_{base_table}")
     }
 }
 
@@ -43,9 +43,9 @@ pub fn table_name(blog_id: u64, base_table: &str) -> String {
 /// ```
 pub fn table_name_with_prefix(prefix: &str, blog_id: u64, base_table: &str) -> String {
     if is_main_site(blog_id) {
-        format!("{}_{}", prefix, base_table)
+        format!("{prefix}_{base_table}")
     } else {
-        format!("{}_{}_{}", prefix, blog_id, base_table)
+        format!("{prefix}_{blog_id}_{base_table}")
     }
 }
 

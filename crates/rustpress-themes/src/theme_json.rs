@@ -122,14 +122,14 @@ impl ThemeJson {
     /// Load and parse theme.json from a file path.
     pub fn from_file(path: &Path) -> Result<Self, String> {
         let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read theme.json: {}", e))?;
-        serde_json::from_str(&content).map_err(|e| format!("Failed to parse theme.json: {}", e))
+            .map_err(|e| format!("Failed to read theme.json: {e}"))?;
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse theme.json: {e}"))
     }
 
     /// Load from a JSON string.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(json: &str) -> Result<Self, String> {
-        serde_json::from_str(json).map_err(|e| format!("Failed to parse theme.json: {}", e))
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse theme.json: {e}"))
     }
 
     /// Generate CSS custom properties matching WordPress's global-styles-inline-css output.
@@ -183,10 +183,10 @@ impl ThemeJson {
 
         // Layout
         if let Some(ref cs) = self.settings.layout.content_size {
-            vars.push(format!("\t--wp--style--global--content-size: {};", cs));
+            vars.push(format!("\t--wp--style--global--content-size: {cs};"));
         }
         if let Some(ref ws) = self.settings.layout.wide_size {
-            vars.push(format!("\t--wp--style--global--wide-size: {};", ws));
+            vars.push(format!("\t--wp--style--global--wide-size: {ws};"));
         }
 
         // Build CSS
@@ -236,8 +236,7 @@ impl ThemeJson {
                 let diff = max_rem - min_rem;
                 let factor = diff / 80.0; // (1600-320)/16 = 80rem range
                 format!(
-                    "clamp({}, calc({} + ((100vw - 20rem) * {:.4})), {})",
-                    min, min, factor, max
+                    "clamp({min}, calc({min} + ((100vw - 20rem) * {factor:.4})), {max})"
                 )
             }
             Value::Bool(false) => fs.size.clone(),
@@ -276,7 +275,7 @@ impl ThemeJson {
                         } else {
                             "woff2"
                         };
-                        format!("url(\"{}\") format(\"{}\")", path, format)
+                        format!("url(\"{path}\") format(\"{format}\")")
                     })
                     .collect();
                 css.push_str(&format!("\tsrc: {};\n", srcs.join(", ")));
@@ -322,19 +321,19 @@ impl ThemeJson {
             .pointer("/typography/fontWeight")
             .and_then(|v| v.as_str())
         {
-            body_props.push(format!("\tfont-weight: {};", fw));
+            body_props.push(format!("\tfont-weight: {fw};"));
         }
         if let Some(lh) = styles
             .pointer("/typography/lineHeight")
             .and_then(|v| v.as_str())
         {
-            body_props.push(format!("\tline-height: {};", lh));
+            body_props.push(format!("\tline-height: {lh};"));
         }
         if let Some(ls) = styles
             .pointer("/typography/letterSpacing")
             .and_then(|v| v.as_str())
         {
-            body_props.push(format!("\tletter-spacing: {};", ls));
+            body_props.push(format!("\tletter-spacing: {ls};"));
         }
 
         // Spacing
@@ -423,9 +422,9 @@ impl ThemeJson {
                 };
                 let declarations = extract_css_declarations(props);
                 if !declarations.is_empty() {
-                    css.push_str(&format!("{} {{\n", selector));
+                    css.push_str(&format!("{selector} {{\n"));
                     for decl in &declarations {
-                        css.push_str(&format!("\t{};\n", decl));
+                        css.push_str(&format!("\t{decl};\n"));
                     }
                     css.push_str("}\n");
                 }
@@ -439,9 +438,9 @@ impl ThemeJson {
                             "button" => ".wp-element-button:hover, .wp-block-button__link:hover",
                             _ => continue,
                         };
-                        css.push_str(&format!("{} {{\n", hover_sel));
+                        css.push_str(&format!("{hover_sel} {{\n"));
                         for decl in &hover_decls {
-                            css.push_str(&format!("\t{};\n", decl));
+                            css.push_str(&format!("\t{decl};\n"));
                         }
                         css.push_str("}\n");
                     }
@@ -471,9 +470,9 @@ impl ThemeJson {
 
                 let declarations = extract_css_declarations(props);
                 if !declarations.is_empty() {
-                    css.push_str(&format!("{} {{\n", selector));
+                    css.push_str(&format!("{selector} {{\n"));
                     for decl in &declarations {
-                        css.push_str(&format!("\t{};\n", decl));
+                        css.push_str(&format!("\t{decl};\n"));
                     }
                     css.push_str("}\n");
                 }
@@ -488,9 +487,9 @@ impl ThemeJson {
                         };
                         let decls = extract_css_declarations(elem_props);
                         if !decls.is_empty() {
-                            css.push_str(&format!("{} {} {{\n", selector, elem_sel));
+                            css.push_str(&format!("{selector} {elem_sel} {{\n"));
                             for decl in &decls {
-                                css.push_str(&format!("\t{};\n", decl));
+                                css.push_str(&format!("\t{decl};\n"));
                             }
                             css.push_str("}\n");
                         }
@@ -499,9 +498,9 @@ impl ThemeJson {
                         if let Some(hover) = elem_props.get(":hover") {
                             let hover_decls = extract_css_declarations(hover);
                             if !hover_decls.is_empty() {
-                                css.push_str(&format!("{} {}:hover {{\n", selector, elem_sel));
+                                css.push_str(&format!("{selector} {elem_sel}:hover {{\n"));
                                 for decl in &hover_decls {
-                                    css.push_str(&format!("\t{};\n", decl));
+                                    css.push_str(&format!("\t{decl};\n"));
                                 }
                                 css.push_str("}\n");
                             }
@@ -512,7 +511,7 @@ impl ThemeJson {
                 // Inline CSS property (raw CSS)
                 if let Some(raw_css) = props.get("css").and_then(|v| v.as_str()) {
                     // WordPress prefixes with the block selector
-                    css.push_str(&format!("{} {{ {} }}\n", selector, raw_css));
+                    css.push_str(&format!("{selector} {{ {raw_css} }}\n"));
                 }
             }
         }
@@ -588,7 +587,7 @@ fn block_name_to_selector(name: &str) -> String {
         _ => {
             // Generic: core/foo-bar → .wp-block-foo-bar
             if let Some(name) = name.strip_prefix("core/") {
-                format!(".wp-block-{}", name)
+                format!(".wp-block-{name}")
             } else {
                 String::new()
             }
@@ -625,31 +624,31 @@ fn extract_css_declarations(props: &Value) -> Vec<String> {
         .pointer("/typography/fontWeight")
         .and_then(|v| v.as_str())
     {
-        decls.push(format!("font-weight: {}", fw));
+        decls.push(format!("font-weight: {fw}"));
     }
     if let Some(lh) = props
         .pointer("/typography/lineHeight")
         .and_then(|v| v.as_str())
     {
-        decls.push(format!("line-height: {}", lh));
+        decls.push(format!("line-height: {lh}"));
     }
     if let Some(ls) = props
         .pointer("/typography/letterSpacing")
         .and_then(|v| v.as_str())
     {
-        decls.push(format!("letter-spacing: {}", ls));
+        decls.push(format!("letter-spacing: {ls}"));
     }
     if let Some(td) = props
         .pointer("/typography/textDecoration")
         .and_then(|v| v.as_str())
     {
-        decls.push(format!("text-decoration: {}", td));
+        decls.push(format!("text-decoration: {td}"));
     }
     if let Some(tt) = props
         .pointer("/typography/textTransform")
         .and_then(|v| v.as_str())
     {
-        decls.push(format!("text-transform: {}", tt));
+        decls.push(format!("text-transform: {tt}"));
     }
 
     // Spacing
@@ -695,20 +694,20 @@ fn extract_css_declarations(props: &Value) -> Vec<String> {
 
     // Border
     if let Some(br) = props.pointer("/border/radius").and_then(|v| v.as_str()) {
-        decls.push(format!("border-radius: {}", br));
+        decls.push(format!("border-radius: {br}"));
     }
     if let Some(bc) = props.pointer("/border/color").and_then(|v| v.as_str()) {
         decls.push(format!("border-color: {}", resolve_var_ref(bc)));
     }
     if let Some(bw) = props.pointer("/border/width").and_then(|v| v.as_str()) {
-        decls.push(format!("border-width: {}", bw));
+        decls.push(format!("border-width: {bw}"));
     }
     if let Some(bs) = props.pointer("/border/style").and_then(|v| v.as_str()) {
-        decls.push(format!("border-style: {}", bs));
+        decls.push(format!("border-style: {bs}"));
     }
     // Individual side borders
     for side in &["top", "right", "bottom", "left"] {
-        if let Some(border_side) = props.pointer(&format!("/border/{}", side)) {
+        if let Some(border_side) = props.pointer(&format!("/border/{side}")) {
             if let Some(obj) = border_side.as_object() {
                 let mut parts = Vec::new();
                 if let Some(w) = obj.get("width").and_then(|v| v.as_str()) {
@@ -746,13 +745,13 @@ fn extract_css_declarations(props: &Value) -> Vec<String> {
         decls.push(format!("outline-color: {}", resolve_var_ref(oc)));
     }
     if let Some(ow) = props.pointer("/outline/width").and_then(|v| v.as_str()) {
-        decls.push(format!("outline-width: {}", ow));
+        decls.push(format!("outline-width: {ow}"));
     }
     if let Some(os) = props.pointer("/outline/style").and_then(|v| v.as_str()) {
-        decls.push(format!("outline-style: {}", os));
+        decls.push(format!("outline-style: {os}"));
     }
     if let Some(oo) = props.pointer("/outline/offset").and_then(|v| v.as_str()) {
-        decls.push(format!("outline-offset: {}", oo));
+        decls.push(format!("outline-offset: {oo}"));
     }
 
     // Dimensions

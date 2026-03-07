@@ -104,7 +104,7 @@ fn render_admin(state: &AppState, template: &str, context: &tera::Context) -> Ht
         Ok(html) => Html(html),
         Err(e) => {
             tracing::error!("Plugin admin template error: {}", e);
-            Html(format!("<h1>Admin Template Error</h1><pre>{}</pre>", e))
+            Html(format!("<h1>Admin Template Error</h1><pre>{e}</pre>"))
         }
     }
 }
@@ -177,7 +177,7 @@ pub async fn wc_products_page(
             "slug": woo.slug,
             "sku": woo.sku,
             "regular_price": format!("{:.2}", woo.regular_price),
-            "sale_price": woo.sale_price.map(|p| format!("{:.2}", p)),
+            "sale_price": woo.sale_price.map(|p| format!("{p:.2}")),
             "stock_quantity": woo.stock_quantity,
             "stock_status": woo.stock_status,
             "manage_stock": woo.manage_stock,
@@ -223,7 +223,7 @@ pub async fn wc_orders_page(
         let s = if status.starts_with("wc-") {
             status.clone()
         } else {
-            format!("wc-{}", status)
+            format!("wc-{status}")
         };
         query = query.filter(wp_posts::Column::PostStatus.eq(s));
     } else {

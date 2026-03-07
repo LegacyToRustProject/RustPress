@@ -135,11 +135,11 @@ mod tests {
         let cache = PageCache::new(100, 3600);
         for i in 0..5 {
             let page = CachedPage {
-                html: format!("<p>{}</p>", i),
+                html: format!("<p>{i}</p>"),
                 content_type: "text/html".to_string(),
                 status_code: 200,
             };
-            cache.set(&format!("/page/{}", i), page).await;
+            cache.set(&format!("/page/{i}"), page).await;
         }
 
         cache.flush().await;

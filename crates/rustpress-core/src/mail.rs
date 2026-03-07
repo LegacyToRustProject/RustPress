@@ -81,11 +81,11 @@ impl WpMail {
         let email = Message::builder()
             .from(
                 from.parse()
-                    .map_err(|e| MailError::Build(format!("Invalid from: {}", e)))?,
+                    .map_err(|e| MailError::Build(format!("Invalid from: {e}")))?,
             )
             .to(to
                 .parse()
-                .map_err(|e| MailError::Build(format!("Invalid to: {}", e)))?)
+                .map_err(|e| MailError::Build(format!("Invalid to: {e}")))?)
             .subject(subject)
             .header(content_type)
             .body(message.to_string())
@@ -168,11 +168,10 @@ impl WpMail {
     ) -> Result<(), MailError> {
         let subject = format!("[{}] Comment: \"{}\"", self.config.from_name, post_title);
         let message = format!(
-            "A new comment on the post \"{}\" is waiting for your approval.\n\n\
-             Author: {}\n\
-             Comment:\n{}\n\n\
-             Approve it: {}\n",
-            post_title, comment_author, comment_content, moderate_url
+            "A new comment on the post \"{post_title}\" is waiting for your approval.\n\n\
+             Author: {comment_author}\n\
+             Comment:\n{comment_content}\n\n\
+             Approve it: {moderate_url}\n"
         );
         self.wp_mail(to, &subject, &message, None).await
     }

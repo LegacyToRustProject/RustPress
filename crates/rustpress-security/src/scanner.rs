@@ -388,18 +388,16 @@ impl SecurityScanner {
                 CheckStatus::Warning
             },
             details: if long_enough && has_underscore {
-                format!("Database prefix '{}' looks strong.", prefix)
+                format!("Database prefix '{prefix}' looks strong.")
             } else if !has_underscore {
                 format!(
-                    "Database prefix '{}' does not end with underscore. \
-                     Convention is to use a trailing underscore (e.g., 'mysite_').",
-                    prefix
+                    "Database prefix '{prefix}' does not end with underscore. \
+                     Convention is to use a trailing underscore (e.g., 'mysite_')."
                 )
             } else {
                 format!(
-                    "Database prefix '{}' is short. Consider using a longer, \
-                     more unique prefix.",
-                    prefix
+                    "Database prefix '{prefix}' is short. Consider using a longer, \
+                     more unique prefix."
                 )
             },
         }
@@ -485,7 +483,7 @@ mod tests {
             .iter()
             .filter(|c| c.status == CheckStatus::Fail)
             .collect();
-        assert!(fails.is_empty(), "Expected no failures, got: {:?}", fails);
+        assert!(fails.is_empty(), "Expected no failures, got: {fails:?}");
     }
 
     #[test]

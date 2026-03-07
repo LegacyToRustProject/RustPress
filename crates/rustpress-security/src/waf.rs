@@ -124,13 +124,12 @@ impl WafEngine {
         // Build combined payload for matching.
         let header_values: String = headers
             .iter()
-            .map(|(k, v)| format!("{}: {}", k, v))
+            .map(|(k, v)| format!("{k}: {v}"))
             .collect::<Vec<_>>()
             .join("\n");
 
         let payload = format!(
-            "{}\n{}\n{}\n{}\n{}",
-            method, path, query, body, header_values
+            "{method}\n{path}\n{query}\n{body}\n{header_values}"
         );
 
         for compiled in &self.rules {
@@ -325,7 +324,7 @@ mod tests {
         );
         match result {
             WafResult::Block { rule_id, .. } => assert_eq!(rule_id, "sqli-001"),
-            other => panic!("Expected Block, got {:?}", other),
+            other => panic!("Expected Block, got {other:?}"),
         }
     }
 
@@ -341,7 +340,7 @@ mod tests {
         );
         match result {
             WafResult::Block { rule_id, .. } => assert_eq!(rule_id, "xss-001"),
-            other => panic!("Expected Block, got {:?}", other),
+            other => panic!("Expected Block, got {other:?}"),
         }
     }
 
@@ -351,7 +350,7 @@ mod tests {
         let result = engine.check_request("GET", "/../../etc/passwd", "", "", &empty_headers());
         match result {
             WafResult::Block { rule_id, .. } => assert_eq!(rule_id, "lfi-001"),
-            other => panic!("Expected Block, got {:?}", other),
+            other => panic!("Expected Block, got {other:?}"),
         }
     }
 
@@ -388,7 +387,7 @@ mod tests {
         let result = engine.check_request("GET", "/secret-admin", "", "", &empty_headers());
         match result {
             WafResult::Block { rule_id, .. } => assert_eq!(rule_id, "custom-001"),
-            other => panic!("Expected Block, got {:?}", other),
+            other => panic!("Expected Block, got {other:?}"),
         }
     }
 
@@ -413,7 +412,7 @@ mod tests {
         );
         match result {
             WafResult::Block { rule_id, .. } => assert_eq!(rule_id, "cmdi-001"),
-            other => panic!("Expected Block, got {:?}", other),
+            other => panic!("Expected Block, got {other:?}"),
         }
     }
 

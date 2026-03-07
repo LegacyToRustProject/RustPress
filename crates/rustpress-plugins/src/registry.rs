@@ -73,7 +73,7 @@ impl PluginRegistry {
         let mut plugins = self.plugins.write().await;
         let entry = plugins
             .get_mut(name)
-            .ok_or_else(|| format!("Plugin '{}' not found", name))?;
+            .ok_or_else(|| format!("Plugin '{name}' not found"))?;
 
         entry.status = PluginStatus::Active;
         info!(name, "plugin activated");
@@ -85,7 +85,7 @@ impl PluginRegistry {
         let mut plugins = self.plugins.write().await;
         let entry = plugins
             .get_mut(name)
-            .ok_or_else(|| format!("Plugin '{}' not found", name))?;
+            .ok_or_else(|| format!("Plugin '{name}' not found"))?;
 
         entry.status = PluginStatus::Inactive;
         info!(name, "plugin deactivated");
@@ -144,7 +144,7 @@ mod tests {
                 plugin_type: PluginType::Native,
             },
             status: PluginStatus::Inactive,
-            file_path: format!("/plugins/{}", name),
+            file_path: format!("/plugins/{name}"),
         }
     }
 

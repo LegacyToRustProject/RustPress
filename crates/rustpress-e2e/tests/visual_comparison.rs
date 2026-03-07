@@ -48,7 +48,7 @@ impl VisualTestHarness {
         let wp_driver = match create_webdriver(&config.webdriver_url).await {
             Ok(d) => d,
             Err(e) => {
-                eprintln!("[SKIP] Failed to create WP WebDriver: {}", e);
+                eprintln!("[SKIP] Failed to create WP WebDriver: {e}");
                 return None;
             }
         };
@@ -56,7 +56,7 @@ impl VisualTestHarness {
         let rp_driver = match create_webdriver(&config.webdriver_url).await {
             Ok(d) => d,
             Err(e) => {
-                eprintln!("[SKIP] Failed to create RP WebDriver: {}", e);
+                eprintln!("[SKIP] Failed to create RP WebDriver: {e}");
                 let _ = wp_driver.quit().await;
                 return None;
             }
@@ -112,7 +112,7 @@ async fn test_visual_homepage() {
                 );
             }
         }
-        Err(e) => panic!("Visual homepage test failed: {}", e),
+        Err(e) => panic!("Visual homepage test failed: {e}"),
     }
 }
 
@@ -156,7 +156,7 @@ async fn test_visual_single_post() {
                             );
                         }
                     }
-                    Err(e) => panic!("Visual single post test failed: {}", e),
+                    Err(e) => panic!("Visual single post test failed: {e}"),
                 }
 
                 tested = true;
@@ -211,7 +211,7 @@ async fn test_visual_page() {
                             );
                         }
                     }
-                    Err(e) => panic!("Visual page test failed: {}", e),
+                    Err(e) => panic!("Visual page test failed: {e}"),
                 }
 
                 tested = true;
@@ -260,7 +260,7 @@ async fn test_visual_404_page() {
                 );
             }
         }
-        Err(e) => panic!("Visual 404 test failed: {}", e),
+        Err(e) => panic!("Visual 404 test failed: {e}"),
     }
 }
 
@@ -297,7 +297,7 @@ async fn test_visual_search_results() {
                 );
             }
         }
-        Err(e) => panic!("Visual search test failed: {}", e),
+        Err(e) => panic!("Visual search test failed: {e}"),
     }
 }
 
@@ -340,7 +340,7 @@ async fn test_visual_category_archive() {
                             );
                         }
                     }
-                    Err(e) => panic!("Visual category test failed: {}", e),
+                    Err(e) => panic!("Visual category test failed: {e}"),
                 }
 
                 tested = true;
@@ -395,7 +395,7 @@ async fn test_visual_author_archive() {
                             );
                         }
                     }
-                    Err(e) => panic!("Visual author archive test failed: {}", e),
+                    Err(e) => panic!("Visual author archive test failed: {e}"),
                 }
 
                 tested = true;
@@ -444,7 +444,7 @@ async fn test_visual_login_page() {
                 );
             }
         }
-        Err(e) => panic!("Visual login page test failed: {}", e),
+        Err(e) => panic!("Visual login page test failed: {e}"),
     }
 }
 
@@ -478,7 +478,7 @@ async fn test_visual_full_sweep() {
     let mut failures: Vec<String> = Vec::new();
 
     for (path, label) in &pages {
-        eprintln!("\n--- Sweep: {} ({}) ---", label, path);
+        eprintln!("\n--- Sweep: {label} ({path}) ---");
 
         // Test only at desktop resolution for the sweep
         let result = visual_compare(
@@ -509,8 +509,8 @@ async fn test_visual_full_sweep() {
                 all_results.push((label.to_string(), r));
             }
             Err(e) => {
-                eprintln!("  {} — ERROR: {}", label, e);
-                failures.push(format!("{}: error - {}", label, e));
+                eprintln!("  {label} — ERROR: {e}");
+                failures.push(format!("{label}: error - {e}"));
             }
         }
     }
@@ -534,7 +534,7 @@ async fn test_visual_full_sweep() {
     if !failures.is_empty() {
         eprintln!("\n--- FAILURES ---");
         for f in &failures {
-            eprintln!("  {}", f);
+            eprintln!("  {f}");
         }
         panic!(
             "Visual sweep: {}/{} pages failed pixel-perfect comparison",

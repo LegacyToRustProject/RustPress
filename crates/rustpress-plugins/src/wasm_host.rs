@@ -172,8 +172,7 @@ impl WasmHost {
 
         if !plugin.initialized {
             return Err(WasmError::Runtime(format!(
-                "Plugin '{}' not initialized",
-                plugin_name
+                "Plugin '{plugin_name}' not initialized"
             )));
         }
 

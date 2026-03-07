@@ -118,7 +118,7 @@ async fn list_posts(
         .order_by_desc(wp_posts::Column::PostDate);
 
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{search}%")));
     }
 
     let total = query

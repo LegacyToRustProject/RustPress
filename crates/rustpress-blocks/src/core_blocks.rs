@@ -334,7 +334,7 @@ fn render_column() -> RenderCallback {
         }
         let mut style_parts = Vec::new();
         if let Some(width) = block.attrs.get("width").and_then(|v| v.as_str()) {
-            style_parts.push(format!("flex-basis:{}", width));
+            style_parts.push(format!("flex-basis:{width}"));
         }
         let style = build_style(block);
         let combined_style = if style_parts.is_empty() {
@@ -422,8 +422,7 @@ fn render_spacer() -> RenderCallback {
             })
             .unwrap_or("100px");
         format!(
-            "<div style=\"height:{}\" aria-hidden=\"true\" class=\"wp-block-spacer\"></div>",
-            height
+            "<div style=\"height:{height}\" aria-hidden=\"true\" class=\"wp-block-spacer\"></div>"
         )
     })
 }
@@ -431,7 +430,7 @@ fn render_spacer() -> RenderCallback {
 fn render_separator() -> RenderCallback {
     Arc::new(|block: &Block| {
         let class = build_class("wp-block-separator", block);
-        format!("<hr class=\"{}\" />", class)
+        format!("<hr class=\"{class}\" />")
     })
 }
 
@@ -439,7 +438,7 @@ fn render_buttons() -> RenderCallback {
     Arc::new(|block: &Block| {
         let class = build_class("wp-block-buttons", block);
         let inner = render_inner_blocks_simple(&block.inner_blocks);
-        format!("<div class=\"{}\">{}</div>", class, inner)
+        format!("<div class=\"{class}\">{inner}</div>")
     })
 }
 
@@ -464,7 +463,7 @@ fn render_cover() -> RenderCallback {
             render_inner_blocks_simple(&block.inner_blocks)
         };
 
-        let mut html = format!("<div class=\"{}\">", class);
+        let mut html = format!("<div class=\"{class}\">");
         if !url.is_empty() {
             html.push_str(&format!(
                 "<span aria-hidden=\"true\" class=\"wp-block-cover__background has-background-dim-{}\" style=\"opacity:{}\"></span>",
@@ -472,13 +471,11 @@ fn render_cover() -> RenderCallback {
                 dim_ratio as f64 / 100.0
             ));
             html.push_str(&format!(
-                "<img class=\"wp-block-cover__image-background\" alt=\"\" src=\"{}\" />",
-                url
+                "<img class=\"wp-block-cover__image-background\" alt=\"\" src=\"{url}\" />"
             ));
         }
         html.push_str(&format!(
-            "<div class=\"wp-block-cover__inner-container\">{}</div>",
-            inner
+            "<div class=\"wp-block-cover__inner-container\">{inner}</div>"
         ));
         html.push_str("</div>");
         html
@@ -505,16 +502,14 @@ fn render_media_text() -> RenderCallback {
         };
 
         let media_html = match media_type {
-            "video" => format!("<video controls src=\"{}\"></video>", media_url),
+            "video" => format!("<video controls src=\"{media_url}\"></video>"),
             _ => format!(
-                "<img src=\"{}\" alt=\"\" class=\"wp-image-media-text\" />",
-                media_url
+                "<img src=\"{media_url}\" alt=\"\" class=\"wp-image-media-text\" />"
             ),
         };
 
         format!(
-            "<div class=\"{}\"><figure class=\"wp-block-media-text__media\">{}</figure><div class=\"wp-block-media-text__content\">{}</div></div>",
-            class, media_html, inner
+            "<div class=\"{class}\"><figure class=\"wp-block-media-text__media\">{media_html}</figure><div class=\"wp-block-media-text__content\">{inner}</div></div>"
         )
     })
 }
@@ -532,13 +527,11 @@ fn render_archives() -> RenderCallback {
 
         if display_as_dropdown {
             format!(
-                "<div class=\"{}\"><label class=\"screen-reader-text\" for=\"wp-block-archives\">Archives</label><select id=\"wp-block-archives\" name=\"archive-dropdown\"><option value=\"\">Select Month</option></select></div>",
-                class
+                "<div class=\"{class}\"><label class=\"screen-reader-text\" for=\"wp-block-archives\">Archives</label><select id=\"wp-block-archives\" name=\"archive-dropdown\"><option value=\"\">Select Month</option></select></div>"
             )
         } else {
             format!(
-                "<ul class=\"{}\">\n<li>Archives will be populated dynamically</li>\n</ul>",
-                class
+                "<ul class=\"{class}\">\n<li>Archives will be populated dynamically</li>\n</ul>"
             )
         }
     })
@@ -559,20 +552,18 @@ fn render_categories() -> RenderCallback {
         let class = build_class("wp-block-categories", block);
 
         let hier_class = if show_hierarchy {
-            format!("{} wp-block-categories--hierarchy", class)
+            format!("{class} wp-block-categories--hierarchy")
         } else {
             class
         };
 
         if display_as_dropdown {
             format!(
-                "<div class=\"{}\"><label class=\"screen-reader-text\" for=\"wp-block-categories\">Categories</label><select id=\"wp-block-categories\" name=\"category-dropdown\"><option value=\"\">Select Category</option></select></div>",
-                hier_class
+                "<div class=\"{hier_class}\"><label class=\"screen-reader-text\" for=\"wp-block-categories\">Categories</label><select id=\"wp-block-categories\" name=\"category-dropdown\"><option value=\"\">Select Category</option></select></div>"
             )
         } else {
             format!(
-                "<ul class=\"{}\">\n<li>Categories will be populated dynamically</li>\n</ul>",
-                hier_class
+                "<ul class=\"{hier_class}\">\n<li>Categories will be populated dynamically</li>\n</ul>"
             )
         }
     })
@@ -596,14 +587,13 @@ fn render_latest_posts() -> RenderCallback {
         for i in 1..=posts_to_show {
             if display_post_date {
                 items.push_str(&format!(
-                    "<li><a href=\"#\">Latest Post {}</a><time>January 1, 2025</time></li>\n",
-                    i
+                    "<li><a href=\"#\">Latest Post {i}</a><time>January 1, 2025</time></li>\n"
                 ));
             } else {
-                items.push_str(&format!("<li><a href=\"#\">Latest Post {}</a></li>\n", i));
+                items.push_str(&format!("<li><a href=\"#\">Latest Post {i}</a></li>\n"));
             }
         }
-        format!("<ul class=\"{}\">\n{}</ul>", class, items)
+        format!("<ul class=\"{class}\">\n{items}</ul>")
     })
 }
 
@@ -619,13 +609,11 @@ fn render_latest_comments() -> RenderCallback {
         let mut items = String::new();
         for i in 1..=comments_to_show {
             items.push_str(&format!(
-                "<li class=\"wp-block-latest-comments__comment\"><article><footer class=\"wp-block-latest-comments__comment-meta\">Commenter on <a href=\"#\">Post {}</a></footer><div class=\"wp-block-latest-comments__comment-excerpt\"><p>Comment placeholder...</p></div></article></li>\n",
-                i
+                "<li class=\"wp-block-latest-comments__comment\"><article><footer class=\"wp-block-latest-comments__comment-meta\">Commenter on <a href=\"#\">Post {i}</a></footer><div class=\"wp-block-latest-comments__comment-excerpt\"><p>Comment placeholder...</p></div></article></li>\n"
             ));
         }
         format!(
-            "<ol class=\"has-dates has-excerpts {}\">\n{}</ol>",
-            class, items
+            "<ol class=\"has-dates has-excerpts {class}\">\n{items}</ol>"
         )
     })
 }
@@ -650,8 +638,7 @@ fn render_search() -> RenderCallback {
         let class = build_class("wp-block-search", block);
 
         format!(
-            "<form role=\"search\" method=\"get\" action=\"/\" class=\"{}\"><label class=\"wp-block-search__label\" for=\"wp-block-search__input\">{}</label><div class=\"wp-block-search__inside-wrapper\"><input type=\"search\" id=\"wp-block-search__input\" class=\"wp-block-search__input\" name=\"s\" value=\"\" placeholder=\"{}\" required /><button type=\"submit\" class=\"wp-block-search__button\">{}</button></div></form>",
-            class, label, placeholder, button_text
+            "<form role=\"search\" method=\"get\" action=\"/\" class=\"{class}\"><label class=\"wp-block-search__label\" for=\"wp-block-search__input\">{label}</label><div class=\"wp-block-search__inside-wrapper\"><input type=\"search\" id=\"wp-block-search__input\" class=\"wp-block-search__input\" name=\"s\" value=\"\" placeholder=\"{placeholder}\" required /><button type=\"submit\" class=\"wp-block-search__button\">{button_text}</button></div></form>"
         )
     })
 }
@@ -667,8 +654,7 @@ fn render_tag_cloud() -> RenderCallback {
         let count_suffix = if show_tag_counts { " (1)" } else { "" };
 
         format!(
-            "<p class=\"{}\"><a href=\"#\" class=\"tag-cloud-link\">Tag{}</a></p>",
-            class, count_suffix
+            "<p class=\"{class}\"><a href=\"#\" class=\"tag-cloud-link\">Tag{count_suffix}</a></p>"
         )
     })
 }
@@ -689,8 +675,7 @@ fn render_rss() -> RenderCallback {
         let class = build_class("wp-block-rss", block);
 
         format!(
-            "<ul class=\"{}\">\n<li>RSS feed items from {} will be populated dynamically</li>\n</ul>",
-            class, feed_url
+            "<ul class=\"{class}\">\n<li>RSS feed items from {feed_url} will be populated dynamically</li>\n</ul>"
         )
     })
 }
@@ -705,15 +690,14 @@ fn render_site_title() -> RenderCallback {
             .and_then(|v| v.as_u64())
             .unwrap_or(1);
         let tag = if (1..=6).contains(&level) {
-            format!("h{}", level)
+            format!("h{level}")
         } else {
             "p".to_string()
         };
         let class = build_class("wp-block-site-title", block);
 
         format!(
-            "<{} class=\"{}\"><a href=\"/\">Site Title</a></{}>",
-            tag, class, tag
+            "<{tag} class=\"{class}\"><a href=\"/\">Site Title</a></{tag}>"
         )
     })
 }
@@ -728,8 +712,7 @@ fn render_site_logo() -> RenderCallback {
         let class = build_class("wp-block-site-logo", block);
 
         format!(
-            "<div class=\"{}\"><a href=\"/\" rel=\"home\"><img width=\"{}\" height=\"{}\" src=\"\" class=\"custom-logo\" alt=\"Site Logo\" /></a></div>",
-            class, width, width
+            "<div class=\"{class}\"><a href=\"/\" rel=\"home\"><img width=\"{width}\" height=\"{width}\" src=\"\" class=\"custom-logo\" alt=\"Site Logo\" /></a></div>"
         )
     })
 }
@@ -746,7 +729,7 @@ fn render_navigation() -> RenderCallback {
         } else {
             render_inner_blocks_simple(&block.inner_blocks)
         };
-        format!("<nav class=\"{}\">{}</nav>", class, inner)
+        format!("<nav class=\"{class}\">{inner}</nav>")
     })
 }
 
@@ -767,11 +750,10 @@ fn render_post_title() -> RenderCallback {
 
         if is_link {
             format!(
-                "<{} class=\"{}\"><a href=\"#\">Post Title</a></{}>",
-                tag, class, tag
+                "<{tag} class=\"{class}\"><a href=\"#\">Post Title</a></{tag}>"
             )
         } else {
-            format!("<{} class=\"{}\">Post Title</{}>", tag, class, tag)
+            format!("<{tag} class=\"{class}\">Post Title</{tag}>")
         }
     })
 }
@@ -784,7 +766,7 @@ fn render_post_content() -> RenderCallback {
         } else {
             render_inner_blocks_simple(&block.inner_blocks)
         };
-        format!("<div class=\"entry-content {}\">{}</div>", class, inner)
+        format!("<div class=\"entry-content {class}\">{inner}</div>")
     })
 }
 
@@ -797,11 +779,10 @@ fn render_post_excerpt() -> RenderCallback {
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
-        let mut html = format!("<div class=\"{}\"><p class=\"wp-block-post-excerpt__excerpt\">Post excerpt placeholder...</p>", class);
+        let mut html = format!("<div class=\"{class}\"><p class=\"wp-block-post-excerpt__excerpt\">Post excerpt placeholder...</p>");
         if !more_text.is_empty() {
             html.push_str(&format!(
-                "<p class=\"wp-block-post-excerpt__more-text\"><a href=\"#\">{}</a></p>",
-                more_text
+                "<p class=\"wp-block-post-excerpt__more-text\"><a href=\"#\">{more_text}</a></p>"
             ));
         }
         html.push_str("</div>");
@@ -820,13 +801,11 @@ fn render_post_date() -> RenderCallback {
 
         if is_link {
             format!(
-                "<div class=\"{}\"><a href=\"#\"><time>January 1, 2025</time></a></div>",
-                class
+                "<div class=\"{class}\"><a href=\"#\"><time>January 1, 2025</time></a></div>"
             )
         } else {
             format!(
-                "<div class=\"{}\"><time>January 1, 2025</time></div>",
-                class
+                "<div class=\"{class}\"><time>January 1, 2025</time></div>"
             )
         }
     })
@@ -841,7 +820,7 @@ fn render_post_author() -> RenderCallback {
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
-        let mut html = format!("<div class=\"{}\">", class);
+        let mut html = format!("<div class=\"{class}\">");
         if show_avatar {
             html.push_str("<div class=\"wp-block-post-author__avatar\"><img alt=\"\" src=\"\" class=\"avatar avatar-96 photo\" width=\"96\" height=\"96\" /></div>");
         }
@@ -861,13 +840,11 @@ fn render_post_featured_image() -> RenderCallback {
 
         if is_link {
             format!(
-                "<figure class=\"{}\"><a href=\"#\"><img src=\"\" alt=\"\" /></a></figure>",
-                class
+                "<figure class=\"{class}\"><a href=\"#\"><img src=\"\" alt=\"\" /></a></figure>"
             )
         } else {
             format!(
-                "<figure class=\"{}\"><img src=\"\" alt=\"\" /></figure>",
-                class
+                "<figure class=\"{class}\"><img src=\"\" alt=\"\" /></figure>"
             )
         }
     })
@@ -888,8 +865,7 @@ fn render_post_terms() -> RenderCallback {
             .unwrap_or(", ");
 
         format!(
-            "<div class=\"taxonomy-{} {}\"><span class=\"wp-block-post-terms__separator\">{}</span></div>",
-            term, class, separator
+            "<div class=\"taxonomy-{term} {class}\"><span class=\"wp-block-post-terms__separator\">{separator}</span></div>"
         )
     })
 }
@@ -902,7 +878,7 @@ fn render_query() -> RenderCallback {
         } else {
             render_inner_blocks_simple(&block.inner_blocks)
         };
-        format!("<div class=\"{}\">{}</div>", class, inner)
+        format!("<div class=\"{class}\">{inner}</div>")
     })
 }
 
@@ -926,8 +902,7 @@ fn render_template_part() -> RenderCallback {
         };
 
         format!(
-            "<{} class=\"{} {}\">{}</{}>",
-            tag_name, class, slug, inner, tag_name
+            "<{tag_name} class=\"{class} {slug}\">{inner}</{tag_name}>"
         )
     })
 }
@@ -966,15 +941,14 @@ fn render_embed() -> RenderCallback {
             if url.is_empty() {
                 String::new()
             } else {
-                format!("<a href=\"{}\">{}</a>", url, url)
+                format!("<a href=\"{url}\">{url}</a>")
             }
         } else {
             block.inner_html.clone()
         };
 
         format!(
-            "<figure class=\"{} is-type-{} is-provider-{}{}\"><div class=\"wp-block-embed__wrapper\">{}</div></figure>",
-            class, _type, provider, responsive_class, inner
+            "<figure class=\"{class} is-type-{_type} is-provider-{provider}{responsive_class}\"><div class=\"wp-block-embed__wrapper\">{inner}</div></figure>"
         )
     })
 }
@@ -991,7 +965,7 @@ fn build_class(base: &str, block: &Block) -> String {
         class.push_str(cn);
     }
     if let Some(align) = block.attrs.get("align").and_then(|v| v.as_str()) {
-        class.push_str(&format!(" align{}", align));
+        class.push_str(&format!(" align{align}"));
     }
     class
 }
@@ -1005,63 +979,63 @@ fn build_style(block: &Block) -> String {
         if let Some(spacing) = style.get("spacing") {
             if let Some(padding) = spacing.get("padding") {
                 if let Some(p) = padding.as_str() {
-                    parts.push(format!("padding:{}", p));
+                    parts.push(format!("padding:{p}"));
                 } else {
                     if let Some(top) = padding.get("top").and_then(|v| v.as_str()) {
-                        parts.push(format!("padding-top:{}", top));
+                        parts.push(format!("padding-top:{top}"));
                     }
                     if let Some(right) = padding.get("right").and_then(|v| v.as_str()) {
-                        parts.push(format!("padding-right:{}", right));
+                        parts.push(format!("padding-right:{right}"));
                     }
                     if let Some(bottom) = padding.get("bottom").and_then(|v| v.as_str()) {
-                        parts.push(format!("padding-bottom:{}", bottom));
+                        parts.push(format!("padding-bottom:{bottom}"));
                     }
                     if let Some(left) = padding.get("left").and_then(|v| v.as_str()) {
-                        parts.push(format!("padding-left:{}", left));
+                        parts.push(format!("padding-left:{left}"));
                     }
                 }
             }
             if let Some(margin) = spacing.get("margin") {
                 if let Some(m) = margin.as_str() {
-                    parts.push(format!("margin:{}", m));
+                    parts.push(format!("margin:{m}"));
                 } else {
                     if let Some(top) = margin.get("top").and_then(|v| v.as_str()) {
-                        parts.push(format!("margin-top:{}", top));
+                        parts.push(format!("margin-top:{top}"));
                     }
                     if let Some(bottom) = margin.get("bottom").and_then(|v| v.as_str()) {
-                        parts.push(format!("margin-bottom:{}", bottom));
+                        parts.push(format!("margin-bottom:{bottom}"));
                     }
                 }
             }
             if let Some(gap) = spacing.get("blockGap").and_then(|v| v.as_str()) {
-                parts.push(format!("gap:{}", gap));
+                parts.push(format!("gap:{gap}"));
             }
         }
 
         // Handle color
         if let Some(color) = style.get("color") {
             if let Some(bg) = color.get("background").and_then(|v| v.as_str()) {
-                parts.push(format!("background-color:{}", bg));
+                parts.push(format!("background-color:{bg}"));
             }
             if let Some(text) = color.get("text").and_then(|v| v.as_str()) {
-                parts.push(format!("color:{}", text));
+                parts.push(format!("color:{text}"));
             }
         }
 
         // Handle typography
         if let Some(typography) = style.get("typography") {
             if let Some(font_size) = typography.get("fontSize").and_then(|v| v.as_str()) {
-                parts.push(format!("font-size:{}", font_size));
+                parts.push(format!("font-size:{font_size}"));
             }
             if let Some(line_height) = typography.get("lineHeight").and_then(|v| v.as_str()) {
-                parts.push(format!("line-height:{}", line_height));
+                parts.push(format!("line-height:{line_height}"));
             }
         }
     }
 
     // Handle direct backgroundColor/textColor preset references
     if let Some(bg) = block.attrs.get("backgroundColor").and_then(|v| v.as_str()) {
-        parts.push(format!("background-color:var(--wp--preset--color--{})", bg));
+        parts.push(format!("background-color:var(--wp--preset--color--{bg})"));
     }
 
     parts.join(";")
@@ -1072,7 +1046,7 @@ fn style_attr(style: &str) -> String {
     if style.is_empty() {
         String::new()
     } else {
-        format!(" style=\"{}\"", style)
+        format!(" style=\"{style}\"")
     }
 }
 
@@ -1162,8 +1136,7 @@ mod tests {
         for name in text_blocks {
             assert!(
                 registry.has_block_type(name),
-                "Missing text block: {}",
-                name
+                "Missing text block: {name}"
             );
         }
     }
@@ -1185,8 +1158,7 @@ mod tests {
         for name in media_blocks {
             assert!(
                 registry.has_block_type(name),
-                "Missing media block: {}",
-                name
+                "Missing media block: {name}"
             );
         }
     }
@@ -1210,8 +1182,7 @@ mod tests {
         for name in design_blocks {
             assert!(
                 registry.has_block_type(name),
-                "Missing design block: {}",
-                name
+                "Missing design block: {name}"
             );
         }
     }
@@ -1235,8 +1206,7 @@ mod tests {
         for name in widget_blocks {
             assert!(
                 registry.has_block_type(name),
-                "Missing widget block: {}",
-                name
+                "Missing widget block: {name}"
             );
         }
     }
@@ -1264,8 +1234,7 @@ mod tests {
         for name in theme_blocks {
             assert!(
                 registry.has_block_type(name),
-                "Missing theme block: {}",
-                name
+                "Missing theme block: {name}"
             );
         }
     }

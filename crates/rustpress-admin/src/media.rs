@@ -123,7 +123,7 @@ fn sanitize_filename(name: &str) -> String {
     if ext.is_empty() {
         clean
     } else {
-        format!("{}.{}", clean, ext)
+        format!("{clean}.{ext}")
     }
 }
 
@@ -144,9 +144,9 @@ async fn unique_filename(dir: &std::path::Path, name: &str) -> String {
         .unwrap_or(false)
     {
         candidate = if ext.is_empty() {
-            format!("{}-{}", stem, counter)
+            format!("{stem}-{counter}")
         } else {
-            format!("{}-{}.{}", stem, counter, ext)
+            format!("{stem}-{counter}.{ext}")
         };
         counter += 1;
     }
@@ -172,7 +172,7 @@ async fn list_media(
         .order_by_desc(wp_posts::Column::PostDate);
 
     if let Some(ref mime) = params.mime_type {
-        query = query.filter(wp_posts::Column::PostMimeType.like(format!("{}%", mime)));
+        query = query.filter(wp_posts::Column::PostMimeType.like(format!("{mime}%")));
     }
 
     let total = query
@@ -234,7 +234,7 @@ async fn upload_media(
     if !ALLOWED_MIME_TYPES.contains(&content_type.as_str()) {
         return Err((
             StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            format!("File type '{}' is not allowed.", content_type),
+            format!("File type '{content_type}' is not allowed."),
         ));
     }
 
@@ -281,7 +281,7 @@ async fn upload_media(
         .unwrap_or(&file_name)
         .replace(['-', '_'], " ");
 
-    let guid = format!("/wp-content/uploads/{}/{}", date_dir, file_name);
+    let guid = format!("/wp-content/uploads/{date_dir}/{file_name}");
     let slug = file_name
         .split('.')
         .next()

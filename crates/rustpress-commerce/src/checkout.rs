@@ -30,17 +30,16 @@ impl std::fmt::Display for CheckoutError {
                 available,
             } => write!(
                 f,
-                "Insufficient stock for product {}: {} available",
-                product_id, available
+                "Insufficient stock for product {product_id}: {available} available"
             ),
             CheckoutError::PaymentFailed { message } => {
-                write!(f, "Payment failed: {}", message)
+                write!(f, "Payment failed: {message}")
             }
             CheckoutError::InvalidShipping { message } => {
-                write!(f, "Invalid shipping: {}", message)
+                write!(f, "Invalid shipping: {message}")
             }
             CheckoutError::ValidationError { field, message } => {
-                write!(f, "Validation error on {}: {}", field, message)
+                write!(f, "Validation error on {field}: {message}")
             }
         }
     }
@@ -269,7 +268,7 @@ impl<'a> CheckoutProcessor<'a> {
                     item.product_id,
                     item.variation_id,
                     item.quantity,
-                    &format!("Order #{}", order_number),
+                    &format!("Order #{order_number}"),
                 );
             }
         }

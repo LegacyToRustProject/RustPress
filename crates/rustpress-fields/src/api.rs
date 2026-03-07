@@ -278,8 +278,8 @@ mod tests {
         assert_eq!(get_field_number("count", 1, &storage, 0.0), 5.0);
         assert_eq!(get_field_number("missing", 1, &storage, 99.0), 99.0);
 
-        assert_eq!(get_field_bool("active", 1, &storage, false), true);
-        assert_eq!(get_field_bool("missing", 1, &storage, false), false);
+        assert!(get_field_bool("active", 1, &storage, false));
+        assert!(!get_field_bool("missing", 1, &storage, false));
     }
 
     #[test]

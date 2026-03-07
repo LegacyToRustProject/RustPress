@@ -151,7 +151,7 @@ impl UserQuery {
 
         // search filter
         if let Some(ref s) = self.search {
-            let pattern = format!("%{}%", s);
+            let pattern = format!("%{s}%");
             condition = condition.add(
                 Condition::any()
                     .add(wp_users::Column::UserLogin.like(&pattern))

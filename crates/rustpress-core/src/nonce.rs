@@ -80,7 +80,7 @@ impl NonceManager {
         let hex = result
             .into_bytes()
             .iter()
-            .map(|b| format!("{:02x}", b))
+            .map(|b| format!("{b:02x}"))
             .collect::<String>();
         hex[..10].to_string()
     }

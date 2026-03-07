@@ -350,7 +350,7 @@ async fn get_block_type(
     State(_state): State<ApiState>,
     Path((namespace, name)): Path<(String, String)>,
 ) -> Result<Json<Value>, WpError> {
-    let full_name = format!("{}/{}", namespace, name);
+    let full_name = format!("{namespace}/{name}");
     let blocks = core_blocks();
     blocks
         .into_iter()

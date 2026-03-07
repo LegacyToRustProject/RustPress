@@ -23,7 +23,7 @@ impl ObjectCache {
 
     /// Build a cache key from group and key.
     fn cache_key(group: &str, key: &str) -> String {
-        format!("{}:{}", group, key)
+        format!("{group}:{key}")
     }
 
     /// Get a value from the cache.

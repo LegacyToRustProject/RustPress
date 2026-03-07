@@ -175,7 +175,7 @@ pub fn analyze_wp_version(version: &str) -> (u8, Vec<CompatIssue>) {
             issues.push(CompatIssue {
                 severity: IssueSeverity::Info,
                 area: "WordPress Version".to_string(),
-                description: format!("WordPress {} is Tier 2 (basic compatibility)", version),
+                description: format!("WordPress {version} is Tier 2 (basic compatibility)"),
                 resolution: "Most features will work. Some newer block editor features may differ."
                     .to_string(),
             });
@@ -185,7 +185,7 @@ pub fn analyze_wp_version(version: &str) -> (u8, Vec<CompatIssue>) {
             issues.push(CompatIssue {
                 severity: IssueSeverity::Warning,
                 area: "WordPress Version".to_string(),
-                description: format!("WordPress {} is Tier 3 (legacy compatibility)", version),
+                description: format!("WordPress {version} is Tier 3 (legacy compatibility)"),
                 resolution: "Classic Editor content will work. Consider upgrading WordPress before migrating.".to_string(),
             });
             60
@@ -194,7 +194,7 @@ pub fn analyze_wp_version(version: &str) -> (u8, Vec<CompatIssue>) {
             issues.push(CompatIssue {
                 severity: IssueSeverity::Critical,
                 area: "WordPress Version".to_string(),
-                description: format!("WordPress {} is not supported", version),
+                description: format!("WordPress {version} is not supported"),
                 resolution: "Please upgrade to WordPress 4.4 or later before migrating."
                     .to_string(),
             });
@@ -242,7 +242,7 @@ pub fn format_report(report: &CompatibilityReport) -> String {
             let alt = plugin
                 .alternative
                 .as_deref()
-                .map(|a| format!(" -> {}", a))
+                .map(|a| format!(" -> {a}"))
                 .unwrap_or_default();
             output.push_str(&format!("  [{}] {}{}\n", status_str, plugin.name, alt));
         }
@@ -269,7 +269,7 @@ pub fn format_report(report: &CompatibilityReport) -> String {
     if !report.recommendations.is_empty() {
         output.push_str("Recommendations:\n");
         for rec in &report.recommendations {
-            output.push_str(&format!("  - {}\n", rec));
+            output.push_str(&format!("  - {rec}\n"));
         }
     }
 

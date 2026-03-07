@@ -96,10 +96,10 @@ pub async fn skip_if_unavailable(wp_url: &str, rp_url: &str) -> bool {
     let rp_ok = is_server_available(rp_url).await;
 
     if !wp_ok {
-        eprintln!("[SKIP] WordPress is not available at {}", wp_url);
+        eprintln!("[SKIP] WordPress is not available at {wp_url}");
     }
     if !rp_ok {
-        eprintln!("[SKIP] RustPress is not available at {}", rp_url);
+        eprintln!("[SKIP] RustPress is not available at {rp_url}");
     }
     !wp_ok || !rp_ok
 }
@@ -111,7 +111,7 @@ pub async fn get_rustpress_token(
     user: &str,
     password: &str,
 ) -> Result<String, String> {
-    let url = format!("{}/api/auth/login", base_url);
+    let url = format!("{base_url}/api/auth/login");
     let body = serde_json::json!({
         "username": user,
         "password": password,
@@ -121,7 +121,7 @@ pub async fn get_rustpress_token(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Login request failed: {}", e))?;
+        .map_err(|e| format!("Login request failed: {e}"))?;
 
     if !resp.status().is_success() {
         return Err(format!("Login returned status {}", resp.status()));
@@ -130,7 +130,7 @@ pub async fn get_rustpress_token(
     let json: Value = resp
         .json()
         .await
-        .map_err(|e| format!("Failed to parse login response: {}", e))?;
+        .map_err(|e| format!("Failed to parse login response: {e}"))?;
 
     json.get("token")
         .and_then(|t| t.as_str())
@@ -144,9 +144,9 @@ pub async fn get_rustpress_token(
 pub fn wordpress_basic_auth(user: &str, password: &str) -> String {
     use std::io::Write;
     let mut buf = Vec::new();
-    write!(buf, "{}:{}", user, password).unwrap();
+    write!(buf, "{user}:{password}").unwrap();
     let encoded = base64_encode(&buf);
-    format!("Basic {}", encoded)
+    format!("Basic {encoded}")
 }
 
 fn base64_encode(input: &[u8]) -> String {
@@ -248,8 +248,8 @@ pub fn assert_similar_html(wp_html: &str, rp_html: &str, threshold: f64) {
             similarity * 100.0,
             threshold * 100.0
         );
-        eprintln!("WordPress tags: {:?}", wp_tags);
-        eprintln!("RustPress tags: {:?}", rp_tags);
+        eprintln!("WordPress tags: {wp_tags:?}");
+        eprintln!("RustPress tags: {rp_tags:?}");
         eprintln!();
         eprintln!(
             "Tags only in WordPress: {:?}",
@@ -271,7 +271,7 @@ pub fn assert_similar_html(wp_html: &str, rp_html: &str, threshold: f64) {
                 ChangeTag::Insert => "+",
                 ChangeTag::Equal => " ",
             };
-            eprint!("{} {}", marker, change);
+            eprint!("{marker} {change}");
         }
 
         panic!(
@@ -303,28 +303,28 @@ pub fn json_shape(value: &Value, prefix: &str) -> BTreeSet<String> {
                 let path = if prefix.is_empty() {
                     k.clone()
                 } else {
-                    format!("{}.{}", prefix, k)
+                    format!("{prefix}.{k}")
                 };
                 result.extend(json_shape(v, &path));
             }
         }
         Value::Array(arr) => {
-            result.insert(format!("{}[]", prefix));
+            result.insert(format!("{prefix}[]"));
             if let Some(first) = arr.first() {
-                result.extend(json_shape(first, &format!("{}[]", prefix)));
+                result.extend(json_shape(first, &format!("{prefix}[]")));
             }
         }
         Value::String(_) => {
-            result.insert(format!("{}:string", prefix));
+            result.insert(format!("{prefix}:string"));
         }
         Value::Number(_) => {
-            result.insert(format!("{}:number", prefix));
+            result.insert(format!("{prefix}:number"));
         }
         Value::Bool(_) => {
-            result.insert(format!("{}:bool", prefix));
+            result.insert(format!("{prefix}:bool"));
         }
         Value::Null => {
-            result.insert(format!("{}:null", prefix));
+            result.insert(format!("{prefix}:null"));
         }
     }
     result
@@ -380,13 +380,13 @@ pub fn assert_json_structure_match(wp_json: &Value, rp_json: &Value) {
     if !only_in_wp.is_empty() {
         eprintln!("Paths only in WordPress ({}):", only_in_wp.len());
         for p in &only_in_wp {
-            eprintln!("  - {}", p);
+            eprintln!("  - {p}");
         }
     }
     if !only_in_rp.is_empty() {
         eprintln!("Paths only in RustPress ({}):", only_in_rp.len());
         for p in &only_in_rp {
-            eprintln!("  + {}", p);
+            eprintln!("  + {p}");
         }
     }
 
@@ -418,13 +418,13 @@ pub fn assert_json_keys_match(wp_json: &Value, rp_json: &Value) {
     if !missing_in_rp.is_empty() {
         eprintln!("[WARN] Keys in WordPress but missing in RustPress:");
         for k in &missing_in_rp {
-            eprintln!("  - {}", k);
+            eprintln!("  - {k}");
         }
     }
     if !extra_in_rp.is_empty() {
         eprintln!("[INFO] Extra keys in RustPress (not in WordPress):");
         for k in &extra_in_rp {
-            eprintln!("  + {}", k);
+            eprintln!("  + {k}");
         }
     }
 
@@ -479,7 +479,7 @@ pub fn assert_json_types_match(wp_json: &Value, rp_json: &Value) {
     } else {
         eprintln!("[WARN] Type mismatches:");
         for (key, wp_t, rp_t) in &mismatches {
-            eprintln!("  {} : WP={}, RP={}", key, wp_t, rp_t);
+            eprintln!("  {key} : WP={wp_t}, RP={rp_t}");
         }
     }
 }
@@ -492,14 +492,14 @@ pub fn assert_json_types_match(wp_json: &Value, rp_json: &Value) {
 /// crate. Useful for diagnostic output in test failures.
 pub fn print_diff(label: &str, left: &str, right: &str) {
     let diff = TextDiff::from_lines(left, right);
-    eprintln!("--- Diff: {} ---", label);
+    eprintln!("--- Diff: {label} ---");
     for change in diff.iter_all_changes() {
         let marker = match change.tag() {
             ChangeTag::Delete => "- (WP)",
             ChangeTag::Insert => "+ (RP)",
             ChangeTag::Equal => "       ",
         };
-        eprint!("{} {}", marker, change);
+        eprint!("{marker} {change}");
     }
     eprintln!("--- End Diff ---");
 }
@@ -518,7 +518,7 @@ pub fn is_valid_xml_basic(content: &str) -> bool {
 
 /// Count occurrences of a given XML tag (simple string search).
 pub fn count_xml_tag(content: &str, tag: &str) -> usize {
-    let open_tag = format!("<{}", tag);
+    let open_tag = format!("<{tag}");
     content.matches(&open_tag).count()
 }
 
@@ -534,7 +534,7 @@ pub async fn is_webdriver_available(webdriver_url: &str) -> bool {
         .unwrap();
     // ChromeDriver responds to GET /status
     client
-        .get(format!("{}/status", webdriver_url))
+        .get(format!("{webdriver_url}/status"))
         .send()
         .await
         .map(|r| r.status().is_success())
@@ -566,21 +566,21 @@ pub fn viewport_sizes() -> Vec<(u32, u32, &'static str)> {
 pub async fn create_webdriver(webdriver_url: &str) -> Result<WebDriver, String> {
     let mut caps = DesiredCapabilities::chrome();
     caps.add_arg("--headless=new")
-        .map_err(|e| format!("Failed to set headless: {}", e))?;
+        .map_err(|e| format!("Failed to set headless: {e}"))?;
     caps.add_arg("--no-sandbox")
-        .map_err(|e| format!("Failed to set no-sandbox: {}", e))?;
+        .map_err(|e| format!("Failed to set no-sandbox: {e}"))?;
     caps.add_arg("--disable-dev-shm-usage")
-        .map_err(|e| format!("Failed to set disable-dev-shm: {}", e))?;
+        .map_err(|e| format!("Failed to set disable-dev-shm: {e}"))?;
     caps.add_arg("--disable-gpu")
-        .map_err(|e| format!("Failed to set disable-gpu: {}", e))?;
+        .map_err(|e| format!("Failed to set disable-gpu: {e}"))?;
     caps.add_arg("--font-render-hinting=none")
-        .map_err(|e| format!("Failed to set font hinting: {}", e))?;
+        .map_err(|e| format!("Failed to set font hinting: {e}"))?;
     caps.add_arg("--force-device-scale-factor=1")
-        .map_err(|e| format!("Failed to set scale factor: {}", e))?;
+        .map_err(|e| format!("Failed to set scale factor: {e}"))?;
 
     WebDriver::new(webdriver_url, caps)
         .await
-        .map_err(|e| format!("Failed to create WebDriver: {}", e))
+        .map_err(|e| format!("Failed to create WebDriver: {e}"))
 }
 
 /// Set the browser viewport to an exact pixel size.
@@ -588,7 +588,7 @@ pub async fn set_viewport(driver: &WebDriver, width: u32, height: u32) -> Result
     driver
         .set_window_rect(0, 0, width, height)
         .await
-        .map_err(|e| format!("Failed to set window rect: {}", e))?;
+        .map_err(|e| format!("Failed to set window rect: {e}"))?;
     Ok(())
 }
 
@@ -597,7 +597,7 @@ pub async fn take_screenshot(driver: &WebDriver, url: &str) -> Result<DynamicIma
     driver
         .goto(url)
         .await
-        .map_err(|e| format!("Failed to navigate to {}: {}", url, e))?;
+        .map_err(|e| format!("Failed to navigate to {url}: {e}"))?;
 
     // Wait for page to fully load
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
@@ -618,15 +618,15 @@ pub async fn take_screenshot(driver: &WebDriver, url: &str) -> Result<DynamicIma
             vec![],
         )
         .await
-        .map_err(|e| format!("Failed to wait for page load: {}", e))?;
+        .map_err(|e| format!("Failed to wait for page load: {e}"))?;
 
     let png_bytes = driver
         .screenshot_as_png()
         .await
-        .map_err(|e| format!("Failed to take screenshot: {}", e))?;
+        .map_err(|e| format!("Failed to take screenshot: {e}"))?;
 
     image::load_from_memory_with_format(&png_bytes, image::ImageFormat::Png)
-        .map_err(|e| format!("Failed to decode screenshot PNG: {}", e))
+        .map_err(|e| format!("Failed to decode screenshot PNG: {e}"))
 }
 
 /// Result of a pixel-perfect comparison between two images.
@@ -741,14 +741,14 @@ pub async fn visual_compare(
 ) -> Result<PixelDiffResult, String> {
     let out_dir = screenshot_dir();
     std::fs::create_dir_all(&out_dir)
-        .map_err(|e| format!("Failed to create screenshot dir: {}", e))?;
+        .map_err(|e| format!("Failed to create screenshot dir: {e}"))?;
 
     // Set viewport on both browsers
     set_viewport(wp_driver, viewport_width, viewport_height).await?;
     set_viewport(rp_driver, viewport_width, viewport_height).await?;
 
-    let wp_url = format!("{}{}", wp_base_url, page_path);
-    let rp_url = format!("{}{}", rp_base_url, page_path);
+    let wp_url = format!("{wp_base_url}{page_path}");
+    let rp_url = format!("{rp_base_url}{page_path}");
 
     // Take screenshots
     let wp_img = take_screenshot(wp_driver, &wp_url).await?;
@@ -756,16 +756,16 @@ pub async fn visual_compare(
 
     // Save screenshots
     let safe_label = label.replace(['/', '?', '&', ' '], "_");
-    let wp_path = out_dir.join(format!("wp_{}_{}.png", safe_label, viewport_width));
-    let rp_path = out_dir.join(format!("rp_{}_{}.png", safe_label, viewport_width));
-    let diff_path = out_dir.join(format!("diff_{}_{}.png", safe_label, viewport_width));
+    let wp_path = out_dir.join(format!("wp_{safe_label}_{viewport_width}.png"));
+    let rp_path = out_dir.join(format!("rp_{safe_label}_{viewport_width}.png"));
+    let diff_path = out_dir.join(format!("diff_{safe_label}_{viewport_width}.png"));
 
     wp_img
         .save(&wp_path)
-        .map_err(|e| format!("Failed to save WP screenshot: {}", e))?;
+        .map_err(|e| format!("Failed to save WP screenshot: {e}"))?;
     rp_img
         .save(&rp_path)
-        .map_err(|e| format!("Failed to save RP screenshot: {}", e))?;
+        .map_err(|e| format!("Failed to save RP screenshot: {e}"))?;
 
     // Pixel comparison
     let mut result = compare_images_pixel_perfect(&wp_img, &rp_img, tolerance);
@@ -853,7 +853,7 @@ pub fn save_diff_image(
 
     canvas
         .save(path)
-        .map_err(|e| format!("Failed to save diff image: {}", e))?;
+        .map_err(|e| format!("Failed to save diff image: {e}"))?;
     Ok(())
 }
 
@@ -907,10 +907,9 @@ pub async fn visual_regression_test(
     let mut results = Vec::new();
 
     for (width, height, vp_label) in &viewports {
-        let full_label = format!("{}_{}", label, vp_label);
+        let full_label = format!("{label}_{vp_label}");
         eprintln!(
-            "\n--- Visual test: {} ({}x{}) ---",
-            full_label, width, height
+            "\n--- Visual test: {full_label} ({width}x{height}) ---"
         );
 
         let result = visual_compare(

@@ -37,7 +37,7 @@ impl std::fmt::Display for ChangeFreq {
             ChangeFreq::Yearly => "yearly",
             ChangeFreq::Never => "never",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -82,10 +82,10 @@ impl SitemapGenerator {
                 xml.push_str(&format!("    <lastmod>{}</lastmod>\n", xml_escape(lastmod)));
             }
             if let Some(ref freq) = url.changefreq {
-                xml.push_str(&format!("    <changefreq>{}</changefreq>\n", freq));
+                xml.push_str(&format!("    <changefreq>{freq}</changefreq>\n"));
             }
             if let Some(priority) = url.priority {
-                xml.push_str(&format!("    <priority>{:.1}</priority>\n", priority));
+                xml.push_str(&format!("    <priority>{priority:.1}</priority>\n"));
             }
 
             xml.push_str("  </url>\n");

@@ -145,7 +145,7 @@ impl RateLimiter {
                 window_secs: 60,
             });
 
-        let key = format!("{}:{:?}", ip, category);
+        let key = format!("{ip}:{category:?}");
         let entry = self.windows.entry(key).or_insert_with(WindowEntry::new);
         let current_count = entry.prune_and_count(config.window_secs, now);
 
@@ -186,7 +186,7 @@ impl RateLimiter {
                 window_secs: 60,
             });
 
-        let key = format!("{}:{:?}", ip, category);
+        let key = format!("{ip}:{category:?}");
         if let Some(entry) = self.windows.get_mut(&key) {
             let current_count = entry.prune_and_count(config.window_secs, now);
             if current_count >= config.max_requests {
@@ -214,7 +214,7 @@ impl RateLimiter {
     /// Reset rate limit counters for a specific IP.
     pub fn reset(&mut self, ip: &str) {
         self.windows
-            .retain(|key, _| !key.starts_with(&format!("{}:", ip)));
+            .retain(|key, _| !key.starts_with(&format!("{ip}:")));
     }
 
     /// Periodically remove expired entries to prevent memory growth.
@@ -276,7 +276,7 @@ mod tests {
                 RateLimitResult::Allowed { remaining } => {
                     assert_eq!(remaining, 59 - i);
                 }
-                _ => panic!("Expected Allowed on attempt {}", i),
+                _ => panic!("Expected Allowed on attempt {i}"),
             }
         }
         // 61st attempt should be limited

@@ -73,19 +73,19 @@ impl CouponManager {
         let coupon = self
             .coupons
             .get(&code_lower)
-            .ok_or_else(|| format!("Coupon '{}' does not exist", code))?;
+            .ok_or_else(|| format!("Coupon '{code}' does not exist"))?;
 
         // Check usage limit
         if let Some(limit) = coupon.usage_limit {
             if coupon.usage_count >= limit {
-                return Err(format!("Coupon '{}' has reached its usage limit", code));
+                return Err(format!("Coupon '{code}' has reached its usage limit"));
             }
         }
 
         // Check expiry
         if let Some(expiry) = coupon.expiry_date {
             if Utc::now() > expiry {
-                return Err(format!("Coupon '{}' has expired", code));
+                return Err(format!("Coupon '{code}' has expired"));
             }
         }
 
@@ -93,8 +93,7 @@ impl CouponManager {
         if let Some(min) = coupon.minimum_amount {
             if cart_subtotal < min {
                 return Err(format!(
-                    "Cart subtotal ({:.2}) is below the minimum ({:.2}) for coupon '{}'",
-                    cart_subtotal, min, code
+                    "Cart subtotal ({cart_subtotal:.2}) is below the minimum ({min:.2}) for coupon '{code}'"
                 ));
             }
         }
@@ -103,8 +102,7 @@ impl CouponManager {
         if let Some(max) = coupon.maximum_amount {
             if cart_subtotal > max {
                 return Err(format!(
-                    "Cart subtotal ({:.2}) exceeds the maximum ({:.2}) for coupon '{}'",
-                    cart_subtotal, max, code
+                    "Cart subtotal ({cart_subtotal:.2}) exceeds the maximum ({max:.2}) for coupon '{code}'"
                 ));
             }
         }
@@ -171,7 +169,7 @@ impl CouponManager {
         DiscountResult {
             success: true,
             discount_amount,
-            message: format!("Coupon '{}' applied: -{:.2}", code, discount_amount),
+            message: format!("Coupon '{code}' applied: -{discount_amount:.2}"),
         }
     }
 }

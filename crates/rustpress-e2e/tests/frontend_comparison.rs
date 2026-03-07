@@ -19,13 +19,13 @@ async fn fetch_html(client: &reqwest::Client, url: &str) -> Option<(reqwest::Sta
             match resp.text().await {
                 Ok(body) => Some((status, body)),
                 Err(e) => {
-                    eprintln!("[ERROR] Failed to read body from {}: {}", url, e);
+                    eprintln!("[ERROR] Failed to read body from {url}: {e}");
                     None
                 }
             }
         }
         Err(e) => {
-            eprintln!("[ERROR] GET {} failed: {}", url, e);
+            eprintln!("[ERROR] GET {url} failed: {e}");
             None
         }
     }
@@ -111,7 +111,7 @@ async fn test_single_post_structure() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found post at /{}", slug);
+                eprintln!("WordPress: found post at /{slug}");
                 break;
             }
         }
@@ -123,7 +123,7 @@ async fn test_single_post_structure() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found post at /{}", slug);
+                eprintln!("RustPress: found post at /{slug}");
                 break;
             }
         }
@@ -175,8 +175,8 @@ async fn test_search_page() {
 
     match (wp, rp) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
-            eprintln!("WordPress search status: {}", wp_status);
-            eprintln!("RustPress search status: {}", rp_status);
+            eprintln!("WordPress search status: {wp_status}");
+            eprintln!("RustPress search status: {rp_status}");
 
             // Both should return 200
             assert_eq!(wp_status.as_u16(), 200, "WordPress search should be 200");
@@ -278,27 +278,26 @@ async fn test_rss_feed() {
 
     match (wp, rp) {
         (Some((wp_status, wp_body)), Some((rp_status, rp_body))) => {
-            eprintln!("WordPress feed status: {}", wp_status);
-            eprintln!("RustPress feed status: {}", rp_status);
+            eprintln!("WordPress feed status: {wp_status}");
+            eprintln!("RustPress feed status: {rp_status}");
 
             // Both should be valid XML
             let wp_is_xml = is_valid_xml_basic(&wp_body);
             let rp_is_xml = is_valid_xml_basic(&rp_body);
-            eprintln!("  Valid XML - WP: {}, RP: {}", wp_is_xml, rp_is_xml);
+            eprintln!("  Valid XML - WP: {wp_is_xml}, RP: {rp_is_xml}");
             assert!(rp_is_xml, "RustPress RSS feed should be valid XML");
 
             // Both should contain <rss> or <feed> root
             let wp_has_rss = wp_body.contains("<rss") || wp_body.contains("<feed");
             let rp_has_rss = rp_body.contains("<rss") || rp_body.contains("<feed");
             eprintln!(
-                "  RSS root element - WP: {}, RP: {}",
-                wp_has_rss, rp_has_rss
+                "  RSS root element - WP: {wp_has_rss}, RP: {rp_has_rss}"
             );
 
             // Both should have <item> elements
             let wp_items = count_xml_tag(&wp_body, "item");
             let rp_items = count_xml_tag(&rp_body, "item");
-            eprintln!("  Items - WP: {}, RP: {}", wp_items, rp_items);
+            eprintln!("  Items - WP: {wp_items}, RP: {rp_items}");
 
             // Check for required RSS fields
             let required_tags = ["title", "link", "description"];
@@ -344,7 +343,7 @@ async fn test_sitemap_xml() {
             if status.as_u16() == 200 && body.contains("<urlset") || body.contains("<sitemapindex")
             {
                 wp_body = Some(body);
-                eprintln!("WordPress sitemap found at {}", url);
+                eprintln!("WordPress sitemap found at {url}");
                 break;
             }
         }
@@ -354,26 +353,25 @@ async fn test_sitemap_xml() {
 
     match (wp_body, rp) {
         (Some(wp_xml), Some((rp_status, rp_xml))) => {
-            eprintln!("RustPress sitemap status: {}", rp_status);
+            eprintln!("RustPress sitemap status: {rp_status}");
 
             // Both should be XML
             let wp_is_xml = is_valid_xml_basic(&wp_xml);
             let rp_is_xml = is_valid_xml_basic(&rp_xml);
-            eprintln!("  Valid XML - WP: {}, RP: {}", wp_is_xml, rp_is_xml);
+            eprintln!("  Valid XML - WP: {wp_is_xml}, RP: {rp_is_xml}");
             assert!(rp_is_xml, "RustPress sitemap should be valid XML");
 
             // Both should have <url> elements
             let wp_urls_count = count_xml_tag(&wp_xml, "url");
             let rp_urls_count = count_xml_tag(&rp_xml, "url");
             eprintln!(
-                "  <url> count - WP: {}, RP: {}",
-                wp_urls_count, rp_urls_count
+                "  <url> count - WP: {wp_urls_count}, RP: {rp_urls_count}"
             );
 
             // Both should have <loc> elements
             let wp_locs = count_xml_tag(&wp_xml, "loc");
             let rp_locs = count_xml_tag(&rp_xml, "loc");
-            eprintln!("  <loc> count - WP: {}, RP: {}", wp_locs, rp_locs);
+            eprintln!("  <loc> count - WP: {wp_locs}, RP: {rp_locs}");
 
             assert!(
                 rp_urls_count > 0,
@@ -404,8 +402,8 @@ async fn test_robots_txt() {
 
     match (wp, rp) {
         (Some((wp_status, wp_body)), Some((rp_status, rp_body))) => {
-            eprintln!("WordPress robots.txt status: {}", wp_status);
-            eprintln!("RustPress robots.txt status: {}", rp_status);
+            eprintln!("WordPress robots.txt status: {wp_status}");
+            eprintln!("RustPress robots.txt status: {rp_status}");
 
             assert_eq!(
                 rp_status.as_u16(),
@@ -417,8 +415,7 @@ async fn test_robots_txt() {
             let wp_has_ua = wp_body.to_lowercase().contains("user-agent");
             let rp_has_ua = rp_body.to_lowercase().contains("user-agent");
             eprintln!(
-                "  User-agent directive - WP: {}, RP: {}",
-                wp_has_ua, rp_has_ua
+                "  User-agent directive - WP: {wp_has_ua}, RP: {rp_has_ua}"
             );
             assert!(rp_has_ua, "RustPress robots.txt should have User-agent");
 
@@ -426,8 +423,7 @@ async fn test_robots_txt() {
             let wp_has_sitemap = wp_body.to_lowercase().contains("sitemap");
             let rp_has_sitemap = rp_body.to_lowercase().contains("sitemap");
             eprintln!(
-                "  Sitemap reference - WP: {}, RP: {}",
-                wp_has_sitemap, rp_has_sitemap
+                "  Sitemap reference - WP: {wp_has_sitemap}, RP: {rp_has_sitemap}"
             );
 
             // Print diff for comparison
@@ -459,7 +455,7 @@ async fn test_category_archive() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found category archive at /category/{}/", slug);
+                eprintln!("WordPress: found category archive at /category/{slug}/");
                 break;
             }
         }
@@ -471,7 +467,7 @@ async fn test_category_archive() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found category archive at /category/{}/", slug);
+                eprintln!("RustPress: found category archive at /category/{slug}/");
                 break;
             }
         }
@@ -525,7 +521,7 @@ async fn test_tag_archive() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found tag archive at /tag/{}/", slug);
+                eprintln!("WordPress: found tag archive at /tag/{slug}/");
                 break;
             }
         }
@@ -537,7 +533,7 @@ async fn test_tag_archive() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found tag archive at /tag/{}/", slug);
+                eprintln!("RustPress: found tag archive at /tag/{slug}/");
                 break;
             }
         }
@@ -574,8 +570,7 @@ async fn test_date_archive() {
     match (&wp_year, &rp_year) {
         (Some((wp_status, _)), Some((rp_status, _))) => {
             eprintln!(
-                "  Year archive /{}/: WP={}, RP={}",
-                year, wp_status, rp_status
+                "  Year archive /{year}/: WP={wp_status}, RP={rp_status}"
             );
         }
         _ => eprintln!("  [SKIP] Year archive not available on one or both servers"),
@@ -596,8 +591,7 @@ async fn test_date_archive() {
     match (&wp_month, &rp_month) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
             eprintln!(
-                "  Month archive /{}/{}/: WP={}, RP={}",
-                year, month, wp_status, rp_status
+                "  Month archive /{year}/{month}/: WP={wp_status}, RP={rp_status}"
             );
 
             if wp_status.as_u16() == 200 && rp_status.as_u16() == 200 {
@@ -652,8 +646,7 @@ async fn test_author_archive() {
     match (wp, rp) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
             eprintln!(
-                "  Author archive status - WP: {}, RP: {}",
-                wp_status, rp_status
+                "  Author archive status - WP: {wp_status}, RP: {rp_status}"
             );
 
             if wp_status.as_u16() == 200 && rp_status.as_u16() == 200 {
@@ -703,7 +696,7 @@ async fn test_page_content() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found page at /{}", slug);
+                eprintln!("WordPress: found page at /{slug}");
                 break;
             }
         }
@@ -715,7 +708,7 @@ async fn test_page_content() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found page at /{}", slug);
+                eprintln!("RustPress: found page at /{slug}");
                 break;
             }
         }
@@ -770,8 +763,8 @@ async fn test_xmlrpc_endpoint() {
 
     match (wp, rp) {
         (Some((wp_status, wp_body)), Some((rp_status, rp_body))) => {
-            eprintln!("WordPress xmlrpc.php status: {}", wp_status);
-            eprintln!("RustPress xmlrpc.php status: {}", rp_status);
+            eprintln!("WordPress xmlrpc.php status: {wp_status}");
+            eprintln!("RustPress xmlrpc.php status: {rp_status}");
 
             // WordPress returns 405 for GET on xmlrpc.php (POST only)
             // or some message about POST requests
@@ -781,8 +774,7 @@ async fn test_xmlrpc_endpoint() {
                 rp_body.to_lowercase().contains("post") || rp_status.as_u16() == 405;
 
             eprintln!(
-                "  Indicates POST-only - WP: {}, RP: {}",
-                wp_mentions_post, rp_mentions_post
+                "  Indicates POST-only - WP: {wp_mentions_post}, RP: {rp_mentions_post}"
             );
 
             // Try a POST with system.listMethods
@@ -793,13 +785,13 @@ async fn test_xmlrpc_endpoint() {
 </methodCall>"#;
 
             let wp_post = client
-                .post(&format!("{}/xmlrpc.php", cfg.wordpress_url))
+                .post(format!("{}/xmlrpc.php", cfg.wordpress_url))
                 .header("Content-Type", "text/xml")
                 .body(xmlrpc_body.to_string())
                 .send()
                 .await;
             let rp_post = client
-                .post(&format!("{}/xmlrpc.php", cfg.rustpress_url))
+                .post(format!("{}/xmlrpc.php", cfg.rustpress_url))
                 .header("Content-Type", "text/xml")
                 .body(xmlrpc_body.to_string())
                 .send()
@@ -818,8 +810,7 @@ async fn test_xmlrpc_endpoint() {
                 let wp_has_response = wp_xml.contains("methodResponse");
                 let rp_has_response = rp_xml.contains("methodResponse");
                 eprintln!(
-                    "  methodResponse - WP: {}, RP: {}",
-                    wp_has_response, rp_has_response
+                    "  methodResponse - WP: {wp_has_response}, RP: {rp_has_response}"
                 );
             }
 
@@ -987,8 +978,7 @@ async fn test_homepage_navigation() {
             let wp_nav_links = count_elements(&wp_html, "nav a, [role='navigation'] a");
             let rp_nav_links = count_elements(&rp_html, "nav a, [role='navigation'] a");
             eprintln!(
-                "  Nav link count - WP: {}, RP: {}",
-                wp_nav_links, rp_nav_links
+                "  Nav link count - WP: {wp_nav_links}, RP: {rp_nav_links}"
             );
 
             // Check for menu/list structure inside nav
@@ -1048,7 +1038,7 @@ async fn test_homepage_sidebar() {
             // Count widget areas
             let wp_widgets = count_elements(&wp_html, ".widget, .wp-block-widget-area");
             let rp_widgets = count_elements(&rp_html, ".widget, .wp-block-widget-area");
-            eprintln!("  Widget count - WP: {}, RP: {}", wp_widgets, rp_widgets);
+            eprintln!("  Widget count - WP: {wp_widgets}, RP: {rp_widgets}");
 
             eprintln!("[PASS] Homepage sidebar compared");
         }
@@ -1112,8 +1102,7 @@ async fn test_homepage_footer() {
             let wp_footer_links = count_elements(&wp_html, "footer a, [role='contentinfo'] a");
             let rp_footer_links = count_elements(&rp_html, "footer a, [role='contentinfo'] a");
             eprintln!(
-                "  Footer link count - WP: {}, RP: {}",
-                wp_footer_links, rp_footer_links
+                "  Footer link count - WP: {wp_footer_links}, RP: {rp_footer_links}"
             );
 
             eprintln!("[PASS] Homepage footer compared");
@@ -1142,8 +1131,7 @@ async fn test_homepage_sticky_posts() {
             let wp_sticky_count = count_elements(&wp_html, ".sticky");
             let rp_sticky_count = count_elements(&rp_html, ".sticky");
             eprintln!(
-                "  .sticky post count - WP: {}, RP: {}",
-                wp_sticky_count, rp_sticky_count
+                "  .sticky post count - WP: {wp_sticky_count}, RP: {rp_sticky_count}"
             );
 
             // Check first article element
@@ -1165,8 +1153,7 @@ async fn test_homepage_sticky_posts() {
             // If WordPress has sticky posts, RustPress should too
             if wp_sticky_count > 0 {
                 eprintln!(
-                    "  WordPress has {} sticky post(s); RustPress has {}",
-                    wp_sticky_count, rp_sticky_count
+                    "  WordPress has {wp_sticky_count} sticky post(s); RustPress has {rp_sticky_count}"
                 );
                 // Sticky posts should appear if they exist in the database;
                 // we only warn (not assert) since test data may differ.
@@ -1199,7 +1186,7 @@ async fn test_single_post_comments_section() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found post at /{}", slug);
+                eprintln!("WordPress: found post at /{slug}");
                 break;
             }
         }
@@ -1211,7 +1198,7 @@ async fn test_single_post_comments_section() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found post at /{}", slug);
+                eprintln!("RustPress: found post at /{slug}");
                 break;
             }
         }
@@ -1332,7 +1319,7 @@ async fn test_single_post_navigation() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found post at /{}", slug);
+                eprintln!("WordPress: found post at /{slug}");
                 break;
             }
         }
@@ -1344,7 +1331,7 @@ async fn test_single_post_navigation() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found post at /{}", slug);
+                eprintln!("RustPress: found post at /{slug}");
                 break;
             }
         }
@@ -1401,7 +1388,7 @@ async fn test_single_post_author_info() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found post at /{}", slug);
+                eprintln!("WordPress: found post at /{slug}");
                 break;
             }
         }
@@ -1413,7 +1400,7 @@ async fn test_single_post_author_info() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found post at /{}", slug);
+                eprintln!("RustPress: found post at /{slug}");
                 break;
             }
         }
@@ -1485,7 +1472,7 @@ async fn test_single_post_categories_tags() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found post at /{}", slug);
+                eprintln!("WordPress: found post at /{slug}");
                 break;
             }
         }
@@ -1497,7 +1484,7 @@ async fn test_single_post_categories_tags() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found post at /{}", slug);
+                eprintln!("RustPress: found post at /{slug}");
                 break;
             }
         }
@@ -1509,14 +1496,13 @@ async fn test_single_post_categories_tags() {
             let wp_cat_links = count_elements(&wp_html, "a[href*='/category/']");
             let rp_cat_links = count_elements(&rp_html, "a[href*='/category/']");
             eprintln!(
-                "  Category links - WP: {}, RP: {}",
-                wp_cat_links, rp_cat_links
+                "  Category links - WP: {wp_cat_links}, RP: {rp_cat_links}"
             );
 
             // Check for tag links
             let wp_tag_links = count_elements(&wp_html, "a[href*='/tag/']");
             let rp_tag_links = count_elements(&rp_html, "a[href*='/tag/']");
-            eprintln!("  Tag links - WP: {}, RP: {}", wp_tag_links, rp_tag_links);
+            eprintln!("  Tag links - WP: {wp_tag_links}, RP: {rp_tag_links}");
 
             // Check for category/tag container elements
             let wp_has_cat_area =
@@ -1577,8 +1563,8 @@ async fn test_search_no_results() {
 
     match (wp, rp) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
-            eprintln!("WordPress search status: {}", wp_status);
-            eprintln!("RustPress search status: {}", rp_status);
+            eprintln!("WordPress search status: {wp_status}");
+            eprintln!("RustPress search status: {rp_status}");
 
             // Both should return 200 (search page renders even with no results)
             assert_eq!(
@@ -1623,8 +1609,7 @@ async fn test_search_no_results() {
             // Should NOT have article/post elements
             let rp_article_count = count_elements(&rp_html, "article, .post, .hentry");
             eprintln!(
-                "  RP article count (should be 0 or just wrapper): {}",
-                rp_article_count
+                "  RP article count (should be 0 or just wrapper): {rp_article_count}"
             );
 
             eprintln!("[PASS] Search no results compared");
@@ -1688,8 +1673,7 @@ async fn test_search_form_present() {
             // At least one form of search should be present
             let rp_has_any_search = rp_has_search_form || rp_has_search_input;
             eprintln!(
-                "  RustPress has any search functionality: {}",
-                rp_has_any_search
+                "  RustPress has any search functionality: {rp_has_any_search}"
             );
 
             eprintln!("[PASS] Search form presence compared");
@@ -1734,8 +1718,7 @@ async fn test_rss_feed_channel_fields() {
             for field in &channel_fields {
                 assert!(
                     count_xml_tag(&rp_body, field) > 0,
-                    "RustPress RSS feed should have <{}> in <channel>",
-                    field
+                    "RustPress RSS feed should have <{field}> in <channel>"
                 );
             }
 
@@ -1778,7 +1761,7 @@ async fn test_rss_feed_item_fields() {
             // Both should have at least one <item>
             let wp_items = count_xml_tag(&wp_body, "item");
             let rp_items = count_xml_tag(&rp_body, "item");
-            eprintln!("  <item> count - WP: {}, RP: {}", wp_items, rp_items);
+            eprintln!("  <item> count - WP: {wp_items}, RP: {rp_items}");
             assert!(
                 rp_items > 0,
                 "RustPress RSS feed should have at least one <item>"
@@ -1807,10 +1790,7 @@ async fn test_rss_feed_item_fields() {
                 let rp_count = count_xml_tag(&rp_body, field);
                 assert!(
                     rp_count >= rp_items,
-                    "RustPress RSS: each <item> should have <{}> (found {} for {} items)",
-                    field,
-                    rp_count,
-                    rp_items
+                    "RustPress RSS: each <item> should have <{field}> (found {rp_count} for {rp_items} items)"
                 );
             }
 
@@ -1820,8 +1800,7 @@ async fn test_rss_feed_item_fields() {
                 let wp_count = count_xml_tag(&wp_body, field);
                 let rp_count = count_xml_tag(&rp_body, field);
                 eprintln!(
-                    "  <item><{}> (optional) - WP: {}, RP: {}",
-                    field, wp_count, rp_count
+                    "  <item><{field}> (optional) - WP: {wp_count}, RP: {rp_count}"
                 );
             }
 
@@ -1855,7 +1834,7 @@ async fn test_sitemap_lastmod() {
                 && (body.contains("<urlset") || body.contains("<sitemapindex"))
             {
                 wp_body = Some(body);
-                eprintln!("WordPress sitemap found at {}", url);
+                eprintln!("WordPress sitemap found at {url}");
                 break;
             }
         }
@@ -1868,13 +1847,12 @@ async fn test_sitemap_lastmod() {
             // Check for <lastmod> elements
             let wp_lastmod = count_xml_tag(&wp_xml, "lastmod");
             let rp_lastmod = count_xml_tag(&rp_xml, "lastmod");
-            eprintln!("  <lastmod> count - WP: {}, RP: {}", wp_lastmod, rp_lastmod);
+            eprintln!("  <lastmod> count - WP: {wp_lastmod}, RP: {rp_lastmod}");
 
             // RustPress sitemap should have <lastmod> for each <url>
             let rp_url_count = count_xml_tag(&rp_xml, "url");
             eprintln!(
-                "  <url> count in RP: {}, <lastmod> count: {}",
-                rp_url_count, rp_lastmod
+                "  <url> count in RP: {rp_url_count}, <lastmod> count: {rp_lastmod}"
             );
 
             if rp_url_count > 0 {
@@ -1888,8 +1866,7 @@ async fn test_sitemap_lastmod() {
             let rp_changefreq = count_xml_tag(&rp_xml, "changefreq");
             let rp_priority = count_xml_tag(&rp_xml, "priority");
             eprintln!(
-                "  <changefreq> count in RP: {}, <priority> count: {}",
-                rp_changefreq, rp_priority
+                "  <changefreq> count in RP: {rp_changefreq}, <priority> count: {rp_priority}"
             );
 
             eprintln!("[PASS] Sitemap lastmod compared");
@@ -1951,7 +1928,7 @@ async fn test_pagination() {
 
     match (wp_page2, rp_page2) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
-            eprintln!("  Page 2 status - WP: {}, RP: {}", wp_status, rp_status);
+            eprintln!("  Page 2 status - WP: {wp_status}, RP: {rp_status}");
 
             // If WordPress has page 2, RustPress should too (assuming similar content)
             if wp_status.as_u16() == 200 {
@@ -1998,7 +1975,7 @@ async fn test_category_archive_title() {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
                 wp_slug = slug;
-                eprintln!("WordPress: found category at /category/{}/", slug);
+                eprintln!("WordPress: found category at /category/{slug}/");
                 break;
             }
         }
@@ -2012,7 +1989,7 @@ async fn test_category_archive_title() {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
                 rp_slug = slug;
-                eprintln!("RustPress: found category at /category/{}/", slug);
+                eprintln!("RustPress: found category at /category/{slug}/");
                 break;
             }
         }
@@ -2024,8 +2001,8 @@ async fn test_category_archive_title() {
             let wp_titles = extract_text(&wp_html, "h1, .archive-title, .page-title");
             let rp_titles = extract_text(&rp_html, "h1, .archive-title, .page-title");
 
-            eprintln!("  WP title(s): {:?}", wp_titles);
-            eprintln!("  RP title(s): {:?}", rp_titles);
+            eprintln!("  WP title(s): {wp_titles:?}");
+            eprintln!("  RP title(s): {rp_titles:?}");
 
             // Check that "Category" appears in the title or heading
             let wp_has_category_label = wp_titles
@@ -2051,8 +2028,7 @@ async fn test_category_archive_title() {
                     || t.to_lowercase().contains(rp_slug)
             });
             eprintln!(
-                "  Category name '{}' in RP title: {}",
-                rp_slug, rp_has_slug_in_title
+                "  Category name '{rp_slug}' in RP title: {rp_has_slug_in_title}"
             );
 
             // Also check <title> tag
@@ -2090,7 +2066,7 @@ async fn test_tag_archive_title() {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
                 wp_slug = slug;
-                eprintln!("WordPress: found tag at /tag/{}/", slug);
+                eprintln!("WordPress: found tag at /tag/{slug}/");
                 break;
             }
         }
@@ -2104,7 +2080,7 @@ async fn test_tag_archive_title() {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
                 rp_slug = slug;
-                eprintln!("RustPress: found tag at /tag/{}/", slug);
+                eprintln!("RustPress: found tag at /tag/{slug}/");
                 break;
             }
         }
@@ -2115,8 +2091,8 @@ async fn test_tag_archive_title() {
             let wp_titles = extract_text(&wp_html, "h1, .archive-title, .page-title");
             let rp_titles = extract_text(&rp_html, "h1, .archive-title, .page-title");
 
-            eprintln!("  WP title(s): {:?}", wp_titles);
-            eprintln!("  RP title(s): {:?}", rp_titles);
+            eprintln!("  WP title(s): {wp_titles:?}");
+            eprintln!("  RP title(s): {rp_titles:?}");
 
             // Check that "Tag" appears in the title
             let wp_has_tag_label = wp_titles.iter().any(|t| t.to_lowercase().contains("tag"));
@@ -2138,8 +2114,7 @@ async fn test_tag_archive_title() {
                     || t.to_lowercase().contains(rp_slug)
             });
             eprintln!(
-                "  Tag name '{}' in RP title: {}",
-                rp_slug, rp_has_slug_in_title
+                "  Tag name '{rp_slug}' in RP title: {rp_has_slug_in_title}"
             );
 
             let _ = (wp_slug, rp_slug);
@@ -2175,8 +2150,7 @@ async fn test_author_archive_title() {
     match (wp, rp) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
             eprintln!(
-                "  Author archive status - WP: {}, RP: {}",
-                wp_status, rp_status
+                "  Author archive status - WP: {wp_status}, RP: {rp_status}"
             );
 
             if wp_status.as_u16() == 200 && rp_status.as_u16() == 200 {
@@ -2186,8 +2160,8 @@ async fn test_author_archive_title() {
                 let rp_titles =
                     extract_text(&rp_html, "h1, .archive-title, .author-title, .page-title");
 
-                eprintln!("  WP title(s): {:?}", wp_titles);
-                eprintln!("  RP title(s): {:?}", rp_titles);
+                eprintln!("  WP title(s): {wp_titles:?}");
+                eprintln!("  RP title(s): {rp_titles:?}");
 
                 // Check that the author name appears in title or heading
                 let admin_lower = cfg.admin_user.to_lowercase();
@@ -2208,7 +2182,7 @@ async fn test_author_archive_title() {
                 let rp_title_has_author = rp_page_title
                     .iter()
                     .any(|t| t.to_lowercase().contains(&admin_lower));
-                eprintln!("  Author name in RP <title>: {}", rp_title_has_author);
+                eprintln!("  Author name in RP <title>: {rp_title_has_author}");
 
                 // At least one of heading or <title> should contain author name
                 assert!(
@@ -2252,8 +2226,7 @@ async fn test_date_archive_monthly() {
     match (wp, rp) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
             eprintln!(
-                "  Monthly archive /{}/{}/: WP={}, RP={}",
-                year, month, wp_status, rp_status
+                "  Monthly archive /{year}/{month}/: WP={wp_status}, RP={rp_status}"
             );
 
             if wp_status.as_u16() == 200 && rp_status.as_u16() == 200 {
@@ -2261,8 +2234,7 @@ async fn test_date_archive_monthly() {
                 let wp_article_count = count_elements(&wp_html, "article, .post, .hentry");
                 let rp_article_count = count_elements(&rp_html, "article, .post, .hentry");
                 eprintln!(
-                    "  Article count - WP: {}, RP: {}",
-                    wp_article_count, rp_article_count
+                    "  Article count - WP: {wp_article_count}, RP: {rp_article_count}"
                 );
                 assert!(
                     rp_article_count > 0,
@@ -2282,15 +2254,15 @@ async fn test_date_archive_monthly() {
                     let d_lower = d.to_lowercase();
                     month_patterns.iter().any(|p| d_lower.contains(p))
                 });
-                eprintln!("  RP dates match March 2026: {}", rp_dates_match);
+                eprintln!("  RP dates match March 2026: {rp_dates_match}");
 
                 // Check heading contains month/year info
                 let rp_titles = extract_text(&rp_html, "h1, .archive-title, .page-title");
-                eprintln!("  RP archive title(s): {:?}", rp_titles);
+                eprintln!("  RP archive title(s): {rp_titles:?}");
             } else if wp_status.as_u16() != 200 {
-                eprintln!("  [INFO] WordPress monthly archive returned {}", wp_status);
+                eprintln!("  [INFO] WordPress monthly archive returned {wp_status}");
             } else {
-                eprintln!("  [INFO] RustPress monthly archive returned {}", rp_status);
+                eprintln!("  [INFO] RustPress monthly archive returned {rp_status}");
             }
 
             eprintln!("[PASS] Monthly date archive compared");
@@ -2320,7 +2292,7 @@ async fn test_password_protected_post() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
-                eprintln!("WordPress: found post at /{}", slug);
+                eprintln!("WordPress: found post at /{slug}");
                 break;
             }
         }
@@ -2332,7 +2304,7 @@ async fn test_password_protected_post() {
         if let Some((status, html)) = fetch_html(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
-                eprintln!("RustPress: found post at /{}", slug);
+                eprintln!("RustPress: found post at /{slug}");
                 break;
             }
         }
@@ -2373,8 +2345,7 @@ async fn test_password_protected_post() {
             let wp_has_content = has_element(&wp_html, ".entry-content p, .post-content p");
             let rp_has_content = has_element(&rp_html, ".entry-content p, .post-content p");
             eprintln!(
-                "  Content visible (should be hidden) - WP: {}, RP: {}",
-                wp_has_content, rp_has_content
+                "  Content visible (should be hidden) - WP: {wp_has_content}, RP: {rp_has_content}"
             );
 
             eprintln!("[PASS] Password-protected post compared");
@@ -2399,40 +2370,40 @@ async fn test_comment_rss_feed() {
 
     match (wp, rp) {
         (Some((wp_status, wp_body)), Some((rp_status, rp_body))) => {
-            eprintln!("WordPress comments feed status: {}", wp_status);
-            eprintln!("RustPress comments feed status: {}", rp_status);
+            eprintln!("WordPress comments feed status: {wp_status}");
+            eprintln!("RustPress comments feed status: {rp_status}");
 
             // Both should return valid XML
             if wp_status.as_u16() == 200 {
                 let wp_is_xml = is_valid_xml_basic(&wp_body);
-                eprintln!("  WP valid XML: {}", wp_is_xml);
+                eprintln!("  WP valid XML: {wp_is_xml}");
             }
 
             if rp_status.as_u16() == 200 {
                 let rp_is_xml = is_valid_xml_basic(&rp_body);
-                eprintln!("  RP valid XML: {}", rp_is_xml);
+                eprintln!("  RP valid XML: {rp_is_xml}");
                 assert!(rp_is_xml, "RustPress comments feed should be valid XML");
 
                 // Should have RSS structure
                 let rp_has_rss = rp_body.contains("<rss") || rp_body.contains("<feed");
-                eprintln!("  RP has RSS root: {}", rp_has_rss);
+                eprintln!("  RP has RSS root: {rp_has_rss}");
 
                 // Check for <channel> element
                 let rp_has_channel = rp_body.contains("<channel>");
-                eprintln!("  RP has <channel>: {}", rp_has_channel);
+                eprintln!("  RP has <channel>: {rp_has_channel}");
 
                 // Check for <item> elements (comment entries)
                 let rp_items = count_xml_tag(&rp_body, "item");
-                eprintln!("  RP comment items: {}", rp_items);
+                eprintln!("  RP comment items: {rp_items}");
 
                 // Check required channel fields
                 let channel_fields = ["title", "link", "description"];
                 for field in &channel_fields {
                     let rp_count = count_xml_tag(&rp_body, field);
-                    eprintln!("  RP <{}>: {}", field, rp_count);
+                    eprintln!("  RP <{field}>: {rp_count}");
                 }
             } else {
-                eprintln!("  [INFO] RustPress comments feed returned {}", rp_status);
+                eprintln!("  [INFO] RustPress comments feed returned {rp_status}");
             }
 
             eprintln!("[PASS] Comment RSS feed compared");
@@ -2462,7 +2433,7 @@ async fn test_category_feed() {
             if status.as_u16() == 200 {
                 wp_result = Some(body);
                 found_slug = slug;
-                eprintln!("WordPress: found category feed at /category/{}/feed/", slug);
+                eprintln!("WordPress: found category feed at /category/{slug}/feed/");
                 break;
             }
         }
@@ -2480,7 +2451,7 @@ async fn test_category_feed() {
         if let Some((status, body)) = fetch_text(&client, &url).await {
             if status.as_u16() == 200 {
                 rp_result = Some(body);
-                eprintln!("RustPress: found category feed at /category/{}/feed/", slug);
+                eprintln!("RustPress: found category feed at /category/{slug}/feed/");
                 break;
             }
         }
@@ -2491,17 +2462,17 @@ async fn test_category_feed() {
             // Both should be valid RSS XML
             let wp_is_xml = is_valid_xml_basic(&wp_body);
             let rp_is_xml = is_valid_xml_basic(&rp_body);
-            eprintln!("  Valid XML - WP: {}, RP: {}", wp_is_xml, rp_is_xml);
+            eprintln!("  Valid XML - WP: {wp_is_xml}, RP: {rp_is_xml}");
             assert!(rp_is_xml, "RustPress category feed should be valid XML");
 
             // Check for RSS root
             let rp_has_rss = rp_body.contains("<rss") || rp_body.contains("<feed");
-            eprintln!("  RP has RSS root: {}", rp_has_rss);
+            eprintln!("  RP has RSS root: {rp_has_rss}");
 
             // Check for items
             let wp_items = count_xml_tag(&wp_body, "item");
             let rp_items = count_xml_tag(&rp_body, "item");
-            eprintln!("  Items - WP: {}, RP: {}", wp_items, rp_items);
+            eprintln!("  Items - WP: {wp_items}, RP: {rp_items}");
 
             // Check required tags
             let required_tags = ["title", "link", "description"];
@@ -2674,7 +2645,7 @@ async fn test_canonical_link() {
             if status.as_u16() == 200 {
                 wp_result = Some(html);
                 wp_found_slug = slug;
-                eprintln!("WordPress: found post at /{}", slug);
+                eprintln!("WordPress: found post at /{slug}");
                 break;
             }
         }
@@ -2688,7 +2659,7 @@ async fn test_canonical_link() {
             if status.as_u16() == 200 {
                 rp_result = Some(html);
                 rp_found_slug = slug;
-                eprintln!("RustPress: found post at /{}", slug);
+                eprintln!("RustPress: found post at /{slug}");
                 break;
             }
         }
@@ -2725,14 +2696,13 @@ async fn test_canonical_link() {
                 format!("{}/{}", cfg.rustpress_url, rp_found_slug)
             )) || {
                 // More lenient check: canonical href contains the slug
-                let canonical_pattern = format!("canonical");
+                let canonical_pattern = "canonical".to_string();
                 let slug_present = rp_html.contains(rp_found_slug);
                 rp_html.contains(&canonical_pattern) && slug_present
             };
 
             eprintln!(
-                "  Canonical contains post slug '{}': {}",
-                rp_found_slug, rp_has_slug_in_canonical
+                "  Canonical contains post slug '{rp_found_slug}': {rp_has_slug_in_canonical}"
             );
 
             let _ = wp_found_slug; // suppress unused warning
@@ -2764,14 +2734,13 @@ async fn test_paged_query_var() {
 
     match (wp, rp) {
         (Some((wp_status, _wp_html)), Some((rp_status, _rp_html))) => {
-            eprintln!("WordPress ?paged=1 -> {}", wp_status);
-            eprintln!("RustPress ?paged=1 -> {}", rp_status);
+            eprintln!("WordPress ?paged=1 -> {wp_status}");
+            eprintln!("RustPress ?paged=1 -> {rp_status}");
 
             // Should return 200 or 301 redirect
             assert!(
                 rp_status.is_success() || rp_status.is_redirection(),
-                "RustPress ?paged=1 should return 2xx or 3xx, got {}",
-                rp_status
+                "RustPress ?paged=1 should return 2xx or 3xx, got {rp_status}"
             );
             eprintln!("[PASS] ?paged query var handled");
         }
@@ -2792,20 +2761,19 @@ async fn test_month_query_var_redirect() {
 
     // ?m=202401 should redirect to /2024/01/ on WordPress
     let rp_resp = client
-        .get(&format!("{}/?m=202401", cfg.rustpress_url))
+        .get(format!("{}/?m=202401", cfg.rustpress_url))
         .send()
         .await;
 
     match rp_resp {
         Ok(r) => {
             let status = r.status();
-            eprintln!("RustPress ?m=202401 -> {}", status);
+            eprintln!("RustPress ?m=202401 -> {status}");
 
             // Either redirect to /2024/01/ or return 200 archive page
             assert!(
                 status.is_success() || status.is_redirection(),
-                "RustPress ?m=202401 should return 2xx or 3xx, got {}",
-                status
+                "RustPress ?m=202401 should return 2xx or 3xx, got {status}"
             );
 
             if status.is_redirection() {
@@ -2814,13 +2782,12 @@ async fn test_month_query_var_redirect() {
                     .get("location")
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("(none)");
-                eprintln!("  Redirect to: {}", location);
+                eprintln!("  Redirect to: {location}");
                 // Should redirect to /2024/01/
                 assert!(
                     location.contains("/2024/01/")
                         || location.contains("2024") && location.contains("01"),
-                    "?m=202401 should redirect to date archive, got: {}",
-                    location
+                    "?m=202401 should redirect to date archive, got: {location}"
                 );
                 eprintln!("[OK] Correctly redirects to date archive");
             } else {
@@ -2829,7 +2796,7 @@ async fn test_month_query_var_redirect() {
 
             eprintln!("[PASS] ?m query var handled");
         }
-        Err(e) => eprintln!("[SKIP] {}", e),
+        Err(e) => eprintln!("[SKIP] {e}"),
     }
 }
 
@@ -2846,19 +2813,18 @@ async fn test_author_query_var_redirect() {
 
     // ?author=1 should redirect to /author/{nicename}/ on WordPress
     let rp_resp = client
-        .get(&format!("{}/?author=1", cfg.rustpress_url))
+        .get(format!("{}/?author=1", cfg.rustpress_url))
         .send()
         .await;
 
     match rp_resp {
         Ok(r) => {
             let status = r.status();
-            eprintln!("RustPress ?author=1 -> {}", status);
+            eprintln!("RustPress ?author=1 -> {status}");
 
             assert!(
                 status.is_success() || status.is_redirection(),
-                "RustPress ?author=1 should return 2xx or 3xx, got {}",
-                status
+                "RustPress ?author=1 should return 2xx or 3xx, got {status}"
             );
 
             if status.is_redirection() {
@@ -2867,18 +2833,17 @@ async fn test_author_query_var_redirect() {
                     .get("location")
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("(none)");
-                eprintln!("  Redirect to: {}", location);
+                eprintln!("  Redirect to: {location}");
                 assert!(
                     location.contains("/author/"),
-                    "?author=1 should redirect to /author/..., got: {}",
-                    location
+                    "?author=1 should redirect to /author/..., got: {location}"
                 );
                 eprintln!("[OK] Correctly redirects to author archive");
             }
 
             eprintln!("[PASS] ?author query var handled");
         }
-        Err(e) => eprintln!("[SKIP] {}", e),
+        Err(e) => eprintln!("[SKIP] {e}"),
     }
 }
 
@@ -2907,13 +2872,12 @@ async fn test_login_checkemail_message() {
 
     match (wp, rp) {
         (Some((wp_status, wp_html)), Some((rp_status, rp_html))) => {
-            eprintln!("WordPress ?checkemail=registered -> {}", wp_status);
-            eprintln!("RustPress ?checkemail=registered -> {}", rp_status);
+            eprintln!("WordPress ?checkemail=registered -> {wp_status}");
+            eprintln!("RustPress ?checkemail=registered -> {rp_status}");
 
             assert!(
                 rp_status.is_success(),
-                "Should return 200, got {}",
-                rp_status
+                "Should return 200, got {rp_status}"
             );
 
             // Both should contain a message about checking email
@@ -2922,8 +2886,8 @@ async fn test_login_checkemail_message() {
             let rp_has_msg = rp_html.to_lowercase().contains("email")
                 || rp_html.to_lowercase().contains("check");
 
-            eprintln!("  WordPress has email message: {}", wp_has_msg);
-            eprintln!("  RustPress has email message: {}", rp_has_msg);
+            eprintln!("  WordPress has email message: {wp_has_msg}");
+            eprintln!("  RustPress has email message: {rp_has_msg}");
 
             assert!(
                 rp_has_msg,

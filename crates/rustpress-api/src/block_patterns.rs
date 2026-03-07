@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn test_pattern_has_required_fields() {
         // patterns list is compiled-in, just verify it compiles
-        let cats = vec![json!({ "name": "featured", "label": "Featured" })];
+        let cats = [json!({ "name": "featured", "label": "Featured" })];
         assert!(!cats.is_empty());
     }
 }

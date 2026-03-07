@@ -56,7 +56,7 @@ impl Translations {
 
     /// Load translation strings from `{languages_dir}/{locale}.json`.
     fn load_strings(dir: &Path, locale: &str) -> HashMap<String, String> {
-        let file_path = dir.join(format!("{}.json", locale));
+        let file_path = dir.join(format!("{locale}.json"));
 
         if !file_path.exists() {
             debug!(locale, "no translation file found, using passthrough");

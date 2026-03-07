@@ -142,7 +142,7 @@ impl SiteResolver {
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
 
         if let Some(first_segment) = segments.first() {
-            let site_path = format!("/{}/", first_segment);
+            let site_path = format!("/{first_segment}/");
 
             // Try to find a site with this path
             if let Some(site) = sites.values().find(|s| s.path == site_path) {

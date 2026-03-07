@@ -145,7 +145,7 @@ impl NotificationProcessor {
             submission.submitted_at.format("%Y-%m-%d %H:%M:%S UTC")
         ));
         if let Some(ref ip) = submission.ip_address {
-            body.push_str(&format!("IP: {}\n", ip));
+            body.push_str(&format!("IP: {ip}\n"));
         }
 
         let reply_to = submission
@@ -192,7 +192,7 @@ impl NotificationProcessor {
     fn expand_template(&self, template: &str, data: &HashMap<String, String>) -> String {
         let mut result = template.to_string();
         for (key, value) in data {
-            result = result.replace(&format!("{{{}}}", key), value);
+            result = result.replace(&format!("{{{key}}}"), value);
         }
         result
     }
@@ -215,7 +215,7 @@ fn format_all_fields(form: &FormConfig, data: &HashMap<String, String>) -> Strin
     for (key, value) in data {
         let in_config = form.fields.iter().any(|f| f.name == *key);
         if !in_config && !value.is_empty() && !key.starts_with('_') {
-            lines.push(format!("{}: {}", key, value));
+            lines.push(format!("{key}: {value}"));
         }
     }
 
@@ -233,7 +233,7 @@ fn text_to_html(text: &str) -> String {
         .split("\n\n")
         .map(|p| {
             let lines = p.replace('\n', "<br>\n");
-            format!("<p>{}</p>", lines)
+            format!("<p>{lines}</p>")
         })
         .collect();
 

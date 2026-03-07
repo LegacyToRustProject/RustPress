@@ -282,7 +282,7 @@ pub fn build_image_sizes(
             width: orig_width,
             height: orig_height,
             mime_type: mime_type.to_string(),
-            source_url: format!("{}/wp-content/uploads/{}", base, file),
+            source_url: format!("{base}/wp-content/uploads/{file}"),
         },
     );
 
@@ -321,12 +321,12 @@ pub fn build_image_sizes(
         };
 
         let sized_filename = if ext.is_empty() {
-            format!("{}-{}x{}", stem, w, h)
+            format!("{stem}-{w}x{h}")
         } else {
-            format!("{}-{}x{}.{}", stem, w, h, ext)
+            format!("{stem}-{w}x{h}.{ext}")
         };
 
-        let source_url = format!("{}/wp-content/uploads/{}", base, sized_filename);
+        let source_url = format!("{base}/wp-content/uploads/{sized_filename}");
 
         sizes.insert(
             size_def.name.clone(),
@@ -378,12 +378,12 @@ async fn list_media(
 
     // Media type filter (e.g. "image", "video", "audio")
     if let Some(ref mt) = params.media_type {
-        query = query.filter(wp_posts::Column::PostMimeType.like(format!("{}/%", mt)));
+        query = query.filter(wp_posts::Column::PostMimeType.like(format!("{mt}/%")));
     }
 
     // Search filter
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{search}%")));
     }
 
     // Author filter
@@ -544,7 +544,7 @@ async fn create_media(
         let body = request.into_body();
         let bytes = axum::body::to_bytes(body, 50 * 1024 * 1024) // 50 MB limit
             .await
-            .map_err(|e| WpError::internal(format!("Failed to read upload body: {}", e)))?;
+            .map_err(|e| WpError::internal(format!("Failed to read upload body: {e}")))?;
 
         // Sanitize filename
         let safe_name: String = filename
@@ -563,11 +563,11 @@ async fn create_media(
         let sub_dir = now.format("%Y/%m").to_string();
         let upload_dir = std::path::PathBuf::from("wp-content/uploads").join(&sub_dir);
         std::fs::create_dir_all(&upload_dir)
-            .map_err(|e| WpError::internal(format!("Cannot create upload dir: {}", e)))?;
+            .map_err(|e| WpError::internal(format!("Cannot create upload dir: {e}")))?;
 
         let file_path = upload_dir.join(&safe_name);
         std::fs::write(&file_path, &bytes)
-            .map_err(|e| WpError::internal(format!("Failed to write file: {}", e)))?;
+            .map_err(|e| WpError::internal(format!("Failed to write file: {e}")))?;
 
         let file_url = format!(
             "{}/wp-content/uploads/{}/{}",
@@ -645,7 +645,7 @@ async fn create_media(
             .await
             .map_err(|e| WpError::internal(e.to_string()))?;
         let input: CreateMediaRequest = serde_json::from_slice(&bytes)
-            .map_err(|e| WpError::bad_request(format!("Invalid JSON: {}", e)))?;
+            .map_err(|e| WpError::bad_request(format!("Invalid JSON: {e}")))?;
 
         let now = chrono::Utc::now().naive_utc();
         let title = input.title.unwrap_or_default();
@@ -764,7 +764,7 @@ fn generate_image_sizes(
     for size in &sizes {
         let (w, h) = calculate_dimensions(orig_width, orig_height, size.width, size.height);
         if w > 0 && h > 0 && (w != orig_width || h != orig_height) {
-            let thumb_filename = format!("{}-{}x{}.{}", stem, w, h, ext);
+            let thumb_filename = format!("{stem}-{w}x{h}.{ext}");
             let thumb_path = upload_dir.join(&thumb_filename);
             let resized = img.resize_exact(w, h, image::imageops::FilterType::Lanczos3);
             let _ = resized.save(&thumb_path);

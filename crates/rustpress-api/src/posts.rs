@@ -408,7 +408,7 @@ async fn list_posts(
 
     // Search filter
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{search}%")));
     }
 
     // Author filter

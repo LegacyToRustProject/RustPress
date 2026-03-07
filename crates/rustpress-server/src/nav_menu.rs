@@ -213,10 +213,10 @@ pub fn render_nav_menu(
     let mut html = String::new();
 
     if !container.is_empty() {
-        html.push_str(&format!("<{} class=\"{}\">", container, container_class));
+        html.push_str(&format!("<{container} class=\"{container_class}\">"));
     }
 
-    html.push_str(&format!("<ul id=\"{}\" class=\"{}\">", menu_id, menu_class));
+    html.push_str(&format!("<ul id=\"{menu_id}\" class=\"{menu_class}\">"));
 
     for item in &menu.items {
         render_menu_item(&mut html, item, current_url, 0);
@@ -225,7 +225,7 @@ pub fn render_nav_menu(
     html.push_str("</ul>");
 
     if !container.is_empty() {
-        html.push_str(&format!("</{}>", container));
+        html.push_str(&format!("</{container}>"));
     }
 
     html

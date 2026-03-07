@@ -398,7 +398,7 @@ fn render_admin(state: &AppState, template: &str, context: &tera::Context) -> Ht
         Ok(html) => Html(html),
         Err(e) => {
             tracing::error!("Admin template error: {}", e);
-            Html(format!("<h1>Admin Template Error</h1><pre>{}</pre>", e))
+            Html(format!("<h1>Admin Template Error</h1><pre>{e}</pre>"))
         }
     }
 }
@@ -867,7 +867,7 @@ async fn posts_list(
     }
 
     if !search.is_empty() {
-        let like = format!("%{}%", search);
+        let like = format!("%{search}%");
         query = query.filter(wp_posts::Column::PostTitle.like(&like));
     }
 
@@ -1084,13 +1084,13 @@ async fn posts_list(
     for p in &all_posts_dates {
         let y = p.post_date.format("%Y").to_string();
         let m = p.post_date.format("%m").to_string();
-        let key = format!("{}{}", y, m);
+        let key = format!("{y}{m}");
         if seen_months.insert(key.clone()) {
             let month_num = m.parse::<usize>().unwrap_or(0);
             let label = if month_num > 0 && month_num <= 12 {
                 format!("{} {}", month_names[month_num], y)
             } else {
-                format!("{}-{}", y, m)
+                format!("{y}-{m}")
             };
             date_months.push(serde_json::json!({"value": key, "label": label}));
         }
@@ -1553,7 +1553,7 @@ async fn user_new_save(
     let display_name = if let Some(ref first) = form.first_name {
         if let Some(ref last) = form.last_name {
             if !first.is_empty() && !last.is_empty() {
-                format!("{} {}", first, last)
+                format!("{first} {last}")
             } else if !first.is_empty() {
                 first.clone()
             } else {
@@ -1618,7 +1618,7 @@ async fn user_new_save(
         Err(e) => {
             tracing::error!("Failed to create user: {}", e);
             ctx.insert("saved", &false);
-            ctx.insert("error", &format!("Failed to create user: {}", e));
+            ctx.insert("error", &format!("Failed to create user: {e}"));
         }
     }
 
@@ -3648,7 +3648,7 @@ async fn themes_activate(
         let mut ctx = admin_context(&state, &session).await;
         ctx.insert("active_page", "themes");
         ctx.insert("activated", &false);
-        ctx.insert("error", &format!("Theme '{}' not found.", theme_slug));
+        ctx.insert("error", &format!("Theme '{theme_slug}' not found."));
         ctx.insert("themes", &available);
         return render_admin(&state, "admin/themes.html", &ctx).into_response();
     }
@@ -3812,7 +3812,7 @@ async fn export_download(
             (header::CONTENT_TYPE, "application/xml; charset=utf-8"),
             (
                 header::CONTENT_DISPOSITION,
-                &format!("attachment; filename=\"{}\"", filename),
+                &format!("attachment; filename=\"{filename}\""),
             ),
         ],
         xml,
@@ -3851,7 +3851,7 @@ async fn import_upload(
                     imported = parse_and_import_wxr(&state.db, &xml_str).await;
                 }
                 Err(e) => {
-                    error_msg = format!("Failed to read file: {}", e);
+                    error_msg = format!("Failed to read file: {e}");
                 }
             }
         }
@@ -3920,8 +3920,8 @@ async fn parse_and_import_wxr(db: &sea_orm::DatabaseConnection, xml: &str) -> u6
 }
 
 fn extract_xml_tag(xml: &str, tag: &str) -> Option<String> {
-    let open = format!("<{}>", tag);
-    let close = format!("</{}>", tag);
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
     let start = xml.find(&open)? + open.len();
     let end = xml.find(&close)?;
     if start <= end {
@@ -3932,8 +3932,8 @@ fn extract_xml_tag(xml: &str, tag: &str) -> Option<String> {
 }
 
 fn extract_cdata(xml: &str, tag: &str) -> Option<String> {
-    let open = format!("<{}>", tag);
-    let close = format!("</{}>", tag);
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
     let start = xml.find(&open)? + open.len();
     let end = xml.find(&close)?;
     let content = &xml[start..end];
@@ -4132,7 +4132,7 @@ async fn media_upload(
         .unwrap_or(&file_name)
         .replace(['-', '_'], " ");
 
-    let guid = format!("/wp-content/uploads/{}/{}", date_dir, file_name);
+    let guid = format!("/wp-content/uploads/{date_dir}/{file_name}");
     let slug = file_name
         .split('.')
         .next()
@@ -4254,8 +4254,7 @@ async fn post_submit(
             let _ = active.update(&state.db).await;
         }
         Redirect::to(&format!(
-            "/wp-admin/post.php?post={}&action=edit&message=1",
-            post_id
+            "/wp-admin/post.php?post={post_id}&action=edit&message=1"
         ))
         .into_response()
     } else {
@@ -4314,7 +4313,7 @@ async fn bulk_action_posts(
     let post_ids = form.post.unwrap_or_default();
 
     if action == "-1" || post_ids.is_empty() {
-        return Redirect::to(&format!("/wp-admin/edit.php?post_type={}", post_type))
+        return Redirect::to(&format!("/wp-admin/edit.php?post_type={post_type}"))
             .into_response();
     }
 
@@ -4346,8 +4345,7 @@ async fn bulk_action_posts(
     }
 
     Redirect::to(&format!(
-        "/wp-admin/edit.php?post_type={}&message={}",
-        post_type, action
+        "/wp-admin/edit.php?post_type={post_type}&message={action}"
     ))
     .into_response()
 }

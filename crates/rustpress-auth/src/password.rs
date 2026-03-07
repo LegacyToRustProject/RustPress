@@ -68,7 +68,7 @@ impl PasswordHasher {
             let mut hasher = Md5::new();
             hasher.update(password.as_bytes());
             let result = hasher.finalize();
-            let computed = format!("{:x}", result);
+            let computed = format!("{result:x}");
             return Ok(computed == hash.to_lowercase());
         }
 

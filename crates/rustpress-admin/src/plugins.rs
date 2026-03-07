@@ -36,7 +36,7 @@ async fn activate_plugin(
         ok: true,
         name: name.clone(),
         status: "Active".to_string(),
-        message: format!("Plugin '{}' activated successfully.", name),
+        message: format!("Plugin '{name}' activated successfully."),
     }))
 }
 
@@ -54,6 +54,6 @@ async fn deactivate_plugin(
         ok: true,
         name: name.clone(),
         status: "Inactive".to_string(),
-        message: format!("Plugin '{}' deactivated successfully.", name),
+        message: format!("Plugin '{name}' deactivated successfully."),
     }))
 }

@@ -40,7 +40,7 @@ pub fn init_theme_engine(
     // Fallback to legacy templates/ directory
     let path = Path::new(templates_dir);
     if !path.exists() {
-        return Err(format!("Templates directory not found: {}", templates_dir));
+        return Err(format!("Templates directory not found: {templates_dir}"));
     }
 
     ThemeEngine::from_templates_dir(path).map_err(|e| e.to_string())
@@ -52,7 +52,7 @@ pub fn init_admin_tera(admin_templates_dir: &str) -> Result<tera::Tera, String> 
 
     if !path.exists() {
         std::fs::create_dir_all(path)
-            .map_err(|e| format!("Failed to create admin templates dir: {}", e))?;
+            .map_err(|e| format!("Failed to create admin templates dir: {e}"))?;
     }
 
     // Load from the parent "templates/" directory so that template names

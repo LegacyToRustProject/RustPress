@@ -9,7 +9,7 @@ pub fn wpautop(text: &str) -> String {
         return String::new();
     }
 
-    let mut text = format!("{}\n", text);
+    let mut text = format!("{text}\n");
 
     // Pre tags shouldn't be touched by autop.
     // Replace pre tags and their contents with placeholders.
@@ -26,7 +26,7 @@ pub fn wpautop(text: &str) -> String {
                 continue;
             }
             if let Some(start) = part.find("<pre") {
-                let placeholder = format!("<pre wp-pre-tag-{}></pre>", i);
+                let placeholder = format!("<pre wp-pre-tag-{i}></pre>");
                 let preserved = format!("{}</pre>", &part[start..]);
                 pre_tags.push((placeholder.clone(), preserved));
                 new_text.push_str(&part[..start]);
@@ -48,11 +48,11 @@ pub fn wpautop(text: &str) -> String {
     let allblocks = r"(?:table|thead|tfoot|caption|col|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|form|map|area|blockquote|address|math|style|p|h[1-6]|hr|fieldset|legend|section|article|aside|hgroup|header|footer|nav|figure|figcaption|details|menu|summary)";
 
     // Add a double line break above block-level opening tags.
-    let re_open = Regex::new(&format!(r"(?i)(<{}[\s/>])", allblocks)).unwrap();
+    let re_open = Regex::new(&format!(r"(?i)(<{allblocks}[\s/>])")).unwrap();
     text = re_open.replace_all(&text, "\n\n$1").to_string();
 
     // Add a double line break below block-level closing tags.
-    let re_close = Regex::new(&format!(r"(?i)(</{}>)", allblocks)).unwrap();
+    let re_close = Regex::new(&format!(r"(?i)(</{allblocks}>)")).unwrap();
     text = re_close.replace_all(&text, "$1\n\n").to_string();
 
     // Standardize newline characters.
@@ -118,15 +118,15 @@ pub fn wpautop(text: &str) -> String {
     text = re_empty_p.replace_all(&text, "").to_string();
 
     // If an opening or closing block element tag is wrapped in a <p>, unwrap it.
-    let re_p_block = Regex::new(&format!(r"<p>\s*(</?\s*{}[^>]*>)\s*</p>", allblocks)).unwrap();
+    let re_p_block = Regex::new(&format!(r"<p>\s*(</?\s*{allblocks}[^>]*>)\s*</p>")).unwrap();
     text = re_p_block.replace_all(&text, "$1").to_string();
 
     // Remove <p> that wraps around block-level opening tags.
-    let re_p_before_block = Regex::new(&format!(r"<p>\s*(</?\s*{}[^>]*>)", allblocks)).unwrap();
+    let re_p_before_block = Regex::new(&format!(r"<p>\s*(</?\s*{allblocks}[^>]*>)")).unwrap();
     text = re_p_before_block.replace_all(&text, "$1").to_string();
 
     // Remove </p> that follows block-level closing tags.
-    let re_block_before_p = Regex::new(&format!(r"(</?\s*{}[^>]*>)\s*</p>", allblocks)).unwrap();
+    let re_block_before_p = Regex::new(&format!(r"(</?\s*{allblocks}[^>]*>)\s*</p>")).unwrap();
     text = re_block_before_p.replace_all(&text, "$1").to_string();
 
     // If li is wrapped in a <p>, remove the <p>.
@@ -145,7 +145,7 @@ pub fn wpautop(text: &str) -> String {
     text = text.replace("<WPPreserveNewline />", "\n");
 
     // If a <br /> tag is right after a block element tag, remove it.
-    let re_br_after_block = Regex::new(&format!(r"(</?\s*{}[^>]*>)\s*<br />", allblocks)).unwrap();
+    let re_br_after_block = Regex::new(&format!(r"(</?\s*{allblocks}[^>]*>)\s*<br />")).unwrap();
     text = re_br_after_block.replace_all(&text, "$1").to_string();
 
     // If a <br /> tag is before certain closing block tags, remove it.
@@ -233,7 +233,7 @@ fn add_br_tags(text: &str) -> String {
 fn preserve_newlines_in_tags(text: &str) -> String {
     let mut result = text.to_string();
     for tag in &["script", "style", "svg"] {
-        let re = Regex::new(&format!(r"(?si)<{}[^>]*>.*?</{}>", tag, tag)).unwrap();
+        let re = Regex::new(&format!(r"(?si)<{tag}[^>]*>.*?</{tag}>")).unwrap();
         result = re
             .replace_all(&result, |caps: &regex::Captures| {
                 caps[0].replace('\n', "<WPPreserveNewline />")
@@ -276,14 +276,14 @@ pub fn wptexturize(text: &str) -> String {
             HtmlToken::Tag(tag) => {
                 // Check if this opens a no-texturize tag
                 for &nt in &no_texturize_tags {
-                    if tag.starts_with(&format!("<{}", nt))
+                    if tag.starts_with(&format!("<{nt}"))
                         && (tag.len() > nt.len() + 1)
                         && (tag.as_bytes()[nt.len() + 1] == b' '
                             || tag.as_bytes()[nt.len() + 1] == b'>'
                             || tag.as_bytes()[nt.len() + 1] == b'/')
                     {
                         skip_depth.push(nt.to_string());
-                    } else if tag == &format!("</{}>", nt) {
+                    } else if tag == &format!("</{nt}>") {
                         if let Some(pos) = skip_depth.iter().rposition(|s| s == nt) {
                             skip_depth.remove(pos);
                         }
@@ -706,7 +706,7 @@ fn add_block_layout_classes(content: &str) -> String {
                     if classes.contains("is-layout-") {
                         return caps[0].to_string();
                     }
-                    format!("class=\"{} is-layout-flex {}\"", classes, cc)
+                    format!("class=\"{classes} is-layout-flex {cc}\"")
                 })
                 .to_string();
         }
@@ -725,7 +725,7 @@ fn add_block_layout_classes(content: &str) -> String {
                     if classes.contains("is-layout-") {
                         return caps[0].to_string();
                     }
-                    format!("class=\"{} is-layout-flow {}\"", classes, cc)
+                    format!("class=\"{classes} is-layout-flow {cc}\"")
                 })
                 .to_string();
         }
@@ -741,8 +741,7 @@ fn add_block_layout_classes(content: &str) -> String {
                     return caps[0].to_string();
                 }
                 format!(
-                    "class=\"{} is-layout-flow wp-block-column-is-layout-flow\"",
-                    classes
+                    "class=\"{classes} is-layout-flow wp-block-column-is-layout-flow\""
                 )
             })
             .to_string();
@@ -1083,20 +1082,17 @@ mod tests {
         let result = apply_content_filters(input);
         assert!(
             result.contains("is-layout-flex wp-block-columns-is-layout-flex"),
-            "Missing columns layout: {}",
-            result
+            "Missing columns layout: {result}"
         );
         assert!(
             result.contains("is-layout-flex wp-block-buttons-is-layout-flex"),
-            "Missing buttons layout: {}",
-            result
+            "Missing buttons layout: {result}"
         );
         assert!(
             result.contains("is-layout-flow wp-block-column-is-layout-flow"),
-            "Missing column layout: {}",
-            result
+            "Missing column layout: {result}"
         );
         // No double quotes
-        assert!(!result.contains("\"\""), "Double quote found: {}", result);
+        assert!(!result.contains("\"\""), "Double quote found: {result}");
     }
 }

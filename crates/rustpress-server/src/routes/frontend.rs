@@ -227,10 +227,9 @@ async fn build_base_context(state: &AppState) -> tera::Context {
     } else {
         format!(
             "<div class=\"footer-widgets-row\">\
-             <div class=\"footer-widgets-col\">{}</div>\
-             <div class=\"footer-widgets-col\">{}</div>\
-             </div>",
-            footer1_widgets_html, footer2_widgets_html
+             <div class=\"footer-widgets-col\">{footer1_widgets_html}</div>\
+             <div class=\"footer-widgets-col\">{footer2_widgets_html}</div>\
+             </div>"
         )
     };
     ctx.insert("footer_widgets", &footer_widgets_html);
@@ -292,7 +291,7 @@ async fn render_theme_page(
             tracing::error!("Template render error: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Html(format!("<h1>Render Error</h1><pre>{}</pre>", e)),
+                Html(format!("<h1>Render Error</h1><pre>{e}</pre>")),
             ))
         }
     }
@@ -514,8 +513,8 @@ async fn front_page_or_query(
             .filter(wp_posts::Column::PostType.eq("post"))
             .filter(
                 sea_orm::Condition::any()
-                    .add(wp_posts::Column::PostTitle.like(format!("%{}%", s)))
-                    .add(wp_posts::Column::PostContent.like(format!("%{}%", s))),
+                    .add(wp_posts::Column::PostTitle.like(format!("%{s}%")))
+                    .add(wp_posts::Column::PostContent.like(format!("%{s}%"))),
             )
             .order_by_desc(wp_posts::Column::PostDate)
             .limit(20)
@@ -564,7 +563,7 @@ async fn front_page_or_query(
             Err(e) => return conv(Err(e)),
         };
         context.insert("term_name", &proper_name);
-        context.insert("archive_title", &format!("Category: {}", proper_name));
+        context.insert("archive_title", &format!("Category: {proper_name}"));
         insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
         return conv(
             render_theme_page(
@@ -586,7 +585,7 @@ async fn front_page_or_query(
             };
         let term_name = tag_slug.replace('-', " ");
         context.insert("term_name", &term_name);
-        context.insert("archive_title", &format!("Tag: {}", term_name));
+        context.insert("archive_title", &format!("Tag: {term_name}"));
         insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
         return conv(
             render_theme_page(
@@ -642,7 +641,7 @@ async fn front_page_or_query(
         if m_val.len() >= 6 {
             if let (Ok(year), Ok(month)) = (m_val[0..4].parse::<u32>(), m_val[4..6].parse::<u32>())
             {
-                let url = format!("/{:04}/{:02}", year, month);
+                let url = format!("/{year:04}/{month:02}");
                 return Redirect::permanent(&url).into_response();
             }
         }
@@ -720,7 +719,7 @@ async fn single_post_by_slug(
                     let mut context = build_base_context(state).await;
                     context.insert("post_title", &p.post_title);
                     context.insert("post_id", &post_id);
-                    context.insert("redirect_to", &format!("/{}", slug));
+                    context.insert("redirect_to", &format!("/{slug}"));
                     return render_theme_page(
                         state,
                         &PageType::Single {
@@ -833,7 +832,7 @@ async fn single_post_by_slug(
             // Generate nonce for comment form (WordPress uses "comment_{post_id}" action)
             let comment_nonce = state
                 .nonces
-                .create_nonce(&format!("comment_{}", post_id), 0);
+                .create_nonce(&format!("comment_{post_id}"), 0);
             context.insert("comment_nonce", &comment_nonce);
 
             // Load author info
@@ -929,7 +928,7 @@ async fn single_post_by_slug(
         None => {
             // 404
             let mut context = build_base_context(state).await;
-            context.insert("request_uri", &format!("/{}", slug));
+            context.insert("request_uri", &format!("/{slug}"));
             let engine = state.theme_engine.read().await;
             match engine.render_page(&PageType::NotFound, &context) {
                 Ok(html) => Err((StatusCode::NOT_FOUND, Html(html))),
@@ -955,7 +954,7 @@ async fn search_page(
         let pagination = PaginationData::new(1, 1, 0);
         insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     } else {
-        let like_term = format!("%{}%", search_term);
+        let like_term = format!("%{search_term}%");
         let search_lower = search_term.to_lowercase();
         let mut models = wp_posts::Entity::find()
             .filter(wp_posts::Column::PostType.eq("post"))
@@ -1015,7 +1014,7 @@ async fn category_archive(
         _ => slug.replace('-', " "),
     };
     context.insert("term_name", &term_name);
-    context.insert("archive_title", &format!("Category: {}", term_name));
+    context.insert("archive_title", &format!("Category: {term_name}"));
     insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
 
     render_theme_page(
@@ -1048,7 +1047,7 @@ async fn tag_archive(
         .map(|t| t.name)
         .unwrap_or_else(|| slug.replace('-', " "));
     context.insert("term_name", &term_name);
-    context.insert("archive_title", &format!("Tag: {}", term_name));
+    context.insert("archive_title", &format!("Tag: {term_name}"));
     insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
 
     render_theme_page(
@@ -1069,7 +1068,7 @@ async fn author_archive(
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
     let mut context = build_base_context(&state).await;
     context.insert("author_name", &slug);
-    context.insert("archive_title", &format!("Author: {}", slug));
+    context.insert("archive_title", &format!("Author: {slug}"));
 
     // Query posts by the author
     use rustpress_db::entities::wp_users;
@@ -1296,15 +1295,14 @@ async fn rss_feed(State(state): State<Arc<AppState>>) -> Response {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title><![CDATA[{}]]></title>
-    <link>{}</link>
-    <description><![CDATA[{}]]></description>
-    <lastBuildDate>{}</lastBuildDate>
+    <title><![CDATA[{site_name}]]></title>
+    <link>{site_url}</link>
+    <description><![CDATA[{site_desc}]]></description>
+    <lastBuildDate>{last_build}</lastBuildDate>
     <language>en-US</language>
-    <atom:link href="{}/feed/" rel="self" type="application/rss+xml"/>
-{}  </channel>
-</rss>"#,
-        site_name, site_url, site_desc, last_build, site_url, items
+    <atom:link href="{site_url}/feed/" rel="self" type="application/rss+xml"/>
+{items}  </channel>
+</rss>"#
     );
 
     (
@@ -1366,7 +1364,7 @@ async fn submit_comment(
         .redirect_to
         .as_deref()
         .filter(|r| !r.is_empty())
-        .unwrap_or(&format!("/{}", post_slug))
+        .unwrap_or(&format!("/{post_slug}"))
         .to_string();
 
     let post_id = post.id;
@@ -1404,7 +1402,7 @@ async fn submit_comment(
     active_post.comment_count = Set(new_count as i64);
     let _ = active_post.update(&state.db).await;
 
-    Redirect::to(&format!("{}#comments", redirect_url)).into_response()
+    Redirect::to(&format!("{redirect_url}#comments")).into_response()
 }
 
 // ---- Date-based Archives ----
@@ -1415,7 +1413,7 @@ async fn year_archive_page(
     page_query: Option<u64>,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
     let mut context = build_base_context(state).await;
-    context.insert("archive_title", &format!("Year: {}", year));
+    context.insert("archive_title", &format!("Year: {year}"));
     context.insert("archive_year", &year);
 
     let page = page_query.unwrap_or(1);
@@ -1485,7 +1483,7 @@ async fn month_archive(
 
     let mut context = build_base_context(&state).await;
     let month_name = month_to_name(month);
-    context.insert("archive_title", &format!("Month: {} {}", month_name, year));
+    context.insert("archive_title", &format!("Month: {month_name} {year}"));
     context.insert("archive_year", &year);
     context.insert("archive_month", &month);
 
@@ -1568,7 +1566,7 @@ async fn day_archive(
     let month_name = month_to_name(month);
     context.insert(
         "archive_title",
-        &format!("{} {}, {}", month_name, day, year),
+        &format!("{month_name} {day}, {year}"),
     );
     context.insert("archive_year", &year);
     context.insert("archive_month", &month);
@@ -1702,12 +1700,12 @@ fn parse_php_serialized_ids(input: &str) -> Vec<u64> {
 // ---- Password-Protected Posts ----
 
 fn check_post_password_cookie(headers: &HeaderMap, slug: &str, expected_password: &str) -> bool {
-    let cookie_name = format!("wp-postpass_slug_{}", slug);
+    let cookie_name = format!("wp-postpass_slug_{slug}");
     if let Some(cookie_header) = headers.get(header::COOKIE) {
         if let Ok(cookies) = cookie_header.to_str() {
             for cookie in cookies.split(';') {
                 let cookie = cookie.trim();
-                if let Some(value) = cookie.strip_prefix(&format!("{}=", cookie_name)) {
+                if let Some(value) = cookie.strip_prefix(&format!("{cookie_name}=")) {
                     return value == expected_password;
                 }
             }
@@ -1777,7 +1775,7 @@ fn build_comment_tree(
             let day = dt.format("%-d").to_string();
             let year = dt.format("%Y").to_string();
             let time_12h = dt.format("%-I:%M %P").to_string();
-            let date_formatted = format!("{} {}, {} at {}", month_name, day, year, time_12h);
+            let date_formatted = format!("{month_name} {day}, {year} at {time_12h}");
             let date_iso = dt.format("%Y-%m-%dT%H:%M:%S+00:00").to_string();
             serde_json::json!({
                 "id": c.comment_id,
@@ -1941,15 +1939,14 @@ async fn taxonomy_feed(state: &AppState, taxonomy: &str, slug: &str) -> Response
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title><![CDATA[{}]]></title>
-    <link>{}</link>
-    <description><![CDATA[{}]]></description>
-    <lastBuildDate>{}</lastBuildDate>
+    <title><![CDATA[{feed_title}]]></title>
+    <link>{feed_link}</link>
+    <description><![CDATA[{feed_desc}]]></description>
+    <lastBuildDate>{last_build}</lastBuildDate>
     <language>en-US</language>
-    <atom:link href="{}/feed/" rel="self" type="application/rss+xml"/>
-{}  </channel>
-</rss>"#,
-        feed_title, feed_link, feed_desc, last_build, feed_link, items
+    <atom:link href="{feed_link}/feed/" rel="self" type="application/rss+xml"/>
+{items}  </channel>
+</rss>"#
     );
 
     (
@@ -2005,15 +2002,14 @@ async fn comments_feed(State(state): State<Arc<AppState>>) -> Response {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <channel>
-    <title><![CDATA[Comments for {}]]></title>
-    <link>{}</link>
+    <title><![CDATA[Comments for {site_name}]]></title>
+    <link>{site_url}</link>
     <description><![CDATA[Comments]]></description>
-    <lastBuildDate>{}</lastBuildDate>
+    <lastBuildDate>{last_build}</lastBuildDate>
     <language>en-US</language>
-    <atom:link href="{}/comments/feed/" rel="self" type="application/rss+xml"/>
-{}  </channel>
-</rss>"#,
-        site_name, site_url, last_build, site_url, items
+    <atom:link href="{site_url}/comments/feed/" rel="self" type="application/rss+xml"/>
+{items}  </channel>
+</rss>"#
     );
 
     (
@@ -2068,16 +2064,16 @@ async fn admin_ajax(
     });
 
     // Fire wp_ajax_{action} hook (for logged-in users)
-    let hook_name = format!("wp_ajax_{}", action);
+    let hook_name = format!("wp_ajax_{action}");
     state.hooks.do_action(&hook_name, &ctx);
 
     // Fire wp_ajax_nopriv_{action} hook (for non-logged-in users)
-    let nopriv_hook = format!("wp_ajax_nopriv_{}", action);
+    let nopriv_hook = format!("wp_ajax_nopriv_{action}");
     state.hooks.do_action(&nopriv_hook, &ctx);
 
     // Apply filter to get response (if any plugin set one)
     let result = state.hooks.apply_filters(
-        &format!("ajax_response_{}", action),
+        &format!("ajax_response_{action}"),
         serde_json::Value::String("0".to_string()),
     );
 
@@ -2131,14 +2127,13 @@ fn empty_feed(title: &str, site_url: &str) -> String {
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title><![CDATA[{}]]></title>
-    <link>{}</link>
+    <title><![CDATA[{title}]]></title>
+    <link>{site_url}</link>
     <description></description>
-    <lastBuildDate>{}</lastBuildDate>
+    <lastBuildDate>{last_build}</lastBuildDate>
     <language>en-US</language>
   </channel>
-</rss>"#,
-        title, site_url, last_build
+</rss>"#
     )
 }
 
@@ -2292,7 +2287,7 @@ async fn post_comment_feed(
     let last_build = chrono::Utc::now()
         .format("%a, %d %b %Y %H:%M:%S +0000")
         .to_string();
-    let post_url = format!("{}/{}", site_url, slug);
+    let post_url = format!("{site_url}/{slug}");
     let feed_title = format!("{} » Comments on {}", site_name, post.post_title);
 
     let xml = format!(

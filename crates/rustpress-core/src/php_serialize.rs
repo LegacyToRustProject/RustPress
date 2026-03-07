@@ -155,8 +155,8 @@ pub fn php_serialize(value: &PhpValue) -> String {
     match value {
         PhpValue::Null => "N;".to_string(),
         PhpValue::Bool(b) => format!("b:{};", if *b { 1 } else { 0 }),
-        PhpValue::Int(n) => format!("i:{};", n),
-        PhpValue::Float(n) => format!("d:{};", n),
+        PhpValue::Int(n) => format!("i:{n};"),
+        PhpValue::Float(n) => format!("d:{n};"),
         PhpValue::String(s) => format!("s:{}:\"{}\";", s.len(), s),
         PhpValue::Array(pairs) => {
             let mut result = format!("a:{}:{{", pairs.len());
@@ -241,7 +241,7 @@ fn parse_int(bytes: &[u8], pos: usize) -> Result<(PhpValue, usize), PhpSerialize
     expect_byte(bytes, pos + 1, b':')?;
     let (num_str, end) = read_until(bytes, pos + 2, b';')?;
     let n: i64 = num_str.parse().map_err(|_| PhpSerializeError {
-        message: format!("invalid integer: {}", num_str),
+        message: format!("invalid integer: {num_str}"),
         position: pos + 2,
     })?;
     Ok((PhpValue::Int(n), end + 1))
@@ -253,7 +253,7 @@ fn parse_double(bytes: &[u8], pos: usize) -> Result<(PhpValue, usize), PhpSerial
     expect_byte(bytes, pos + 1, b':')?;
     let (num_str, end) = read_until(bytes, pos + 2, b';')?;
     let n: f64 = num_str.parse().map_err(|_| PhpSerializeError {
-        message: format!("invalid double: {}", num_str),
+        message: format!("invalid double: {num_str}"),
         position: pos + 2,
     })?;
     Ok((PhpValue::Float(n), end + 1))
@@ -265,7 +265,7 @@ fn parse_string(bytes: &[u8], pos: usize) -> Result<(PhpValue, usize), PhpSerial
     expect_byte(bytes, pos + 1, b':')?;
     let (len_str, after_len) = read_until(bytes, pos + 2, b':')?;
     let len: usize = len_str.parse().map_err(|_| PhpSerializeError {
-        message: format!("invalid string length: {}", len_str),
+        message: format!("invalid string length: {len_str}"),
         position: pos + 2,
     })?;
 
@@ -302,7 +302,7 @@ fn parse_array(bytes: &[u8], pos: usize) -> Result<(PhpValue, usize), PhpSeriali
     expect_byte(bytes, pos + 1, b':')?;
     let (count_str, after_count) = read_until(bytes, pos + 2, b':')?;
     let count: usize = count_str.parse().map_err(|_| PhpSerializeError {
-        message: format!("invalid array count: {}", count_str),
+        message: format!("invalid array count: {count_str}"),
         position: pos + 2,
     })?;
 

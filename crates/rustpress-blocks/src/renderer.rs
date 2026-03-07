@@ -76,32 +76,30 @@ impl BlockRenderer {
         match block.name.as_str() {
             "core/columns" => {
                 let class = extract_class_attr(block, "wp-block-columns");
-                format!("<div class=\"{}\">{}</div>", class, inner_rendered)
+                format!("<div class=\"{class}\">{inner_rendered}</div>")
             }
             "core/column" => {
                 let class = extract_class_attr(block, "wp-block-column");
-                format!("<div class=\"{}\">{}</div>", class, inner_rendered)
+                format!("<div class=\"{class}\">{inner_rendered}</div>")
             }
             "core/group" => {
                 let class = extract_class_attr(block, "wp-block-group");
-                format!("<div class=\"{}\">{}</div>", class, inner_rendered)
+                format!("<div class=\"{class}\">{inner_rendered}</div>")
             }
             "core/row" => {
                 let class = extract_class_attr(block, "is-layout-flex");
                 format!(
-                    "<div class=\"wp-block-group {}\">{}</div>",
-                    class, inner_rendered
+                    "<div class=\"wp-block-group {class}\">{inner_rendered}</div>"
                 )
             }
             "core/stack" => {
                 let class = extract_class_attr(block, "is-layout-flex");
                 format!(
-                    "<div class=\"wp-block-group {}\">{}</div>",
-                    class, inner_rendered
+                    "<div class=\"wp-block-group {class}\">{inner_rendered}</div>"
                 )
             }
             "core/buttons" => {
-                format!("<div class=\"wp-block-buttons\">{}</div>", inner_rendered)
+                format!("<div class=\"wp-block-buttons\">{inner_rendered}</div>")
             }
             "core/query" | "core/query-loop" => inner_rendered,
             _ => {
@@ -115,7 +113,7 @@ impl BlockRenderer {
 /// Extract a CSS class from block attributes, with a default base class.
 fn extract_class_attr(block: &Block, default_class: &str) -> String {
     if let Some(class_name) = block.attrs.get("className").and_then(|v| v.as_str()) {
-        format!("{} {}", default_class, class_name)
+        format!("{default_class} {class_name}")
     } else {
         default_class.to_string()
     }

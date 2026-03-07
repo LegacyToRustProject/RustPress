@@ -66,8 +66,8 @@ impl ShortcodeRegistry {
         // Process closing-tag shortcodes: [tag attr="val"]content[/tag]
         for (tag, entry) in shortcodes.iter() {
             loop {
-                let open_pattern = format!("[{}", tag);
-                let close_pattern = format!("[/{}]", tag);
+                let open_pattern = format!("[{tag}");
+                let close_pattern = format!("[/{tag}]");
 
                 let Some(open_start) = result.find(&open_pattern) else {
                     break;
@@ -195,7 +195,7 @@ mod tests {
         let registry = ShortcodeRegistry::new();
         registry.add_shortcode(
             "bold",
-            Arc::new(|_, content| format!("<strong>{}</strong>", content)),
+            Arc::new(|_, content| format!("<strong>{content}</strong>")),
         );
         let result = registry.do_shortcode("Normal [bold]important[/bold] text");
         assert_eq!(result, "Normal <strong>important</strong> text");
@@ -208,7 +208,7 @@ mod tests {
             "gallery",
             Arc::new(|attrs, _| {
                 let ids = attrs.get("ids").cloned().unwrap_or_default();
-                format!("<div class=\"gallery\" data-ids=\"{}\"></div>", ids)
+                format!("<div class=\"gallery\" data-ids=\"{ids}\"></div>")
             }),
         );
         let result = registry.do_shortcode("[gallery ids=\"1,2,3\"]");

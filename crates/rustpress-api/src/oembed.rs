@@ -126,7 +126,7 @@ async fn oembed_handler(
     };
 
     // Build the embedded HTML (an iframe pointing to the embed endpoint)
-    let embed_url = format!("{}?embed=true", post_url);
+    let embed_url = format!("{post_url}?embed=true");
     let height = query
         .max_height
         .unwrap_or((max_width as f64 * 0.5625) as u32)

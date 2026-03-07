@@ -77,7 +77,8 @@ jobs:
         with:
           toolchain: "1.88"
       - run: cargo install cargo-audit --locked
-      - run: cargo audit
+      # RUSTSEC-2023-0071: rsa Marvin Attack — no upstream fix available (transitive dep)
+      - run: cargo audit --ignore RUSTSEC-2023-0071
 
   release:
     name: Release Build

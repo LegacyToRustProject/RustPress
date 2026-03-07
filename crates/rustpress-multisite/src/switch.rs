@@ -27,7 +27,7 @@ impl BlogContext {
         let table_prefix = if tables::is_main_site(blog_id) {
             "wp_".to_string()
         } else {
-            format!("wp_{}_", blog_id)
+            format!("wp_{blog_id}_")
         };
 
         Self {
@@ -165,7 +165,7 @@ mod tests {
     use super::*;
 
     fn make_manager() -> SwitchManager {
-        SwitchManager::new(1, |id| format!("http://example.com/site/{}", id))
+        SwitchManager::new(1, |id| format!("http://example.com/site/{id}"))
     }
 
     #[test]

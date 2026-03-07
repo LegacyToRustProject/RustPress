@@ -197,7 +197,7 @@ impl PostQuery {
 
         // search filter
         if let Some(ref s) = self.search {
-            let search_pattern = format!("%{}%", s);
+            let search_pattern = format!("%{s}%");
             condition = condition.add(
                 Condition::any()
                     .add(wp_posts::Column::PostTitle.like(&search_pattern))

@@ -132,7 +132,7 @@ async fn list_orders(
         if s.starts_with("wc-") {
             s.to_string()
         } else {
-            format!("wc-{}", s)
+            format!("wc-{s}")
         }
     });
 
@@ -263,15 +263,15 @@ fn product_to_json(woo: &WooProductData) -> serde_json::Value {
         "sku": woo.sku,
         "price": format!("{:.2}", woo.price),
         "regular_price": format!("{:.2}", woo.regular_price),
-        "sale_price": woo.sale_price.map(|p| format!("{:.2}", p)).unwrap_or_default(),
+        "sale_price": woo.sale_price.map(|p| format!("{p:.2}")).unwrap_or_default(),
         "stock_quantity": woo.stock_quantity,
         "stock_status": woo.stock_status,
         "manage_stock": woo.manage_stock,
-        "weight": woo.weight.map(|w| format!("{}", w)).unwrap_or_default(),
+        "weight": woo.weight.map(|w| format!("{w}")).unwrap_or_default(),
         "dimensions": {
-            "length": woo.length.map(|v| format!("{}", v)).unwrap_or_default(),
-            "width": woo.width.map(|v| format!("{}", v)).unwrap_or_default(),
-            "height": woo.height.map(|v| format!("{}", v)).unwrap_or_default(),
+            "length": woo.length.map(|v| format!("{v}")).unwrap_or_default(),
+            "width": woo.width.map(|v| format!("{v}")).unwrap_or_default(),
+            "height": woo.height.map(|v| format!("{v}")).unwrap_or_default(),
         },
         "virtual": woo.is_virtual,
         "downloadable": woo.is_downloadable,

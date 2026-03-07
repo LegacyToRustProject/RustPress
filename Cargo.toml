@@ -126,5 +126,5 @@ lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "smtp-t
 redis = { version = "0.27", features = ["tokio-comp", "aio"] }
 
 # WASM runtime
-wasmtime = { version = "29", default-features = false, features = ["cranelift", "runtime"] }
+wasmtime = { version = "42", default-features = false, features = ["cranelift", "runtime"] }
 wat = "1"

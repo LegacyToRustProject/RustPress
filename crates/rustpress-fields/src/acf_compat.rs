@@ -72,7 +72,7 @@ impl AcfPostData {
                 continue;
             }
 
-            let reference_key = format!("_{}", key);
+            let reference_key = format!("_{key}");
             let field_key = meta.get(&reference_key).cloned();
 
             // Only include entries that have an ACF reference key (field_xxx)

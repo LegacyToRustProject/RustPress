@@ -153,14 +153,14 @@ impl RevisionManager {
     ///
     /// WordPress appends " — Revision" to the original title.
     pub fn revision_title(original_title: &str) -> String {
-        format!("{} — Revision", original_title)
+        format!("{original_title} — Revision")
     }
 
     /// Build a revision post_name (slug) from the original post ID.
     ///
     /// WordPress uses the pattern `{post_id}-revision-v1`.
     pub fn revision_post_name(post_id: u64) -> String {
-        format!("{}-revision-v1", post_id)
+        format!("{post_id}-revision-v1")
     }
 
     /// Strip the revision suffix from a revision title to recover the original.

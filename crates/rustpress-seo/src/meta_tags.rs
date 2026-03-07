@@ -132,7 +132,7 @@ pub fn auto_generate_description(content: &str, max_len: usize) -> String {
     let truncated = &cleaned[..max_len];
     match truncated.rfind(' ') {
         Some(pos) => format!("{}...", &truncated[..pos]),
-        None => format!("{}...", truncated),
+        None => format!("{truncated}..."),
     }
 }
 
@@ -141,7 +141,7 @@ pub fn generate_title(post_title: &str, site_name: &str, separator: &str) -> Str
     if post_title.is_empty() {
         return site_name.to_string();
     }
-    format!("{} {} {}", post_title, separator, site_name)
+    format!("{post_title} {separator} {site_name}")
 }
 
 /// Escapes characters for use in HTML attributes.

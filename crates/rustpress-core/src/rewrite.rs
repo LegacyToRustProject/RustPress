@@ -209,7 +209,7 @@ impl RewriteRules {
     pub fn build_permalink(&self, slug: &str, post_id: u64, date: NaiveDateTime) -> String {
         let structure_str = match &self.structure {
             PermalinkStructure::Plain => {
-                return format!("?p={}", post_id);
+                return format!("?p={post_id}");
             }
             PermalinkStructure::DayAndName => "/%year%/%monthnum%/%day%/%postname%/",
             PermalinkStructure::MonthAndName => "/%year%/%monthnum%/%postname%/",
@@ -469,7 +469,7 @@ impl RewriteRules {
         pattern = pattern.replace(r"%category%", r"([a-zA-Z0-9_-]+)");
         pattern = pattern.replace(r"%author%", r"([a-zA-Z0-9_-]+)");
 
-        format!("^{}/?$", pattern)
+        format!("^{pattern}/?$")
     }
 
     /// Determine the appropriate `RuleBuilder` for a custom structure string.
@@ -921,7 +921,7 @@ mod tests {
 
         for s in structures {
             let parsed = PermalinkStructure::from_structure_str(s);
-            assert_eq!(parsed.as_structure_str(), s, "Round-trip failed for: {}", s);
+            assert_eq!(parsed.as_structure_str(), s, "Round-trip failed for: {s}");
         }
     }
 

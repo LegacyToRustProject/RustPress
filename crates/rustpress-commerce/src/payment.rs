@@ -95,13 +95,13 @@ pub enum PaymentError {
 impl std::fmt::Display for PaymentError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PaymentError::Declined { reason } => write!(f, "Payment declined: {}", reason),
-            PaymentError::NetworkError { message } => write!(f, "Network error: {}", message),
-            PaymentError::InvalidDetails { message } => write!(f, "Invalid details: {}", message),
+            PaymentError::Declined { reason } => write!(f, "Payment declined: {reason}"),
+            PaymentError::NetworkError { message } => write!(f, "Network error: {message}"),
+            PaymentError::InvalidDetails { message } => write!(f, "Invalid details: {message}"),
             PaymentError::ProviderUnavailable { provider } => {
-                write!(f, "Provider unavailable: {}", provider)
+                write!(f, "Provider unavailable: {provider}")
             }
-            PaymentError::InternalError { message } => write!(f, "Internal error: {}", message),
+            PaymentError::InternalError { message } => write!(f, "Internal error: {message}"),
         }
     }
 }
@@ -148,8 +148,7 @@ impl PaymentProvider for StripeProvider {
             transaction_id: Some(format!("stripe_ch_{}", uuid::Uuid::new_v4().as_simple())),
             redirect_url: None,
             message: format!(
-                "Stripe payment of {:.2} {} processed successfully (stub)",
-                amount, currency
+                "Stripe payment of {amount:.2} {currency} processed successfully (stub)"
             ),
         })
     }
@@ -219,8 +218,7 @@ impl PaymentProvider for PayPalProvider {
             )),
             redirect_url: Some("https://www.sandbox.paypal.com/checkout".to_string()),
             message: format!(
-                "PayPal payment of {:.2} {} processed successfully (stub)",
-                amount, currency
+                "PayPal payment of {amount:.2} {currency} processed successfully (stub)"
             ),
         })
     }

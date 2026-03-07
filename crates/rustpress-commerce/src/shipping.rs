@@ -146,7 +146,7 @@ impl ShippingZone {
     pub fn matches_country(&self, country: &str) -> bool {
         self.regions
             .iter()
-            .any(|r| r == country || r.starts_with(&format!("{}:", country)))
+            .any(|r| r == country || r.starts_with(&format!("{country}:")))
     }
 }
 

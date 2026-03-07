@@ -61,7 +61,7 @@ async fn render_block_html(
     name: &str,
     _params: &BlockRendererQuery,
 ) -> String {
-    let full_name = format!("{}/{}", namespace, name);
+    let full_name = format!("{namespace}/{name}");
 
     match full_name.as_str() {
         "core/latest-posts" => {
@@ -117,8 +117,7 @@ async fn render_block_html(
         "core/archives" => {
             let base = state.site_url.trim_end_matches('/');
             format!(
-                r#"<ul class="wp-block-archives"><li><a href="{}/feed/">Recent Posts</a></li></ul>"#,
-                base
+                r#"<ul class="wp-block-archives"><li><a href="{base}/feed/">Recent Posts</a></li></ul>"#
             )
         }
         "core/tag-cloud" => {
@@ -150,12 +149,11 @@ async fn render_block_html(
         "core/search" => {
             let base = state.site_url.trim_end_matches('/');
             format!(
-                r#"<form role="search" method="get" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search" action="{}">
+                r#"<form role="search" method="get" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search" action="{base}">
 <div class="wp-block-search__inside-wrapper">
 <input type="search" id="wp-block-search__input-1" class="wp-block-search__input" name="s" value="" placeholder="Search&hellip;" required>
 <button type="submit" class="wp-block-search__button wp-element-button">Search</button>
-</div></form>"#,
-                base
+</div></form>"#
             )
         }
         "core/latest-comments" => {
@@ -191,7 +189,7 @@ mod tests {
     fn test_block_name_format() {
         let ns = "core";
         let name = "paragraph";
-        let full = format!("{}/{}", ns, name);
+        let full = format!("{ns}/{name}");
         assert_eq!(full, "core/paragraph");
     }
 }

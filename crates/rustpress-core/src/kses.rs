@@ -231,7 +231,7 @@ pub fn wp_kses(content: &str, allowed_html: &AllowedHtml) -> String {
 
         // Closing tags carry no attributes.
         if is_closing {
-            return format!("</{}>", tag_name);
+            return format!("</{tag_name}>");
         }
 
         // Build the filtered attribute string.
@@ -241,14 +241,14 @@ pub fn wp_kses(content: &str, allowed_html: &AllowedHtml) -> String {
         let self_closing = attrs_raw.trim_end().ends_with('/');
         if self_closing {
             if filtered_attrs.is_empty() {
-                format!("<{} />", tag_name)
+                format!("<{tag_name} />")
             } else {
-                format!("<{} {} />", tag_name, filtered_attrs)
+                format!("<{tag_name} {filtered_attrs} />")
             }
         } else if filtered_attrs.is_empty() {
-            format!("<{}>", tag_name)
+            format!("<{tag_name}>")
         } else {
-            format!("<{} {}>", tag_name, filtered_attrs)
+            format!("<{tag_name} {filtered_attrs}>")
         }
     });
 
@@ -423,7 +423,7 @@ fn filter_attributes(attrs_raw: &str, allowed_attrs: &[&str]) -> String {
                 }
                 // Encode the value and emit.
                 let safe_value = sanitize_attr_value(value);
-                filtered.push(format!("{}=\"{}\"", attr_name, safe_value));
+                filtered.push(format!("{attr_name}=\"{safe_value}\""));
             }
             None => {
                 // Boolean attribute (e.g. `reversed`, `disabled`).

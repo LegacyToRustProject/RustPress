@@ -71,8 +71,7 @@ async fn main() -> Result<()> {
         let admin_password = std::env::var("ADMIN_PASSWORD").unwrap_or_else(|_| {
             let generated = uuid::Uuid::new_v4().to_string();
             eprintln!(
-                "WARNING: ADMIN_PASSWORD not set. Generated random admin password: {}",
-                generated
+                "WARNING: ADMIN_PASSWORD not set. Generated random admin password: {generated}"
             );
             eprintln!("Set ADMIN_PASSWORD env var to use a specific password.");
             generated
@@ -529,7 +528,7 @@ async fn main() -> Result<()> {
                         .to_string();
                     let static_path = path.join("static");
                     if static_path.exists() {
-                        let route = format!("/wp-content/themes/{}", slug);
+                        let route = format!("/wp-content/themes/{slug}");
                         app = app
                             .nest_service(&route, tower_http::services::ServeDir::new(static_path));
                     }
@@ -604,17 +603,16 @@ fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRe
             let align_class = if align.is_empty() {
                 String::new()
             } else {
-                format!(" class=\"{}\"", align)
+                format!(" class=\"{align}\"")
             };
             if let Some(img_end) = content.find("/>") {
                 let img = &content[..img_end + 2];
                 let caption_text = content[img_end + 2..].trim();
                 format!(
-                    "<figure{}>{}<figcaption>{}</figcaption></figure>",
-                    align_class, img, caption_text
+                    "<figure{align_class}>{img}<figcaption>{caption_text}</figcaption></figure>"
                 )
             } else {
-                format!("<figure{}>{}</figure>", align_class, content)
+                format!("<figure{align_class}>{content}</figure>")
             }
         }),
     );
@@ -628,8 +626,7 @@ fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRe
                 return String::new();
             }
             format!(
-                r#"<audio controls preload="metadata"><source src="{}">Your browser does not support audio.</audio>"#,
-                src
+                r#"<audio controls preload="metadata"><source src="{src}">Your browser does not support audio.</audio>"#
             )
         }),
     );
@@ -644,8 +641,7 @@ fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRe
                 return String::new();
             }
             format!(
-                r#"<video controls preload="metadata" style="max-width:{};height:auto"><source src="{}">Your browser does not support video.</video>"#,
-                width, src
+                r#"<video controls preload="metadata" style="max-width:{width};height:auto"><source src="{src}">Your browser does not support video.</video>"#
             )
         }),
     );
@@ -670,8 +666,7 @@ fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRe
                 .collect::<Vec<_>>()
                 .join("\n");
             format!(
-                "<div class=\"gallery gallery-columns-{}\">{}</div>",
-                columns, img_tags
+                "<div class=\"gallery gallery-columns-{columns}\">{img_tags}</div>"
             )
         }),
     );
@@ -694,21 +689,19 @@ fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRe
                 };
                 if let Some(vid) = video_id {
                     format!(
-                        r#"<div class="wp-embed"><iframe width="560" height="315" src="https://www.youtube.com/embed/{}" frameborder="0" allowfullscreen></iframe></div>"#,
-                        vid
+                        r#"<div class="wp-embed"><iframe width="560" height="315" src="https://www.youtube.com/embed/{vid}" frameborder="0" allowfullscreen></iframe></div>"#
                     )
                 } else {
-                    format!("<a href=\"{}\">{}</a>", url, url)
+                    format!("<a href=\"{url}\">{url}</a>")
                 }
             } else if url.contains("vimeo.com") {
                 // Vimeo embed
                 let vid = url.rsplit('/').next().unwrap_or("");
                 format!(
-                    r#"<div class="wp-embed"><iframe src="https://player.vimeo.com/video/{}" width="560" height="315" frameborder="0" allowfullscreen></iframe></div>"#,
-                    vid
+                    r#"<div class="wp-embed"><iframe src="https://player.vimeo.com/video/{vid}" width="560" height="315" frameborder="0" allowfullscreen></iframe></div>"#
                 )
             } else {
-                format!("<a href=\"{}\">{}</a>", url, url)
+                format!("<a href=\"{url}\">{url}</a>")
             }
         }),
     );

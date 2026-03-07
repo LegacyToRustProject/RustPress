@@ -45,12 +45,12 @@ fn is_private_ipv6(ip: Ipv6Addr) -> bool {
 ///
 /// Returns `Ok(())` if the URL is safe, or `Err(reason)` if it should be blocked.
 pub fn validate_url(url: &str) -> Result<(), String> {
-    let parsed = url::Url::parse(url).map_err(|e| format!("Invalid URL: {}", e))?;
+    let parsed = url::Url::parse(url).map_err(|e| format!("Invalid URL: {e}"))?;
 
     // Only allow http and https schemes
     match parsed.scheme() {
         "http" | "https" => {}
-        scheme => return Err(format!("Blocked scheme: {}", scheme)),
+        scheme => return Err(format!("Blocked scheme: {scheme}")),
     }
 
     let host = parsed
@@ -64,13 +64,13 @@ pub fn validate_url(url: &str) -> Result<(), String> {
         || lower_host.ends_with(".local")
         || lower_host.ends_with(".internal")
     {
-        return Err(format!("Blocked internal hostname: {}", host));
+        return Err(format!("Blocked internal hostname: {host}"));
     }
 
     // If the host is a raw IP address, check it directly
     if let Ok(ip) = host.parse::<IpAddr>() {
         if is_private_ip(ip) {
-            return Err(format!("Blocked private IP: {}", ip));
+            return Err(format!("Blocked private IP: {ip}"));
         }
     }
 
@@ -86,7 +86,7 @@ pub fn validate_url(url: &str) -> Result<(), String> {
 /// where a domain initially resolves to a public IP but later to a private one.
 pub fn validate_resolved_ip(ip: IpAddr) -> Result<(), String> {
     if is_private_ip(ip) {
-        Err(format!("DNS resolved to private IP: {}", ip))
+        Err(format!("DNS resolved to private IP: {ip}"))
     } else {
         Ok(())
     }

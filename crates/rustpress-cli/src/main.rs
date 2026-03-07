@@ -428,7 +428,7 @@ async fn handle_db(action: DbAction) -> Result<()> {
             println!("Checking connection to: {}", mask_password(&url));
             match rustpress_db::connection::connect(&url).await {
                 Ok(_) => println!("Database connection successful!"),
-                Err(e) => println!("Database connection failed: {}", e),
+                Err(e) => println!("Database connection failed: {e}"),
             }
         }
         DbAction::Migrate => {
@@ -454,7 +454,7 @@ async fn handle_db(action: DbAction) -> Result<()> {
             println!("         wp_term_relationships, wp_termmeta, wp_links)");
         }
         DbAction::Export { output } => {
-            println!("Exporting database to {}...", output);
+            println!("Exporting database to {output}...");
             let db = get_db().await?;
             let tables = [
                 "wp_posts",
@@ -477,11 +477,11 @@ async fn handle_db(action: DbAction) -> Result<()> {
                 chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")
             ));
             for table in &tables {
-                sql_output.push_str(&format!("-- Table: {}\n", table));
+                sql_output.push_str(&format!("-- Table: {table}\n"));
                 let result = db
                     .query_all(Statement::from_string(
                         sea_orm::DatabaseBackend::MySql,
-                        format!("SELECT COUNT(*) as cnt FROM {}", table),
+                        format!("SELECT COUNT(*) as cnt FROM {table}"),
                     ))
                     .await;
                 match result {
@@ -494,11 +494,11 @@ async fn handle_db(action: DbAction) -> Result<()> {
                 }
             }
             std::fs::write(&output, &sql_output)?;
-            println!("Export complete: {}", output);
+            println!("Export complete: {output}");
         }
         DbAction::Query { sql } => {
             let db = get_db().await?;
-            println!("Executing: {}", sql);
+            println!("Executing: {sql}");
             let result = db
                 .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
@@ -520,16 +520,16 @@ async fn handle_db(action: DbAction) -> Result<()> {
                 "wp_termmeta",
             ];
             for table in &tables {
-                print!("Optimizing {}... ", table);
+                print!("Optimizing {table}... ");
                 match db
                     .execute(Statement::from_string(
                         sea_orm::DatabaseBackend::MySql,
-                        format!("OPTIMIZE TABLE {}", table),
+                        format!("OPTIMIZE TABLE {table}"),
                     ))
                     .await
                 {
                     Ok(_) => println!("OK"),
-                    Err(e) => println!("Error: {}", e),
+                    Err(e) => println!("Error: {e}"),
                 }
             }
             println!("Optimization complete.");
@@ -550,16 +550,16 @@ async fn handle_db(action: DbAction) -> Result<()> {
                 "wp_termmeta",
             ];
             for table in &tables {
-                print!("Repairing {}... ", table);
+                print!("Repairing {table}... ");
                 match db
                     .execute(Statement::from_string(
                         sea_orm::DatabaseBackend::MySql,
-                        format!("REPAIR TABLE {}", table),
+                        format!("REPAIR TABLE {table}"),
                     ))
                     .await
                 {
                     Ok(_) => println!("OK"),
-                    Err(e) => println!("Error: {}", e),
+                    Err(e) => println!("Error: {e}"),
                 }
             }
             println!("Repair complete.");
@@ -674,7 +674,7 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
                 updates.push(format!("post_title = '{}'", t.replace('\'', "''")));
             }
             if let Some(s) = &status {
-                updates.push(format!("post_status = '{}'", s));
+                updates.push(format!("post_status = '{s}'"));
             }
             if updates.is_empty() {
                 println!("Nothing to update. Specify --title or --status.");
@@ -687,27 +687,26 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
             );
             db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
-            println!("Success: Updated post {}.", id);
+            println!("Success: Updated post {id}.");
         }
         PostAction::Delete { id, force } => {
             let db = get_db().await?;
             if force {
                 db.execute(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
-                    format!("DELETE FROM wp_posts WHERE ID = {}", id),
+                    format!("DELETE FROM wp_posts WHERE ID = {id}"),
                 ))
                 .await?;
-                println!("Success: Deleted post {} permanently.", id);
+                println!("Success: Deleted post {id} permanently.");
             } else {
                 db.execute(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
                     format!(
-                        "UPDATE wp_posts SET post_status = 'trash' WHERE ID = {}",
-                        id
+                        "UPDATE wp_posts SET post_status = 'trash' WHERE ID = {id}"
                     ),
                 ))
                 .await?;
-                println!("Success: Trashed post {}.", id);
+                println!("Success: Trashed post {id}.");
             }
         }
         PostAction::Get { id } => {
@@ -715,11 +714,11 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
             let rows = db
                 .query_all(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
-                    format!("SELECT ID, post_title, post_status, post_type, post_date, post_name, post_author FROM wp_posts WHERE ID = {}", id),
+                    format!("SELECT ID, post_title, post_status, post_type, post_date, post_name, post_author FROM wp_posts WHERE ID = {id}"),
                 ))
                 .await?;
             if rows.is_empty() {
-                println!("Error: Post {} not found.", id);
+                println!("Error: Post {id} not found.");
             } else {
                 use sea_orm::QueryResult;
                 let row: &QueryResult = &rows[0];
@@ -727,32 +726,30 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
                 let status: String = row.try_get("", "post_status").unwrap_or_default();
                 let post_type: String = row.try_get("", "post_type").unwrap_or_default();
                 let post_name: String = row.try_get("", "post_name").unwrap_or_default();
-                println!("ID: {}", id);
-                println!("Title: {}", title);
-                println!("Slug: {}", post_name);
-                println!("Status: {}", status);
-                println!("Type: {}", post_type);
+                println!("ID: {id}");
+                println!("Title: {title}");
+                println!("Slug: {post_name}");
+                println!("Status: {status}");
+                println!("Type: {post_type}");
             }
         }
         PostAction::Generate { count, post_type } => {
             let db = get_db().await?;
             let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
             for i in 1..=count {
-                let title = format!("Generated {} #{}", post_type, i);
+                let title = format!("Generated {post_type} #{i}");
                 let content = format!(
-                    "<p>This is auto-generated {} content number {}.</p>",
-                    post_type, i
+                    "<p>This is auto-generated {post_type} content number {i}.</p>"
                 );
-                let slug = format!("generated-{}-{}", post_type, i);
+                let slug = format!("generated-{post_type}-{i}");
                 let sql = format!(
-                    "INSERT INTO wp_posts (post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, post_name, post_modified, post_modified_gmt, post_type, to_ping, pinged, post_content_filtered, guid) VALUES (1, '{}', '{}', '{}', '{}', '', 'publish', '{}', '{}', '{}', '{}', '', '', '', '')",
-                    now, now, content, title, slug, now, now, post_type
+                    "INSERT INTO wp_posts (post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, post_name, post_modified, post_modified_gmt, post_type, to_ping, pinged, post_content_filtered, guid) VALUES (1, '{now}', '{now}', '{content}', '{title}', '', 'publish', '{slug}', '{now}', '{now}', '{post_type}', '', '', '', '')"
                 );
                 db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                     .await?;
-                println!("  Created: {}", title);
+                println!("  Created: {title}");
             }
-            println!("Generated {} {}s.", count, post_type);
+            println!("Generated {count} {post_type}s.");
         }
     }
     Ok(())
@@ -819,8 +816,7 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
             let hash = rustpress_auth::PasswordHasher::hash_argon2(&password)?;
             let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
             let sql = format!(
-                "INSERT INTO wp_users (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_activation_key, user_status, display_name) VALUES ('{}', '{}', '{}', '{}', '', '{}', '', 0, '{}')",
-                login, hash, login, email, now, login
+                "INSERT INTO wp_users (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_activation_key, user_status, display_name) VALUES ('{login}', '{hash}', '{login}', '{email}', '', '{now}', '', 0, '{login}')"
             );
             let result = db
                 .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
@@ -830,15 +826,13 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
             // Set role in usermeta
             let capabilities = format!(r#"a:1:{{s:{}:"{}";b:1;}}"#, role.len(), role);
             let sql = format!(
-                "INSERT INTO wp_usermeta (user_id, meta_key, meta_value) VALUES ({}, 'wp_capabilities', '{}')",
-                user_id, capabilities
+                "INSERT INTO wp_usermeta (user_id, meta_key, meta_value) VALUES ({user_id}, 'wp_capabilities', '{capabilities}')"
             );
             db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
 
             println!(
-                "Success: Created user '{}' (ID: {}) with role '{}'.",
-                login, user_id, role
+                "Success: Created user '{login}' (ID: {user_id}) with role '{role}'."
             );
         }
         UserAction::Update {
@@ -849,7 +843,7 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
             let db = get_db().await?;
             let mut updates = Vec::new();
             if let Some(e) = &email {
-                updates.push(format!("user_email = '{}'", e));
+                updates.push(format!("user_email = '{e}'"));
             }
             if let Some(d) = &display_name {
                 updates.push(format!("display_name = '{}'", d.replace('\'', "''")));
@@ -865,7 +859,7 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
             );
             db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
-            println!("Success: Updated user {}.", id);
+            println!("Success: Updated user {id}.");
         }
         UserAction::Delete { id, reassign } => {
             let db = get_db().await?;
@@ -873,38 +867,36 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
                 db.execute(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
                     format!(
-                        "UPDATE wp_posts SET post_author = {} WHERE post_author = {}",
-                        target, id
+                        "UPDATE wp_posts SET post_author = {target} WHERE post_author = {id}"
                     ),
                 ))
                 .await?;
             }
             db.execute(Statement::from_string(
                 sea_orm::DatabaseBackend::MySql,
-                format!("DELETE FROM wp_usermeta WHERE user_id = {}", id),
+                format!("DELETE FROM wp_usermeta WHERE user_id = {id}"),
             ))
             .await?;
             db.execute(Statement::from_string(
                 sea_orm::DatabaseBackend::MySql,
-                format!("DELETE FROM wp_users WHERE ID = {}", id),
+                format!("DELETE FROM wp_users WHERE ID = {id}"),
             ))
             .await?;
-            println!("Success: Deleted user {}.", id);
+            println!("Success: Deleted user {id}.");
         }
         UserAction::ResetPassword { login, password } => {
             let db = get_db().await?;
             let hash = rustpress_auth::PasswordHasher::hash_argon2(&password)?;
             let sql = format!(
-                "UPDATE wp_users SET user_pass = '{}' WHERE user_login = '{}'",
-                hash, login
+                "UPDATE wp_users SET user_pass = '{hash}' WHERE user_login = '{login}'"
             );
             let result = db
                 .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
             if result.rows_affected() > 0 {
-                println!("Success: Password reset for user '{}'.", login);
+                println!("Success: Password reset for user '{login}'.");
             } else {
-                println!("Error: User '{}' not found.", login);
+                println!("Error: User '{login}' not found.");
             }
         }
     }
@@ -940,18 +932,18 @@ async fn handle_plugin(action: PluginAction) -> Result<()> {
             }
         }
         PluginAction::Activate { name } => {
-            println!("Success: Plugin '{}' activated.", name);
+            println!("Success: Plugin '{name}' activated.");
         }
         PluginAction::Deactivate { name } => {
-            println!("Success: Plugin '{}' deactivated.", name);
+            println!("Success: Plugin '{name}' deactivated.");
         }
         PluginAction::Install { name } => {
-            println!("Installing plugin '{}'...", name);
-            println!("Success: Plugin '{}' installed.", name);
+            println!("Installing plugin '{name}'...");
+            println!("Success: Plugin '{name}' installed.");
         }
         PluginAction::Uninstall { name } => {
-            println!("Uninstalling plugin '{}'...", name);
-            println!("Success: Plugin '{}' uninstalled.", name);
+            println!("Uninstalling plugin '{name}'...");
+            println!("Success: Plugin '{name}' uninstalled.");
         }
     }
     Ok(())
@@ -967,12 +959,11 @@ async fn handle_theme(action: ThemeAction) -> Result<()> {
         ThemeAction::Activate { name } => {
             let db = get_db().await?;
             let sql = format!(
-                "UPDATE wp_options SET option_value = '{}' WHERE option_name IN ('template', 'stylesheet')",
-                name
+                "UPDATE wp_options SET option_value = '{name}' WHERE option_name IN ('template', 'stylesheet')"
             );
             db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
-            println!("Success: Theme '{}' activated.", name);
+            println!("Success: Theme '{name}' activated.");
         }
         ThemeAction::Status => {
             let db = get_db().await?;
@@ -985,7 +976,7 @@ async fn handle_theme(action: ThemeAction) -> Result<()> {
                 .await?;
             if let Some(row) = rows.first() {
                 let theme: String = row.try_get("", "option_value").unwrap_or_default();
-                println!("Active theme: {}", theme);
+                println!("Active theme: {theme}");
             } else {
                 println!("No active theme found.");
             }
@@ -1002,16 +993,15 @@ async fn handle_option(action: OptionAction, format: &OutputFormat) -> Result<()
                 .query_all(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
                     format!(
-                        "SELECT option_value FROM wp_options WHERE option_name = '{}'",
-                        name
+                        "SELECT option_value FROM wp_options WHERE option_name = '{name}'"
                     ),
                 ))
                 .await?;
             if let Some(row) = rows.first() {
                 let value: String = row.try_get("", "option_value").unwrap_or_default();
-                println!("{}", value);
+                println!("{value}");
             } else {
-                println!("Error: Option '{}' not found.", name);
+                println!("Error: Option '{name}' not found.");
             }
         }
         OptionAction::Set { name, value } => {
@@ -1024,19 +1014,19 @@ async fn handle_option(action: OptionAction, format: &OutputFormat) -> Result<()
             );
             db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
-            println!("Success: Updated option '{}'.", name);
+            println!("Success: Updated option '{name}'.");
         }
         OptionAction::Delete { name } => {
             let db = get_db().await?;
-            let sql = format!("DELETE FROM wp_options WHERE option_name = '{}'", name);
+            let sql = format!("DELETE FROM wp_options WHERE option_name = '{name}'");
             db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
-            println!("Success: Deleted option '{}'.", name);
+            println!("Success: Deleted option '{name}'.");
         }
         OptionAction::List { autoload } => {
             let db = get_db().await?;
             let where_clause = if let Some(al) = &autoload {
-                format!(" WHERE autoload = '{}'", al)
+                format!(" WHERE autoload = '{al}'")
             } else {
                 String::new()
             };
@@ -1044,8 +1034,7 @@ async fn handle_option(action: OptionAction, format: &OutputFormat) -> Result<()
                 .query_all(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
                     format!(
-                        "SELECT option_name, option_value, autoload FROM wp_options{} ORDER BY option_name LIMIT 200",
-                        where_clause
+                        "SELECT option_name, option_value, autoload FROM wp_options{where_clause} ORDER BY option_name LIMIT 200"
                     ),
                 ))
                 .await?;
@@ -1075,7 +1064,7 @@ async fn handle_option(action: OptionAction, format: &OutputFormat) -> Result<()
                         } else {
                             value
                         };
-                        println!("{:<40} {:<50} {:<8}", name, display_value, al);
+                        println!("{name:<40} {display_value:<50} {al:<8}");
                     }
                     println!("\nShowing {} options", rows.len());
                 }
@@ -1122,9 +1111,9 @@ fn handle_cron(action: CronAction) {
                 }
             }
             CronEventAction::Run { hook } => {
-                println!("Executing cron event: {}", hook);
+                println!("Executing cron event: {hook}");
                 manager.run_due_events();
-                println!("Success: Cron event '{}' executed.", hook);
+                println!("Success: Cron event '{hook}' executed.");
             }
         },
         CronAction::Schedules => {
@@ -1232,11 +1221,10 @@ async fn handle_search_replace(
 
     if dry_run {
         println!(
-            "\nDry run complete. {} potential replacements found.",
-            total_replacements
+            "\nDry run complete. {total_replacements} potential replacements found."
         );
     } else {
-        println!("\nSuccess: {} replacements made.", total_replacements);
+        println!("\nSuccess: {total_replacements} replacements made.");
     }
     Ok(())
 }
@@ -1249,8 +1237,7 @@ async fn handle_export(output: &str, post_type: Option<&str>) -> Result<()> {
         .query_all(Statement::from_string(
             sea_orm::DatabaseBackend::MySql,
             format!(
-                "SELECT ID, post_title, post_content, post_date, post_status, post_name, post_type FROM wp_posts WHERE post_type = '{}' AND post_status = 'publish' ORDER BY post_date DESC",
-                type_filter
+                "SELECT ID, post_title, post_content, post_date, post_status, post_name, post_type FROM wp_posts WHERE post_type = '{type_filter}' AND post_status = 'publish' ORDER BY post_date DESC"
             ),
         ))
         .await?;
@@ -1275,15 +1262,14 @@ async fn handle_export(output: &str, post_type: Option<&str>) -> Result<()> {
         let ptype: String = row.try_get("", "post_type").unwrap_or_default();
 
         wxr.push_str("  <item>\n");
-        wxr.push_str(&format!("    <title><![CDATA[{}]]></title>\n", title));
-        wxr.push_str(&format!("    <wp:post_id>{}</wp:post_id>\n", id));
-        wxr.push_str(&format!("    <wp:post_date>{}</wp:post_date>\n", date));
-        wxr.push_str(&format!("    <wp:post_name>{}</wp:post_name>\n", name));
-        wxr.push_str(&format!("    <wp:status>{}</wp:status>\n", status));
-        wxr.push_str(&format!("    <wp:post_type>{}</wp:post_type>\n", ptype));
+        wxr.push_str(&format!("    <title><![CDATA[{title}]]></title>\n"));
+        wxr.push_str(&format!("    <wp:post_id>{id}</wp:post_id>\n"));
+        wxr.push_str(&format!("    <wp:post_date>{date}</wp:post_date>\n"));
+        wxr.push_str(&format!("    <wp:post_name>{name}</wp:post_name>\n"));
+        wxr.push_str(&format!("    <wp:status>{status}</wp:status>\n"));
+        wxr.push_str(&format!("    <wp:post_type>{ptype}</wp:post_type>\n"));
         wxr.push_str(&format!(
-            "    <content:encoded><![CDATA[{}]]></content:encoded>\n",
-            content
+            "    <content:encoded><![CDATA[{content}]]></content:encoded>\n"
         ));
         wxr.push_str("  </item>\n\n");
     }
@@ -1296,13 +1282,13 @@ async fn handle_export(output: &str, post_type: Option<&str>) -> Result<()> {
 
 async fn handle_import(file: &str) -> Result<()> {
     if !std::path::Path::new(file).exists() {
-        println!("Error: File '{}' not found.", file);
+        println!("Error: File '{file}' not found.");
         return Ok(());
     }
     let content = std::fs::read_to_string(file)?;
     let item_count = content.matches("<item>").count();
-    println!("Importing {} items from {}...", item_count, file);
-    println!("Success: Import complete ({} items processed).", item_count);
+    println!("Importing {item_count} items from {file}...");
+    println!("Success: Import complete ({item_count} items processed).");
     Ok(())
 }
 
@@ -1311,8 +1297,7 @@ async fn handle_media(action: MediaAction) -> Result<()> {
         MediaAction::Regenerate { id } => {
             if let Some(attachment_id) = id {
                 println!(
-                    "Regenerating thumbnails for attachment {}...",
-                    attachment_id
+                    "Regenerating thumbnails for attachment {attachment_id}..."
                 );
                 println!("Success: Thumbnails regenerated.");
             } else {
@@ -1329,7 +1314,7 @@ async fn handle_media(action: MediaAction) -> Result<()> {
                     .first()
                     .and_then(|r| r.try_get("", "cnt").ok())
                     .unwrap_or(0);
-                println!("Success: Regenerated thumbnails for {} attachments.", count);
+                println!("Success: Regenerated thumbnails for {count} attachments.");
             }
         }
         MediaAction::Import { path } => {
@@ -1352,7 +1337,7 @@ async fn handle_media(action: MediaAction) -> Result<()> {
                 }
                 println!("Success: {} files imported.", entries.len());
             } else {
-                println!("Error: '{}' is not a directory.", path);
+                println!("Error: '{path}' is not a directory.");
             }
         }
     }
@@ -1362,7 +1347,7 @@ async fn handle_media(action: MediaAction) -> Result<()> {
 fn handle_server(action: ServerAction) {
     match action {
         ServerAction::Start { port, host } => {
-            println!("Starting RustPress server on {}:{}...", host, port);
+            println!("Starting RustPress server on {host}:{port}...");
             println!("Use rustpress-server binary for actual server startup.");
         }
     }
@@ -1407,7 +1392,7 @@ async fn handle_doctor() -> Result<()> {
     print!("  Database connection.... ");
     match get_db().await {
         Ok(_) => println!("OK"),
-        Err(e) => println!("FAIL ({})", e),
+        Err(e) => println!("FAIL ({e})"),
     }
 
     // Check required tables
@@ -1420,7 +1405,7 @@ async fn handle_doctor() -> Result<()> {
                 let result = db
                     .query_all(Statement::from_string(
                         sea_orm::DatabaseBackend::MySql,
-                        format!("SELECT 1 FROM {} LIMIT 1", table),
+                        format!("SELECT 1 FROM {table} LIMIT 1"),
                     ))
                     .await;
                 if result.is_err() {
@@ -1443,7 +1428,7 @@ async fn handle_doctor() -> Result<()> {
         let count = std::fs::read_dir("templates")
             .map(|d| d.count())
             .unwrap_or(0);
-        println!("OK ({} files)", count);
+        println!("OK ({count} files)");
     } else {
         println!("MISSING");
     }
@@ -1480,10 +1465,9 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
 
             println!("[1/6] Analyzing WordPress database...");
             println!(
-                "       WordPress {}, {} posts, {} pages, {} comments",
-                wp_version, post_count, page_count, comment_count
+                "       WordPress {wp_version}, {post_count} posts, {page_count} pages, {comment_count} comments"
             );
-            println!("       Theme: {}", theme);
+            println!("       Theme: {theme}");
             println!(
                 "       Plugins: {}",
                 if plugins.is_empty() {
@@ -1498,7 +1482,7 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
 
             println!("[3/6] Checking theme compatibility...");
             let theme_compat = migrate_check_theme(&theme);
-            println!("       {}", theme_compat);
+            println!("       {theme_compat}");
 
             println!("[4/6] Checking plugin compatibility...");
             for plugin_name in &plugins {
@@ -1512,9 +1496,9 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
                 let alt = compat
                     .alternative
                     .as_deref()
-                    .map(|a| format!(" -> {}", a))
+                    .map(|a| format!(" -> {a}"))
                     .unwrap_or_default();
-                println!("       [{}] {}{}", status_str, plugin_name, alt);
+                println!("       [{status_str}] {plugin_name}{alt}");
             }
             if plugins.is_empty() {
                 println!("       No active plugins found.");
@@ -1522,9 +1506,9 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
 
             println!("[5/6] Verifying SEO compatibility...");
             let permalink = migrate_get_permalink(&db_url).await?;
-            println!("       Permalink structure: {}", permalink);
+            println!("       Permalink structure: {permalink}");
             let (score, issues) = rustpress_migrate::analyze::analyze_wp_version(&wp_version);
-            println!("       WordPress version compatibility score: {}%", score);
+            println!("       WordPress version compatibility score: {score}%");
             for issue in &issues {
                 let severity = match issue.severity {
                     rustpress_migrate::analyze::IssueSeverity::Critical => "CRITICAL",
@@ -1545,10 +1529,9 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
 
             println!("[1/2] Analyzing WordPress database...");
             println!(
-                "       WordPress {}, {} posts, {} pages, {} comments",
-                wp_version, post_count, page_count, comment_count
+                "       WordPress {wp_version}, {post_count} posts, {page_count} pages, {comment_count} comments"
             );
-            println!("       Theme: {}", theme);
+            println!("       Theme: {theme}");
             println!(
                 "       Plugins: {}",
                 if plugins.is_empty() {
@@ -1559,7 +1542,7 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
             );
 
             let (score, issues) = rustpress_migrate::analyze::analyze_wp_version(&wp_version);
-            println!("       Compatibility score: {}%", score);
+            println!("       Compatibility score: {score}%");
             for issue in &issues {
                 let severity = match issue.severity {
                     rustpress_migrate::analyze::IssueSeverity::Critical => "CRITICAL",
@@ -1595,7 +1578,7 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
                         rustpress_migrate::analyze::PluginCompatStatus::Unknown => "UNKNOWN",
                     };
                     let alt = compat.alternative.as_deref().unwrap_or("-");
-                    println!("{:<10} {:<30} {:<30}", status_str, plugin_name, alt);
+                    println!("{status_str:<10} {plugin_name:<30} {alt:<30}");
                 }
                 println!();
 
@@ -1654,8 +1637,8 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
             let blogname = migrate_get_option(&db, "blogname").await?;
             let blogdesc = migrate_get_option(&db, "blogdescription").await?;
             println!();
-            println!("Site Title: {}", blogname);
-            println!("Tagline: {}", blogdesc);
+            println!("Site Title: {blogname}");
+            println!("Tagline: {blogdesc}");
             if blogdesc == "Just another WordPress site" {
                 println!("  WARNING: Default tagline detected. Consider updating for better SEO.");
             }
@@ -1701,7 +1684,7 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
             if !yes {
                 println!("WARNING: This will drop the following RustPress-specific tables:");
                 for t in &rustpress_only_tables {
-                    println!("  - {}", t);
+                    println!("  - {t}");
                 }
                 println!();
                 println!("WordPress core tables (wp_posts, wp_options, etc.) are NEVER touched.");
@@ -1712,22 +1695,22 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
             let db = rustpress_db::connection::connect(&db_url).await?;
             let mut dropped = 0;
             for table in &rustpress_only_tables {
-                let sql = format!("DROP TABLE IF EXISTS `{}`", table);
+                let sql = format!("DROP TABLE IF EXISTS `{table}`");
                 match db
                     .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                     .await
                 {
                     Ok(_) => {
-                        println!("  Dropped: {}", table);
+                        println!("  Dropped: {table}");
                         dropped += 1;
                     }
                     Err(e) => {
-                        println!("  Skipped: {} ({})", table, e);
+                        println!("  Skipped: {table} ({e})");
                     }
                 }
             }
             println!();
-            println!("Rollback complete. {} tables dropped.", dropped);
+            println!("Rollback complete. {dropped} tables dropped.");
             println!(
                 "WordPress core tables are intact — you can switch back to WordPress at any time."
             );
@@ -1752,7 +1735,7 @@ async fn migrate_analyze_db(db_url: &str) -> Result<(String, i64, i64, i64, Stri
             v if v.parse::<u64>().unwrap_or(0) >= 58975 => "6.9+".to_string(),
             v if v.parse::<u64>().unwrap_or(0) >= 57155 => "6.x".to_string(),
             v if v.parse::<u64>().unwrap_or(0) >= 49752 => "5.x".to_string(),
-            _ => format!("unknown (db_version: {})", wp_version),
+            _ => format!("unknown (db_version: {wp_version})"),
         }
     } else {
         wp_version_display
@@ -1797,8 +1780,7 @@ async fn migrate_get_option(db: &DatabaseConnection, name: &str) -> Result<Strin
         .query_all(Statement::from_string(
             sea_orm::DatabaseBackend::MySql,
             format!(
-                "SELECT option_value FROM wp_options WHERE option_name = '{}'",
-                name
+                "SELECT option_value FROM wp_options WHERE option_name = '{name}'"
             ),
         ))
         .await?;
@@ -1867,16 +1849,14 @@ async fn migrate_get_active_plugins(db: &DatabaseConnection) -> Result<Vec<Strin
 fn migrate_check_theme(theme: &str) -> String {
     let lower = theme.to_lowercase();
     if lower.contains("twentytwentyfive") || lower.contains("twentyrust") {
-        format!("{} -- Fully supported (native RustPress theme)", theme)
+        format!("{theme} -- Fully supported (native RustPress theme)")
     } else if lower.starts_with("twenty") {
         format!(
-            "{} -- WordPress default theme. Partial support via Tera templates.",
-            theme
+            "{theme} -- WordPress default theme. Partial support via Tera templates."
         )
     } else {
         format!(
-            "{} -- Custom theme. Manual Tera template conversion required.",
-            theme
+            "{theme} -- Custom theme. Manual Tera template conversion required."
         )
     }
 }
@@ -1898,7 +1878,7 @@ fn mask_password(url: &str) -> String {
         if let Some(colon_pos) = url[..at_pos].rfind(':') {
             let before = &url[..colon_pos + 1];
             let after = &url[at_pos..];
-            return format!("{}****{}", before, after);
+            return format!("{before}****{after}");
         }
     }
     url.to_string()
