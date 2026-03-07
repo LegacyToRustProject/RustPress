@@ -108,6 +108,25 @@ enum Commands {
     Info,
     /// Check system status and requirements
     Doctor,
+    /// Migrate from an existing WordPress database
+    Migrate {
+        #[command(subcommand)]
+        action: Option<MigrateAction>,
+
+        /// MySQL database URL of the WordPress site to migrate
+        #[arg(long, global = true)]
+        source: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum MigrateAction {
+    /// Analyze the WordPress database (steps 1-2 only)
+    Analyze,
+    /// Check plugin compatibility
+    Plugins,
+    /// Check SEO impact (permalink structure, meta tags)
+    SeoAudit,
 }
 
 #[derive(Subcommand)]
@@ -386,6 +405,7 @@ async fn main() -> Result<()> {
         Some(Commands::Server { action }) => handle_server(action),
         Some(Commands::Info) => handle_info(),
         Some(Commands::Doctor) => handle_doctor().await?,
+        Some(Commands::Migrate { action, source }) => handle_migrate(action, source).await?,
         None => {
             println!("RustPress CLI v{}", env!("CARGO_PKG_VERSION"));
             println!("Use --help for available commands");
@@ -1441,6 +1461,385 @@ async fn handle_doctor() -> Result<()> {
     println!();
     println!("All checks complete.");
     Ok(())
+}
+
+async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -> Result<()> {
+    let db_url = source.unwrap_or_else(get_db_url);
+
+    match action {
+        None => {
+            // Full migration: all 6 steps
+            let (wp_version, post_count, page_count, comment_count, theme, plugins) =
+                migrate_analyze_db(&db_url).await?;
+
+            println!("[1/6] Analyzing WordPress database...");
+            println!(
+                "       WordPress {}, {} posts, {} pages, {} comments",
+                wp_version, post_count, page_count, comment_count
+            );
+            println!("       Theme: {}", theme);
+            println!(
+                "       Plugins: {}",
+                if plugins.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    plugins.join(", ")
+                }
+            );
+
+            println!("[2/6] Connecting to database...");
+            println!("       OK -- using existing WordPress tables directly");
+
+            println!("[3/6] Checking theme compatibility...");
+            let theme_compat = migrate_check_theme(&theme);
+            println!("       {}", theme_compat);
+
+            println!("[4/6] Checking plugin compatibility...");
+            for plugin_name in &plugins {
+                let compat = rustpress_migrate::analyze::analyze_plugin(plugin_name);
+                let status_str = match compat.status {
+                    rustpress_migrate::analyze::PluginCompatStatus::NativeAvailable => "NATIVE",
+                    rustpress_migrate::analyze::PluginCompatStatus::Convertible => "CONVERT",
+                    rustpress_migrate::analyze::PluginCompatStatus::Incompatible => "INCOMPAT",
+                    rustpress_migrate::analyze::PluginCompatStatus::Unknown => "UNKNOWN",
+                };
+                let alt = compat
+                    .alternative
+                    .as_deref()
+                    .map(|a| format!(" -> {}", a))
+                    .unwrap_or_default();
+                println!("       [{}] {}{}", status_str, plugin_name, alt);
+            }
+            if plugins.is_empty() {
+                println!("       No active plugins found.");
+            }
+
+            println!("[5/6] Verifying SEO compatibility...");
+            let permalink = migrate_get_permalink(&db_url).await?;
+            println!("       Permalink structure: {}", permalink);
+            let (score, issues) = rustpress_migrate::analyze::analyze_wp_version(&wp_version);
+            println!("       WordPress version compatibility score: {}%", score);
+            for issue in &issues {
+                let severity = match issue.severity {
+                    rustpress_migrate::analyze::IssueSeverity::Critical => "CRITICAL",
+                    rustpress_migrate::analyze::IssueSeverity::Warning => "WARNING",
+                    rustpress_migrate::analyze::IssueSeverity::Info => "INFO",
+                };
+                println!("       [{}] {}", severity, issue.description);
+            }
+
+            println!("[6/6] Ready to start RustPress...");
+            println!("       Server would run at http://localhost:8080");
+            println!("       Migration analysis complete.");
+        }
+
+        Some(MigrateAction::Analyze) => {
+            let (wp_version, post_count, page_count, comment_count, theme, plugins) =
+                migrate_analyze_db(&db_url).await?;
+
+            println!("[1/2] Analyzing WordPress database...");
+            println!(
+                "       WordPress {}, {} posts, {} pages, {} comments",
+                wp_version, post_count, page_count, comment_count
+            );
+            println!("       Theme: {}", theme);
+            println!(
+                "       Plugins: {}",
+                if plugins.is_empty() {
+                    "(none)".to_string()
+                } else {
+                    plugins.join(", ")
+                }
+            );
+
+            let (score, issues) = rustpress_migrate::analyze::analyze_wp_version(&wp_version);
+            println!("       Compatibility score: {}%", score);
+            for issue in &issues {
+                let severity = match issue.severity {
+                    rustpress_migrate::analyze::IssueSeverity::Critical => "CRITICAL",
+                    rustpress_migrate::analyze::IssueSeverity::Warning => "WARNING",
+                    rustpress_migrate::analyze::IssueSeverity::Info => "INFO",
+                };
+                println!("       [{}] {}", severity, issue.description);
+            }
+
+            println!("[2/2] Connecting to database...");
+            println!("       OK -- using existing WordPress tables directly");
+            println!();
+            println!("Analysis complete.");
+        }
+
+        Some(MigrateAction::Plugins) => {
+            let db = rustpress_db::connection::connect(&db_url).await?;
+            let plugins = migrate_get_active_plugins(&db).await?;
+
+            println!("Checking plugin compatibility...");
+            println!();
+            if plugins.is_empty() {
+                println!("No active plugins found.");
+            } else {
+                println!("{:<10} {:<30} {:<30}", "Status", "Plugin", "Alternative");
+                println!("{}", "-".repeat(72));
+                for plugin_name in &plugins {
+                    let compat = rustpress_migrate::analyze::analyze_plugin(plugin_name);
+                    let status_str = match compat.status {
+                        rustpress_migrate::analyze::PluginCompatStatus::NativeAvailable => "NATIVE",
+                        rustpress_migrate::analyze::PluginCompatStatus::Convertible => "CONVERT",
+                        rustpress_migrate::analyze::PluginCompatStatus::Incompatible => "INCOMPAT",
+                        rustpress_migrate::analyze::PluginCompatStatus::Unknown => "UNKNOWN",
+                    };
+                    let alt = compat.alternative.as_deref().unwrap_or("-");
+                    println!("{:<10} {:<30} {:<30}", status_str, plugin_name, alt);
+                }
+                println!();
+
+                let native_count = plugins
+                    .iter()
+                    .filter(|p| {
+                        rustpress_migrate::analyze::analyze_plugin(p).status
+                            == rustpress_migrate::analyze::PluginCompatStatus::NativeAvailable
+                    })
+                    .count();
+                let incompat_count = plugins
+                    .iter()
+                    .filter(|p| {
+                        rustpress_migrate::analyze::analyze_plugin(p).status
+                            == rustpress_migrate::analyze::PluginCompatStatus::Incompatible
+                    })
+                    .count();
+                println!(
+                    "Summary: {} total, {} native, {} incompatible",
+                    plugins.len(),
+                    native_count,
+                    incompat_count
+                );
+            }
+        }
+
+        Some(MigrateAction::SeoAudit) => {
+            let db = rustpress_db::connection::connect(&db_url).await?;
+
+            println!("SEO Compatibility Audit");
+            println!("{}", "=".repeat(50));
+
+            // Check permalink structure
+            let permalink = migrate_get_option(&db, "permalink_structure").await?;
+            println!();
+            println!(
+                "Permalink Structure: {}",
+                if permalink.is_empty() {
+                    "Plain (default)"
+                } else {
+                    &permalink
+                }
+            );
+            if permalink.is_empty() {
+                println!("  WARNING: Plain permalinks are supported but SEO-unfriendly.");
+                println!("  Recommendation: Use /%postname%/ for best SEO results.");
+            } else if permalink.contains("%postname%") {
+                println!("  OK -- Post name permalinks are fully supported.");
+            } else if permalink.contains("%year%") || permalink.contains("%monthnum%") {
+                println!("  OK -- Date-based permalinks are supported.");
+            } else {
+                println!("  INFO: Custom permalink structure detected. May need verification.");
+            }
+
+            // Check site title and description
+            let blogname = migrate_get_option(&db, "blogname").await?;
+            let blogdesc = migrate_get_option(&db, "blogdescription").await?;
+            println!();
+            println!("Site Title: {}", blogname);
+            println!("Tagline: {}", blogdesc);
+            if blogdesc == "Just another WordPress site" {
+                println!("  WARNING: Default tagline detected. Consider updating for better SEO.");
+            }
+
+            // Check active SEO plugins
+            let plugins = migrate_get_active_plugins(&db).await?;
+            let seo_plugins: Vec<_> = plugins
+                .iter()
+                .filter(|p| {
+                    let lower = p.to_lowercase();
+                    lower.contains("seo") || lower.contains("yoast") || lower.contains("rank-math")
+                })
+                .collect();
+            println!();
+            if seo_plugins.is_empty() {
+                println!("SEO Plugin: None detected");
+                println!("  INFO: rustpress-seo provides built-in SEO functionality.");
+            } else {
+                println!(
+                    "SEO Plugins: {}",
+                    seo_plugins
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
+                println!("  OK -- SEO meta data will be preserved via rustpress-seo.");
+            }
+
+            println!();
+            println!("SEO audit complete.");
+        }
+    }
+
+    Ok(())
+}
+
+/// Analyze a WordPress database and return key stats.
+async fn migrate_analyze_db(db_url: &str) -> Result<(String, i64, i64, i64, String, Vec<String>)> {
+    let db = rustpress_db::connection::connect(db_url).await?;
+
+    // Get WordPress version
+    let wp_version = migrate_get_option(&db, "db_version").await?;
+    let wp_version_display = migrate_get_option(&db, "initial_db_version")
+        .await
+        .unwrap_or_default();
+    let version_str = if wp_version_display.is_empty() {
+        // Map db_version to approximate WP version
+        match wp_version.as_str() {
+            v if v.parse::<u64>().unwrap_or(0) >= 58975 => "6.9+".to_string(),
+            v if v.parse::<u64>().unwrap_or(0) >= 57155 => "6.x".to_string(),
+            v if v.parse::<u64>().unwrap_or(0) >= 49752 => "5.x".to_string(),
+            _ => format!("unknown (db_version: {})", wp_version),
+        }
+    } else {
+        wp_version_display
+    };
+
+    // Count posts
+    let post_count = migrate_count_query(
+        &db,
+        "SELECT COUNT(*) as cnt FROM wp_posts WHERE post_type = 'post' AND post_status = 'publish'",
+    )
+    .await?;
+    let page_count = migrate_count_query(
+        &db,
+        "SELECT COUNT(*) as cnt FROM wp_posts WHERE post_type = 'page' AND post_status = 'publish'",
+    )
+    .await?;
+    let comment_count = migrate_count_query(
+        &db,
+        "SELECT COUNT(*) as cnt FROM wp_comments WHERE comment_approved = '1'",
+    )
+    .await?;
+
+    // Get active theme
+    let theme = migrate_get_option(&db, "template").await?;
+
+    // Get active plugins
+    let plugins = migrate_get_active_plugins(&db).await?;
+
+    Ok((
+        version_str,
+        post_count,
+        page_count,
+        comment_count,
+        theme,
+        plugins,
+    ))
+}
+
+/// Get a single option value from wp_options.
+async fn migrate_get_option(db: &DatabaseConnection, name: &str) -> Result<String> {
+    let rows = db
+        .query_all(Statement::from_string(
+            sea_orm::DatabaseBackend::MySql,
+            format!(
+                "SELECT option_value FROM wp_options WHERE option_name = '{}'",
+                name
+            ),
+        ))
+        .await?;
+    if let Some(row) = rows.first() {
+        let value: String = row.try_get("", "option_value").unwrap_or_default();
+        Ok(value)
+    } else {
+        Ok(String::new())
+    }
+}
+
+/// Run a COUNT query and return the result.
+async fn migrate_count_query(db: &DatabaseConnection, sql: &str) -> Result<i64> {
+    let rows = db
+        .query_all(Statement::from_string(
+            sea_orm::DatabaseBackend::MySql,
+            sql.to_string(),
+        ))
+        .await?;
+    let count: i64 = rows
+        .first()
+        .and_then(|r| r.try_get("", "cnt").ok())
+        .unwrap_or(0);
+    Ok(count)
+}
+
+/// Parse active plugins from the PHP-serialized wp_options value.
+async fn migrate_get_active_plugins(db: &DatabaseConnection) -> Result<Vec<String>> {
+    let raw = migrate_get_option(db, "active_plugins").await?;
+    if raw.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Parse PHP serialized array: extract string values like s:NN:"plugin-dir/plugin-file.php"
+    let mut plugins = Vec::new();
+    let mut remaining = raw.as_str();
+    while let Some(pos) = remaining.find("s:") {
+        remaining = &remaining[pos + 2..];
+        // Skip the string length and colon
+        if let Some(colon) = remaining.find(':') {
+            remaining = &remaining[colon + 1..];
+            // Extract the quoted string
+            if remaining.starts_with('"') {
+                remaining = &remaining[1..];
+                if let Some(end_quote) = remaining.find('"') {
+                    let value = &remaining[..end_quote];
+                    // Extract plugin name from path like "plugin-dir/plugin-file.php"
+                    let plugin_name = if let Some(slash_pos) = value.find('/') {
+                        &value[..slash_pos]
+                    } else {
+                        value.trim_end_matches(".php")
+                    };
+                    if !plugin_name.is_empty() {
+                        plugins.push(plugin_name.to_string());
+                    }
+                    remaining = &remaining[end_quote + 1..];
+                }
+            }
+        }
+    }
+
+    Ok(plugins)
+}
+
+/// Check theme compatibility.
+fn migrate_check_theme(theme: &str) -> String {
+    let lower = theme.to_lowercase();
+    if lower.contains("twentytwentyfive") || lower.contains("twentyrust") {
+        format!("{} -- Fully supported (native RustPress theme)", theme)
+    } else if lower.starts_with("twenty") {
+        format!(
+            "{} -- WordPress default theme. Partial support via Tera templates.",
+            theme
+        )
+    } else {
+        format!(
+            "{} -- Custom theme. Manual Tera template conversion required.",
+            theme
+        )
+    }
+}
+
+/// Get permalink structure from the database.
+async fn migrate_get_permalink(db_url: &str) -> Result<String> {
+    let db = rustpress_db::connection::connect(db_url).await?;
+    let permalink = migrate_get_option(&db, "permalink_structure").await?;
+    Ok(if permalink.is_empty() {
+        "Plain (default)".to_string()
+    } else {
+        permalink
+    })
 }
 
 /// Mask the password portion of a database URL for display.

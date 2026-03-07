@@ -15,7 +15,8 @@ use serde_json::Value;
 use rustpress_db::entities::{wp_term_relationships, wp_term_taxonomy, wp_terms};
 
 use crate::common::{
-    filter_term_context, pagination_headers, slugify, term_links, RestContext, WpError,
+    envelope_response, filter_term_context, pagination_headers_with_link, slugify, term_links,
+    RestContext, WpError,
 };
 use crate::ApiState;
 
@@ -47,6 +48,7 @@ pub struct ListCategoriesQuery {
     pub context: Option<String>,
     pub orderby: Option<String>,
     pub order: Option<String>,
+    pub _envelope: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -247,8 +249,14 @@ async fn list_categories(
         }
     }
 
-    let headers = pagination_headers(total, total_pages);
-    Ok((headers, Json(json_items)))
+    let base_url = format!("{}/wp-json/wp/v2/categories", state.site_url);
+    let headers = pagination_headers_with_link(total, total_pages, page, &base_url);
+
+    if params._envelope.is_some() {
+        Ok(Json(envelope_response(200, &headers, Value::Array(json_items))).into_response())
+    } else {
+        Ok((headers, Json(json_items)).into_response())
+    }
 }
 
 async fn get_category(

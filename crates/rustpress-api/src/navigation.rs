@@ -13,22 +13,21 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use rustpress_db::entities::wp_posts;
-use rustpress_db::revisions::RevisionManager;
 
 use crate::common::{
-    envelope_response, filter_post_context, pagination_headers_with_link, post_links, slugify,
-    RestContext, WpError,
+    filter_post_context, pagination_headers, post_links, slugify, RestContext, WpError,
 };
 use crate::posts::WpRendered;
 use crate::ApiState;
 
-/// WP REST API Page response format.
-/// Similar to WpPost but includes parent and menu_order fields.
+/// WP REST API Navigation response format.
+/// Represents a `wp_navigation` post type used for navigation menus.
 #[derive(Debug, Serialize)]
-pub struct WpPage {
+pub struct WpNavigation {
     pub id: u64,
     pub date: String,
     pub date_gmt: String,
+    pub guid: WpRendered,
     pub modified: String,
     pub modified_gmt: String,
     pub slug: String,
@@ -37,115 +36,75 @@ pub struct WpPage {
     pub post_type: String,
     pub title: WpRendered,
     pub content: WpRendered,
-    pub excerpt: WpRendered,
-    pub author: u64,
-    pub parent: u64,
-    pub menu_order: i32,
-    pub featured_media: u64,
-    pub comment_status: String,
-    pub ping_status: String,
-    pub link: String,
     pub _links: Value,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListPagesQuery {
+pub struct ListNavigationQuery {
     pub page: Option<u64>,
     pub per_page: Option<u64>,
     pub search: Option<String>,
     pub status: Option<String>,
-    pub author: Option<u64>,
-    pub parent: Option<u64>,
-    pub menu_order: Option<i32>,
+    pub slug: Option<String>,
     pub orderby: Option<String>,
     pub order: Option<String>,
-    pub include: Option<String>,
-    pub exclude: Option<String>,
     pub context: Option<String>,
     pub _fields: Option<String>,
-    pub _envelope: Option<String>,
+    pub _embed: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct CreatePageRequest {
+pub struct GetNavigationQuery {
+    pub context: Option<String>,
+    pub _fields: Option<String>,
+    pub _embed: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateNavigationRequest {
     pub title: Option<String>,
     pub content: Option<String>,
-    pub excerpt: Option<String>,
     pub status: Option<String>,
     pub slug: Option<String>,
-    pub author: Option<u64>,
-    pub parent: Option<u64>,
-    pub menu_order: Option<i32>,
-    pub featured_media: Option<u64>,
-    pub comment_status: Option<String>,
-    pub ping_status: Option<String>,
     pub date: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UpdatePageRequest {
+pub struct UpdateNavigationRequest {
     pub title: Option<String>,
     pub content: Option<String>,
-    pub excerpt: Option<String>,
     pub status: Option<String>,
     pub slug: Option<String>,
-    pub author: Option<u64>,
-    pub parent: Option<u64>,
-    pub menu_order: Option<i32>,
-    pub featured_media: Option<u64>,
-    pub comment_status: Option<String>,
-    pub ping_status: Option<String>,
     pub date: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct GetPageQuery {
-    pub context: Option<String>,
-    pub _fields: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct DeletePageQuery {
+pub struct DeleteNavigationQuery {
     pub force: Option<bool>,
 }
 
-pub fn build_page(p: wp_posts::Model, site_url: &str) -> WpPage {
-    let links = post_links(site_url, p.id, "page", p.post_author);
-    let link = format!("{}/{}", site_url.trim_end_matches('/'), p.post_name);
+pub fn build_navigation(p: wp_posts::Model, site_url: &str) -> WpNavigation {
+    let links = post_links(site_url, p.id, "wp_navigation", p.post_author);
 
     let rendered_content = rustpress_themes::apply_content_filters(&p.post_content);
     let rendered_title = rustpress_themes::apply_title_filters(&p.post_title);
-    let rendered_excerpt = if p.post_excerpt.is_empty() {
-        String::new()
-    } else {
-        rustpress_themes::apply_excerpt_filters(&p.post_excerpt)
-    };
 
-    WpPage {
+    WpNavigation {
         id: p.id,
         date: p.post_date.format("%Y-%m-%dT%H:%M:%S").to_string(),
         date_gmt: p.post_date_gmt.format("%Y-%m-%dT%H:%M:%S").to_string(),
+        guid: WpRendered { rendered: p.guid },
         modified: p.post_modified.format("%Y-%m-%dT%H:%M:%S").to_string(),
         modified_gmt: p.post_modified_gmt.format("%Y-%m-%dT%H:%M:%S").to_string(),
         slug: p.post_name,
         status: p.post_status,
-        post_type: "page".to_string(),
+        post_type: "wp_navigation".to_string(),
         title: WpRendered {
             rendered: rendered_title,
         },
         content: WpRendered {
             rendered: rendered_content,
         },
-        excerpt: WpRendered {
-            rendered: rendered_excerpt,
-        },
-        author: p.post_author,
-        parent: p.post_parent,
-        menu_order: p.menu_order,
-        featured_media: 0,
-        comment_status: p.comment_status,
-        ping_status: p.ping_status,
-        link,
         _links: links,
     }
 }
@@ -153,30 +112,33 @@ pub fn build_page(p: wp_posts::Model, site_url: &str) -> WpPage {
 /// Public read-only routes (GET) -- no authentication required.
 pub fn read_routes() -> Router<ApiState> {
     Router::new()
-        .route("/wp-json/wp/v2/pages", get(list_pages))
-        .route("/wp-json/wp/v2/pages/{id}", get(get_page))
+        .route("/wp-json/wp/v2/navigation", get(list_navigation))
+        .route("/wp-json/wp/v2/navigation/{id}", get(get_navigation))
 }
 
 /// Protected write routes (POST/PUT/DELETE) -- authentication required.
 pub fn write_routes() -> Router<ApiState> {
     Router::new()
-        .route("/wp-json/wp/v2/pages", axum::routing::post(create_page))
         .route(
-            "/wp-json/wp/v2/pages/{id}",
-            axum::routing::put(update_page)
-                .patch(update_page)
-                .delete(delete_page),
+            "/wp-json/wp/v2/navigation",
+            axum::routing::post(create_navigation),
+        )
+        .route(
+            "/wp-json/wp/v2/navigation/{id}",
+            axum::routing::put(update_navigation)
+                .patch(update_navigation)
+                .delete(delete_navigation),
         )
 }
 
-async fn list_pages(
+async fn list_navigation(
     State(state): State<ApiState>,
-    Query(params): Query<ListPagesQuery>,
+    Query(params): Query<ListNavigationQuery>,
 ) -> Result<impl IntoResponse, WpError> {
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10).min(100);
 
-    let mut query = wp_posts::Entity::find().filter(wp_posts::Column::PostType.eq("page"));
+    let mut query = wp_posts::Entity::find().filter(wp_posts::Column::PostType.eq("wp_navigation"));
 
     // Status filter (default: "publish")
     let status = params.status.as_deref().unwrap_or("publish");
@@ -187,41 +149,9 @@ async fn list_pages(
         query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
     }
 
-    // Author filter
-    if let Some(author) = params.author {
-        query = query.filter(wp_posts::Column::PostAuthor.eq(author));
-    }
-
-    // Parent filter
-    if let Some(parent) = params.parent {
-        query = query.filter(wp_posts::Column::PostParent.eq(parent));
-    }
-
-    // Menu order filter
-    if let Some(menu_order) = params.menu_order {
-        query = query.filter(wp_posts::Column::MenuOrder.eq(menu_order));
-    }
-
-    // Include filter (comma-separated IDs)
-    if let Some(ref include) = params.include {
-        let ids: Vec<u64> = include
-            .split(',')
-            .filter_map(|s| s.trim().parse().ok())
-            .collect();
-        if !ids.is_empty() {
-            query = query.filter(wp_posts::Column::Id.is_in(ids));
-        }
-    }
-
-    // Exclude filter (comma-separated IDs)
-    if let Some(ref exclude) = params.exclude {
-        let ids: Vec<u64> = exclude
-            .split(',')
-            .filter_map(|s| s.trim().parse().ok())
-            .collect();
-        if !ids.is_empty() {
-            query = query.filter(wp_posts::Column::Id.is_not_in(ids));
-        }
+    // Slug filter
+    if let Some(ref slug) = params.slug {
+        query = query.filter(wp_posts::Column::PostName.eq(slug.as_str()));
     }
 
     // Get total count for pagination
@@ -238,15 +168,8 @@ async fn list_pages(
 
     // Ordering
     let order_desc = params.order.as_deref() != Some("asc");
-    let orderby = params.orderby.as_deref().unwrap_or("menu_order");
+    let orderby = params.orderby.as_deref().unwrap_or("date");
     query = match orderby {
-        "date" => {
-            if order_desc {
-                query.order_by_desc(wp_posts::Column::PostDate)
-            } else {
-                query.order_by_asc(wp_posts::Column::PostDate)
-            }
-        }
         "title" => {
             if order_desc {
                 query.order_by_desc(wp_posts::Column::PostTitle)
@@ -268,12 +191,12 @@ async fn list_pages(
                 query.order_by_asc(wp_posts::Column::PostModified)
             }
         }
-        // "menu_order" or default
+        // "date" or default
         _ => {
             if order_desc {
-                query.order_by_desc(wp_posts::Column::MenuOrder)
+                query.order_by_desc(wp_posts::Column::PostDate)
             } else {
-                query.order_by_asc(wp_posts::Column::MenuOrder)
+                query.order_by_asc(wp_posts::Column::PostDate)
             }
         }
     };
@@ -285,9 +208,9 @@ async fn list_pages(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
-    let items: Vec<WpPage> = posts
+    let items: Vec<WpNavigation> = posts
         .into_iter()
-        .map(|p| build_page(p, &state.site_url))
+        .map(|p| build_navigation(p, &state.site_url))
         .collect();
 
     let context = RestContext::from_option(params.context.as_deref());
@@ -301,40 +224,33 @@ async fn list_pages(
         }
     }
 
-    let base_url = format!("{}/wp-json/wp/v2/pages", state.site_url);
-    let headers = pagination_headers_with_link(total, total_pages, page, &base_url);
-    let body = Value::Array(json_items);
-
-    if params._envelope.is_some() {
-        Ok(Json(envelope_response(200, &headers, body)).into_response())
-    } else {
-        Ok((headers, Json(body)).into_response())
-    }
+    let headers = pagination_headers(total, total_pages);
+    Ok((headers, Json(Value::Array(json_items))))
 }
 
-async fn get_page(
+async fn get_navigation(
     State(state): State<ApiState>,
     Path(id): Path<u64>,
-    Query(params): Query<GetPageQuery>,
+    Query(params): Query<GetNavigationQuery>,
 ) -> Result<Json<Value>, WpError> {
     let post = wp_posts::Entity::find_by_id(id)
-        .filter(wp_posts::Column::PostType.eq("page"))
+        .filter(wp_posts::Column::PostType.eq("wp_navigation"))
         .one(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?
-        .ok_or(WpError::not_found("Page not found"))?;
+        .ok_or(WpError::not_found("Navigation not found"))?;
 
     let context = RestContext::from_option(params.context.as_deref());
-    let mut val = serde_json::to_value(build_page(post, &state.site_url)).unwrap_or_default();
+    let mut val = serde_json::to_value(build_navigation(post, &state.site_url)).unwrap_or_default();
     filter_post_context(&mut val, context);
     Ok(Json(val))
 }
 
-async fn create_page(
+async fn create_navigation(
     State(state): State<ApiState>,
     auth: crate::AuthUser,
-    Json(input): Json<CreatePageRequest>,
-) -> Result<(StatusCode, Json<WpPage>), WpError> {
+    Json(input): Json<CreateNavigationRequest>,
+) -> Result<(StatusCode, Json<WpNavigation>), WpError> {
     auth.require(&rustpress_auth::Capability::EditPages)?;
     let now = chrono::Utc::now().naive_utc();
     let title = input.title.unwrap_or_default();
@@ -350,20 +266,18 @@ async fn create_page(
         now
     };
 
-    let new_page = wp_posts::ActiveModel {
-        post_author: Set(input.author.unwrap_or(1)),
+    let new_nav = wp_posts::ActiveModel {
+        post_author: Set(1),
         post_date: Set(post_date),
         post_date_gmt: Set(post_date),
         post_content: Set(rustpress_core::wp_kses_post(
             &input.content.unwrap_or_default(),
         )),
         post_title: Set(title),
-        post_excerpt: Set(rustpress_core::wp_kses_post(
-            &input.excerpt.unwrap_or_default(),
-        )),
+        post_excerpt: Set(String::new()),
         post_status: Set(status),
-        comment_status: Set(input.comment_status.unwrap_or_else(|| "closed".to_string())),
-        ping_status: Set(input.ping_status.unwrap_or_else(|| "closed".to_string())),
+        comment_status: Set("closed".to_string()),
+        ping_status: Set("closed".to_string()),
         post_password: Set(String::new()),
         post_name: Set(slug),
         to_ping: Set(String::new()),
@@ -371,44 +285,39 @@ async fn create_page(
         post_modified: Set(now),
         post_modified_gmt: Set(now),
         post_content_filtered: Set(String::new()),
-        post_parent: Set(input.parent.unwrap_or(0)),
+        post_parent: Set(0),
         guid: Set(String::new()),
-        menu_order: Set(input.menu_order.unwrap_or(0)),
-        post_type: Set("page".to_string()),
+        menu_order: Set(0),
+        post_type: Set("wp_navigation".to_string()),
         post_mime_type: Set(String::new()),
         comment_count: Set(0),
         ..Default::default()
     };
 
-    let result = new_page
+    let result = new_nav
         .insert(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
     Ok((
         StatusCode::CREATED,
-        Json(build_page(result, &state.site_url)),
+        Json(build_navigation(result, &state.site_url)),
     ))
 }
 
-async fn update_page(
+async fn update_navigation(
     State(state): State<ApiState>,
     auth: crate::AuthUser,
     Path(id): Path<u64>,
-    Json(input): Json<UpdatePageRequest>,
-) -> Result<Json<WpPage>, WpError> {
+    Json(input): Json<UpdateNavigationRequest>,
+) -> Result<Json<WpNavigation>, WpError> {
     auth.require(&rustpress_auth::Capability::EditPages)?;
     let post = wp_posts::Entity::find_by_id(id)
-        .filter(wp_posts::Column::PostType.eq("page"))
+        .filter(wp_posts::Column::PostType.eq("wp_navigation"))
         .one(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?
-        .ok_or(WpError::not_found("Page not found"))?;
-
-    // Save revision before updating (skip for auto-drafts)
-    if post.post_status != "auto-draft" {
-        let _ = RevisionManager::save_revision(&state.db, &post).await;
-    }
+        .ok_or(WpError::not_found("Navigation not found"))?;
 
     let mut active: wp_posts::ActiveModel = post.into();
     let now = chrono::Utc::now().naive_utc();
@@ -419,29 +328,11 @@ async fn update_page(
     if let Some(content) = input.content {
         active.post_content = Set(rustpress_core::wp_kses_post(&content));
     }
-    if let Some(excerpt) = input.excerpt {
-        active.post_excerpt = Set(rustpress_core::wp_kses_post(&excerpt));
-    }
     if let Some(status) = input.status {
         active.post_status = Set(status);
     }
     if let Some(slug) = input.slug {
         active.post_name = Set(slug);
-    }
-    if let Some(author) = input.author {
-        active.post_author = Set(author);
-    }
-    if let Some(parent) = input.parent {
-        active.post_parent = Set(parent);
-    }
-    if let Some(menu_order) = input.menu_order {
-        active.menu_order = Set(menu_order);
-    }
-    if let Some(comment_status) = input.comment_status {
-        active.comment_status = Set(comment_status);
-    }
-    if let Some(ping_status) = input.ping_status {
-        active.ping_status = Set(ping_status);
     }
 
     // Handle scheduled date
@@ -462,24 +353,24 @@ async fn update_page(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
-    Ok(Json(build_page(updated, &state.site_url)))
+    Ok(Json(build_navigation(updated, &state.site_url)))
 }
 
-async fn delete_page(
+async fn delete_navigation(
     State(state): State<ApiState>,
     auth: crate::AuthUser,
     Path(id): Path<u64>,
-    Query(params): Query<DeletePageQuery>,
-) -> Result<Json<WpPage>, WpError> {
+    Query(params): Query<DeleteNavigationQuery>,
+) -> Result<Json<WpNavigation>, WpError> {
     auth.require(&rustpress_auth::Capability::DeletePages)?;
     let post = wp_posts::Entity::find_by_id(id)
-        .filter(wp_posts::Column::PostType.eq("page"))
+        .filter(wp_posts::Column::PostType.eq("wp_navigation"))
         .one(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?
-        .ok_or(WpError::not_found("Page not found"))?;
+        .ok_or(WpError::not_found("Navigation not found"))?;
 
-    let response = build_page(post.clone(), &state.site_url);
+    let response = build_navigation(post.clone(), &state.site_url);
 
     if params.force.unwrap_or(false) {
         // Hard delete

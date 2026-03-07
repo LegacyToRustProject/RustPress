@@ -17,7 +17,8 @@ use rustpress_db::entities::wp_comments;
 use rustpress_db::entities::wp_posts;
 
 use crate::common::{
-    avatar_urls, comment_links, filter_comment_context, pagination_headers, RestContext, WpError,
+    avatar_urls, comment_links, envelope_response, filter_comment_context,
+    pagination_headers_with_link, RestContext, WpError,
 };
 use crate::ApiState;
 
@@ -55,6 +56,7 @@ pub struct ListCommentsQuery {
     pub orderby: Option<String>,
     pub order: Option<String>,
     pub _fields: Option<String>,
+    pub _envelope: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -283,8 +285,14 @@ async fn list_comments(
         }
     }
 
-    let headers = pagination_headers(total, total_pages);
-    Ok((headers, Json(json_items)))
+    let base_url = format!("{}/wp-json/wp/v2/comments", state.site_url);
+    let headers = pagination_headers_with_link(total, total_pages, page, &base_url);
+
+    if params._envelope.is_some() {
+        Ok(Json(envelope_response(200, &headers, Value::Array(json_items))).into_response())
+    } else {
+        Ok((headers, Json(json_items)).into_response())
+    }
 }
 
 async fn get_comment(

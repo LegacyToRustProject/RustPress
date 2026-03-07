@@ -18,7 +18,8 @@ use rustpress_db::entities::{
 use rustpress_db::revisions::RevisionManager;
 
 use crate::common::{
-    filter_post_context, pagination_headers, post_links, slugify, term_links, RestContext, WpError,
+    envelope_response, filter_post_context, pagination_headers_with_link, post_links, slugify,
+    term_links, RestContext, WpError,
 };
 use crate::ApiState;
 
@@ -79,6 +80,7 @@ pub struct ListQuery {
     pub context: Option<String>,
     pub _fields: Option<String>,
     pub _embed: Option<String>,
+    pub _envelope: Option<String>,
 }
 
 /// Request body for creating/updating posts via WP REST API.
@@ -536,10 +538,11 @@ async fn list_posts(
         items.push(build_post(p, &state.site_url, &state.db).await);
     }
 
-    let headers = pagination_headers(total, total_pages);
+    let base_url = format!("{}/wp-json/wp/v2/posts", state.site_url);
+    let headers = pagination_headers_with_link(total, total_pages, page, &base_url);
     let context = RestContext::from_option(params.context.as_deref());
 
-    if params._embed.is_some() {
+    let body = if params._embed.is_some() {
         let mut embedded_items = Vec::new();
         for post in &items {
             let mut val = serde_json::to_value(post).unwrap_or_default();
@@ -549,7 +552,7 @@ async fn list_posts(
             filter_post_context(&mut val, context);
             embedded_items.push(val);
         }
-        Ok((headers, Json(Value::Array(embedded_items))).into_response())
+        Value::Array(embedded_items)
     } else {
         let mut json_items: Vec<Value> = items
             .iter()
@@ -560,7 +563,13 @@ async fn list_posts(
                 filter_post_context(item, context);
             }
         }
-        Ok((headers, Json(Value::Array(json_items))).into_response())
+        Value::Array(json_items)
+    };
+
+    if params._envelope.is_some() {
+        Ok(Json(envelope_response(200, &headers, body)).into_response())
+    } else {
+        Ok((headers, Json(body)).into_response())
     }
 }
 

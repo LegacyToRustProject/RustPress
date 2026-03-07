@@ -17,8 +17,8 @@ use rustpress_auth::PasswordHasher;
 use rustpress_db::entities::{wp_posts, wp_usermeta, wp_users};
 
 use crate::common::{
-    avatar_urls, extract_user_id, filter_user_context, pagination_headers, slugify, user_links,
-    RestContext, WpError,
+    avatar_urls, envelope_response, extract_user_id, filter_user_context,
+    pagination_headers_with_link, slugify, user_links, RestContext, WpError,
 };
 use crate::ApiState;
 
@@ -55,6 +55,7 @@ pub struct ListUsersQuery {
     pub context: Option<String>,
     pub orderby: Option<String>,
     pub order: Option<String>,
+    pub _envelope: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -382,8 +383,19 @@ async fn list_users(
         }
     }
 
-    let headers = pagination_headers(total, total_pages);
-    Ok((headers, Json(json_items)))
+    let base_url = format!("{}/wp-json/wp/v2/users", state.site_url);
+    let resp_headers = pagination_headers_with_link(total, total_pages, page, &base_url);
+
+    if params._envelope.is_some() {
+        Ok(Json(envelope_response(
+            200,
+            &resp_headers,
+            Value::Array(json_items),
+        ))
+        .into_response())
+    } else {
+        Ok((resp_headers, Json(json_items)).into_response())
+    }
 }
 
 async fn get_user(

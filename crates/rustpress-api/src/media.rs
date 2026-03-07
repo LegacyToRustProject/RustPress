@@ -19,7 +19,10 @@ use rustpress_core::media_sizes::{
 };
 use rustpress_db::entities::wp_posts;
 
-use crate::common::{filter_media_context, media_links, pagination_headers, RestContext, WpError};
+use crate::common::{
+    envelope_response, filter_media_context, media_links, pagination_headers_with_link,
+    RestContext, WpError,
+};
 use crate::ApiState;
 
 #[derive(Debug, Serialize)]
@@ -78,6 +81,7 @@ pub struct ListMediaQuery {
     pub orderby: Option<String>,
     pub order: Option<String>,
     pub _fields: Option<String>,
+    pub _envelope: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -457,8 +461,14 @@ async fn list_media(
         }
     }
 
-    let headers = pagination_headers(total, total_pages);
-    Ok((headers, Json(json_items)))
+    let base_url = format!("{}/wp-json/wp/v2/media", state.site_url);
+    let headers = pagination_headers_with_link(total, total_pages, page, &base_url);
+
+    if params._envelope.is_some() {
+        Ok(Json(envelope_response(200, &headers, Value::Array(json_items))).into_response())
+    } else {
+        Ok((headers, Json(json_items)).into_response())
+    }
 }
 
 async fn get_media(

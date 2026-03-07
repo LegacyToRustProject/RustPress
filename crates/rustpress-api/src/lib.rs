@@ -11,6 +11,7 @@ pub mod discovery;
 pub mod global_styles;
 pub mod media;
 pub mod menus;
+pub mod navigation;
 pub mod oembed;
 pub mod pages;
 pub mod post_types;
@@ -304,6 +305,7 @@ pub fn routes(state: ApiState) -> Router {
         .merge(block_renderer::routes())
         .merge(block_patterns::routes())
         .merge(global_styles::routes())
+        .merge(navigation::read_routes())
         .merge(templates::read_routes())
         .with_state(state.clone());
 
@@ -321,6 +323,7 @@ pub fn routes(state: ApiState) -> Router {
         .merge(menus::write_routes())
         .merge(autosaves::write_routes())
         .merge(application_passwords::write_routes())
+        .merge(navigation::write_routes())
         .merge(templates::write_routes())
         .merge(global_styles::write_routes())
         .layer(axum::middleware::from_fn_with_state(

@@ -507,6 +507,69 @@ pub fn pagination_headers(total: u64, total_pages: u64) -> HeaderMap {
     headers
 }
 
+/// Build pagination headers with `Link` header for rel="next" and rel="prev".
+///
+/// WordPress includes `Link` headers in paginated collection responses to
+/// allow clients to navigate through pages:
+/// ```text
+/// Link: <http://example.com/wp-json/wp/v2/posts?page=2>; rel="next"
+/// ```
+pub fn pagination_headers_with_link(
+    total: u64,
+    total_pages: u64,
+    current_page: u64,
+    base_url: &str,
+) -> HeaderMap {
+    let mut headers = pagination_headers(total, total_pages);
+
+    let mut links = Vec::new();
+    if current_page > 1 {
+        links.push(format!(
+            "<{}?page={}>; rel=\"prev\"",
+            base_url,
+            current_page - 1
+        ));
+    }
+    if current_page < total_pages {
+        links.push(format!(
+            "<{}?page={}>; rel=\"next\"",
+            base_url,
+            current_page + 1
+        ));
+    }
+
+    if !links.is_empty() {
+        if let Ok(v) = links.join(", ").parse() {
+            headers.insert("Link", v);
+        }
+    }
+    headers
+}
+
+/// Wrap a response in a WordPress `_envelope` format.
+///
+/// When `?_envelope` is present, the response body wraps the actual response:
+/// ```json
+/// {
+///   "status": 200,
+///   "headers": { "X-WP-Total": "42", "X-WP-TotalPages": "5" },
+///   "body": [ ... ]
+/// }
+/// ```
+pub fn envelope_response(status: u16, headers: &HeaderMap, body: Value) -> Value {
+    let mut header_map = serde_json::Map::new();
+    for (name, value) in headers.iter() {
+        if let Ok(v) = value.to_str() {
+            header_map.insert(name.as_str().to_string(), Value::String(v.to_string()));
+        }
+    }
+    json!({
+        "status": status,
+        "headers": Value::Object(header_map),
+        "body": body
+    })
+}
+
 /// WordPress curies (compact URIs) - standard for all `_links`.
 fn wp_curies() -> Value {
     json!([{
@@ -1078,5 +1141,67 @@ mod tests {
         let original = items.clone();
         apply_context_to_array(&mut items, RestContext::View, filter_post_context);
         assert_eq!(items, original);
+    }
+
+    #[test]
+    fn test_pagination_headers_with_link_first_page() {
+        let headers =
+            pagination_headers_with_link(42, 5, 1, "http://example.com/wp-json/wp/v2/posts");
+        assert_eq!(headers.get("X-WP-Total").unwrap(), "42");
+        assert_eq!(headers.get("X-WP-TotalPages").unwrap(), "5");
+        let link = headers.get("Link").unwrap().to_str().unwrap();
+        assert!(link.contains("rel=\"next\""));
+        assert!(link.contains("page=2"));
+        assert!(!link.contains("rel=\"prev\""));
+    }
+
+    #[test]
+    fn test_pagination_headers_with_link_middle_page() {
+        let headers =
+            pagination_headers_with_link(42, 5, 3, "http://example.com/wp-json/wp/v2/posts");
+        let link = headers.get("Link").unwrap().to_str().unwrap();
+        assert!(link.contains("rel=\"prev\""));
+        assert!(link.contains("page=2"));
+        assert!(link.contains("rel=\"next\""));
+        assert!(link.contains("page=4"));
+    }
+
+    #[test]
+    fn test_pagination_headers_with_link_last_page() {
+        let headers =
+            pagination_headers_with_link(42, 5, 5, "http://example.com/wp-json/wp/v2/posts");
+        let link = headers.get("Link").unwrap().to_str().unwrap();
+        assert!(link.contains("rel=\"prev\""));
+        assert!(link.contains("page=4"));
+        assert!(!link.contains("rel=\"next\""));
+    }
+
+    #[test]
+    fn test_pagination_headers_with_link_single_page() {
+        let headers =
+            pagination_headers_with_link(5, 1, 1, "http://example.com/wp-json/wp/v2/posts");
+        assert!(headers.get("Link").is_none());
+    }
+
+    #[test]
+    fn test_envelope_response() {
+        let mut headers = HeaderMap::new();
+        headers.insert("X-WP-Total", "42".parse().unwrap());
+        headers.insert("X-WP-TotalPages", "5".parse().unwrap());
+        let body = json!([{"id": 1}, {"id": 2}]);
+        let envelope = envelope_response(200, &headers, body.clone());
+        assert_eq!(envelope["status"], 200);
+        assert_eq!(envelope["headers"]["x-wp-total"], "42");
+        assert_eq!(envelope["headers"]["x-wp-totalpages"], "5");
+        assert_eq!(envelope["body"], body);
+    }
+
+    #[test]
+    fn test_envelope_response_error() {
+        let headers = HeaderMap::new();
+        let body = json!({"code": "rest_no_route", "message": "No route", "data": {"status": 404}});
+        let envelope = envelope_response(404, &headers, body.clone());
+        assert_eq!(envelope["status"], 404);
+        assert_eq!(envelope["body"], body);
     }
 }
