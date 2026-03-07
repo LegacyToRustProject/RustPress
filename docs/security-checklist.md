@@ -19,7 +19,9 @@ Status: **Implemented** | Last updated: 2026-03-07
 - [x] New passwords hashed with Argon2id (default parameters)
 - [x] Legacy WordPress passwords verified via bcrypt and PHPass (with Argon2 rehash flag)
 - [x] JWT secret sourced from `JWT_SECRET` env var (256+ bit random fallback)
+- [x] JWT secret minimum length enforced (32 bytes / 256 bits, panics if shorter)
 - [x] Warning emitted when using fallback JWT secret
+- [x] PHPass hash comparison uses constant-time comparison (timing attack prevention)
 - [x] Session cookies use HttpOnly + SameSite=Lax + Secure (when HTTPS)
 - [x] Session cookies have Max-Age (24h expiry)
 - [x] No passwords logged in audit entries or error messages
@@ -28,13 +30,14 @@ Status: **Implemented** | Last updated: 2026-03-07
 ## OWASP A03: Injection
 
 - [x] SeaORM parameter binding for all DB queries (no raw SQL with user input in web server)
-- [x] WAF rules block SQL injection patterns (UNION SELECT, OR 1=1, DROP TABLE, etc.)
+- [x] WAF rules block SQL injection patterns (UNION SELECT, OR 1=1, DROP TABLE, comment bypass, etc.)
 - [x] WAF rules block XSS patterns (script tags, event handlers, javascript: URIs)
 - [x] WAF rules block command injection (shell metacharacters, pipe/backtick)
 - [x] WAF rules block directory traversal (../ patterns)
 - [x] WAF inspects URL path, query string, request body, and headers
 - [x] Tera templates use auto-escaping by default
 - [x] `escape_html()` used for all dynamic content in manually-built HTML strings
+- [x] Comment author_url restricted to http/https schemes (javascript: XSS prevention)
 - [x] 86 OWASP-specific security tests covering injection vectors
 
 ## OWASP A04: Insecure Design
@@ -53,6 +56,7 @@ Status: **Implemented** | Last updated: 2026-03-07
 - [x] Sensitive file blocking middleware (blocks .env, .git, backup files, PHP files, logs)
 - [x] Error messages never expose DB connection strings or stack traces
 - [x] Warnings emitted for insecure default configurations (DATABASE_URL, JWT_SECRET)
+- [x] No hardcoded admin password — generated randomly or from ADMIN_PASSWORD env var
 - [x] Security headers applied to all responses (X-Content-Type-Options, X-Frame-Options, etc.)
 - [x] Permissions-Policy restricts camera, microphone, geolocation
 - [x] `.php` file requests return 404 (except allowed WordPress-compatible routes)
@@ -90,7 +94,7 @@ Status: **Implemented** | Last updated: 2026-03-07
 
 - [x] Audit log system (`AuditLog`) records security events in memory ring buffer
 - [x] Events logged: login success/failure, WAF blocks, rate limiting, brute force detection
-- [x] All audit entries include timestamp, IP address, user ID, event type
+- [x] All audit entries include timestamp, IP address (extracted from X-Forwarded-For/X-Real-IP), user ID, event type
 - [x] Audit events emitted via `tracing` for external log collection (stdout, file, ELK)
 - [x] Severity levels: Info, Warning, Critical
 - [x] No sensitive data (passwords, tokens) in log entries
@@ -120,8 +124,8 @@ Status: **Implemented** | Last updated: 2026-03-07
 
 ## Test Coverage
 
-- **Total workspace tests**: 871 (all passing)
-- **Security crate tests**: 86 (OWASP-focused)
+- **Total workspace tests**: 883 (all passing)
+- **Security crate tests**: 87 (OWASP-focused)
 - **Auth crate tests**: 43 (including password policy)
 - **All tests pass with `cargo test --workspace --lib --bins -- --skip e2e`**
 - **`cargo clippy --workspace -- -D warnings` passes clean**

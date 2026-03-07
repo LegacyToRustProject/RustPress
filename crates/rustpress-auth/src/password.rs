@@ -132,7 +132,19 @@ fn phpass_verify(password: &str, hash: &str) -> Result<bool, PasswordError> {
     // The stored hash portion is at positions 12..34 (22 characters for 16 bytes)
     let stored_encoded = &hash[12..34];
 
-    Ok(encoded == stored_encoded)
+    Ok(constant_time_eq(&encoded, stored_encoded))
+}
+
+/// Constant-time string comparison to prevent timing attacks.
+fn constant_time_eq(a: &str, b: &str) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut result = 0u8;
+    for (x, y) in a.bytes().zip(b.bytes()) {
+        result |= x ^ y;
+    }
+    result == 0
 }
 
 /// Encode bytes using PHPass's custom base64 encoding (itoa64 alphabet).

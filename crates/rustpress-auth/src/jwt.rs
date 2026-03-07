@@ -43,7 +43,17 @@ pub struct JwtManager {
 }
 
 impl JwtManager {
+    /// Create a new JWT manager.
+    ///
+    /// # Panics
+    /// Panics if the secret is shorter than 32 bytes (256 bits), which is the
+    /// minimum recommended by OWASP for HMAC-SHA256 signing keys.
     pub fn new(secret: &str, expiration_hours: i64) -> Self {
+        assert!(
+            secret.len() >= 32,
+            "JWT secret must be at least 32 bytes (256 bits). Got {} bytes.",
+            secret.len()
+        );
         Self {
             secret: secret.to_string(),
             expiration_hours,
@@ -110,7 +120,7 @@ mod tests {
 
     #[test]
     fn test_jwt_generate_and_validate() {
-        let manager = JwtManager::new("test-secret-key-12345", 24);
+        let manager = JwtManager::new("test-secret-key-that-is-at-least-32-bytes-long", 24);
         let token = manager
             .generate_token(1, "admin", "admin@example.com", "administrator")
             .unwrap();

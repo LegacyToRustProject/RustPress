@@ -300,6 +300,19 @@ mod owasp_tests {
         assert!(matches!(result, crate::WafResult::Block { .. }));
     }
 
+    #[test]
+    fn test_waf_blocks_sql_comment_bypass() {
+        let waf = WafEngine::with_default_rules();
+        let result = waf.check_request(
+            "GET",
+            "/api/posts",
+            "id=1/**/UNION/**/SELECT/**/password/**/FROM/**/users",
+            "",
+            &std::collections::HashMap::new(),
+        );
+        assert!(matches!(result, crate::WafResult::Block { .. }));
+    }
+
     // === Nonce system (CSRF) ===
 
     #[test]

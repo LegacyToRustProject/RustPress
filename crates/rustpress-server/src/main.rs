@@ -67,9 +67,19 @@ async fn main() -> Result<()> {
         rustpress_migrate::create_wp_tables(&db).await?;
         rustpress_migrate::insert_default_options(&db, &config.site_url, "RustPress").await?;
 
-        // Create default admin user with bcrypt hash of "password"
-        let admin_hash = "$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi";
-        rustpress_migrate::create_default_admin(&db, admin_hash).await?;
+        // Create default admin user
+        let admin_password = std::env::var("ADMIN_PASSWORD").unwrap_or_else(|_| {
+            let generated = uuid::Uuid::new_v4().to_string();
+            eprintln!(
+                "WARNING: ADMIN_PASSWORD not set. Generated random admin password: {}",
+                generated
+            );
+            eprintln!("Set ADMIN_PASSWORD env var to use a specific password.");
+            generated
+        });
+        let admin_hash = rustpress_auth::PasswordHasher::hash_argon2(&admin_password)
+            .expect("Failed to hash admin password");
+        rustpress_migrate::create_default_admin(&db, &admin_hash).await?;
 
         // Insert a sample post so there's something to see
         {

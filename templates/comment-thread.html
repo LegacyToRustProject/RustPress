@@ -3,7 +3,7 @@
 <footer class="comment-meta">
 <div class="comment-author vcard">
 <img alt="" src="https://secure.gravatar.com/avatar/?s=32&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/?s=64&amp;d=mm&amp;r=g 2x" class="avatar avatar-32 photo avatar-default" height="32" width="32" loading="lazy" decoding="async" />
-<b class="fn">{% if comment.author_url %}<a href="{{ comment.author_url }}" rel="external nofollow ugc" class="url">{{ comment.author }}</a>{% else %}{{ comment.author }}{% endif %}</b> <span class="says">says:</span></div>
+<b class="fn">{% if comment.author_url and (comment.author_url is starting_with("http://") or comment.author_url is starting_with("https://")) %}<a href="{{ comment.author_url }}" rel="external nofollow ugc" class="url">{{ comment.author }}</a>{% else %}{{ comment.author }}{% endif %}</b> <span class="says">says:</span></div>
 <div class="comment-metadata"><a href="#comment-{{ comment.id }}"><time datetime="{{ comment.date_iso | default(value=comment.date) }}">{{ comment.date }}</time></a></div>
 </footer>
 <div class="comment-content">

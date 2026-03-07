@@ -1,6 +1,6 @@
 use axum::{
     extract::{Extension, Form, Multipart, Query, State},
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Json, Router,
@@ -438,6 +438,7 @@ async fn login_page_dispatch(
 
 async fn login_post_dispatch(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Query(params): Query<LoginQuery>,
     form_bytes: axum::body::Bytes,
 ) -> Response {
@@ -486,14 +487,21 @@ async fn login_post_dispatch(
                     return render_admin(&state, "admin/login.html", &ctx).into_response();
                 }
             };
-            login_submit(State(state), form).await
+            login_submit(State(state), headers, form).await
         }
     }
 }
 
 // --- Login ---
 
-async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Response {
+async fn login_submit(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    form: LoginForm,
+) -> Response {
+    // Extract client IP from request headers for audit logging
+    let client_ip = extract_client_ip_from_headers(&headers);
+
     // Find user
     let user = wp_users::Entity::find()
         .filter(wp_users::Column::UserLogin.eq(&form.username))
@@ -504,7 +512,9 @@ async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Re
         Ok(Some(u)) => u,
         _ => {
             // Log failed login attempt (user not found — same error message to prevent enumeration)
-            state.audit_log.log_login_failure("unknown", &form.username);
+            state
+                .audit_log
+                .log_login_failure(&client_ip, &form.username);
             let mut ctx = tera::Context::new();
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
@@ -518,7 +528,9 @@ async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Re
 
     if !valid {
         // Log failed login attempt (wrong password)
-        state.audit_log.log_login_failure("unknown", &form.username);
+        state
+            .audit_log
+            .log_login_failure(&client_ip, &form.username);
         let mut ctx = tera::Context::new();
         let site_name = state.options.get_blogname().await.unwrap_or_default();
         ctx.insert("site_name", &site_name);
@@ -540,7 +552,7 @@ async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Re
     // Log successful login
     state
         .audit_log
-        .log_login_success("unknown", user.id, &user.user_login);
+        .log_login_success(&client_ip, user.id, &user.user_login);
 
     // Set cookie with security attributes (OWASP A07)
     // Secure flag added when site_url starts with https
@@ -4049,4 +4061,19 @@ async fn media_upload(
                 .into_response()
         }
     }
+}
+
+/// Extract client IP from headers (X-Forwarded-For → X-Real-IP → "unknown").
+fn extract_client_ip_from_headers(headers: &HeaderMap) -> String {
+    headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or("unknown").trim().to_string())
+        .or_else(|| {
+            headers
+                .get("x-real-ip")
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| "unknown".to_string())
 }

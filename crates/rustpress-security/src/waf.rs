@@ -214,6 +214,13 @@ impl WafEngine {
                 enabled: true,
             },
             WafRule {
+                id: "sqli-005".into(),
+                name: "SQL Injection - Comment bypass".into(),
+                pattern: r#"(?i)/\*[^*]*\*+(?:[^/*][^*]*\*+)*/\s*\b(union|select|insert|update|delete|drop)\b"#.into(),
+                action: WafAction::Block,
+                enabled: true,
+            },
+            WafRule {
                 id: "sqli-004".into(),
                 name: "SQL Injection - SLEEP/BENCHMARK".into(),
                 pattern: r#"(?i)\b(sleep|benchmark|waitfor\s+delay)\s*\("#.into(),
