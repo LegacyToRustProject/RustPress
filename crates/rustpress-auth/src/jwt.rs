@@ -176,15 +176,219 @@ impl JwtManager {
 mod tests {
     use super::*;
 
+    const SECRET: &str = "test-secret-key-that-is-at-least-32-bytes-long";
+
+    fn manager() -> JwtManager {
+        JwtManager::new(SECRET, 24)
+    }
+
+    // --- generate_token / validate_token ---
+
     #[test]
     fn test_jwt_generate_and_validate() {
-        let manager = JwtManager::new("test-secret-key-that-is-at-least-32-bytes-long", 24);
-        let token = manager
+        let mgr = manager();
+        let token = mgr
             .generate_token(1, "admin", "admin@example.com", "administrator")
             .unwrap();
-        let claims = manager.validate_token(&token).unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
         assert_eq!(claims.sub, 1);
         assert_eq!(claims.login, "admin");
         assert_eq!(claims.role, "administrator");
+    }
+
+    #[test]
+    fn test_jwt_email_preserved() {
+        let mgr = manager();
+        let token = mgr
+            .generate_token(42, "user", "user@example.com", "editor")
+            .unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
+        assert_eq!(claims.email, "user@example.com");
+    }
+
+    #[test]
+    fn test_jwt_user_id_preserved() {
+        let mgr = manager();
+        let token = mgr
+            .generate_token(9999, "u", "u@u.com", "subscriber")
+            .unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
+        assert_eq!(claims.sub, 9999);
+    }
+
+    #[test]
+    fn test_jwt_jti_is_uuid() {
+        let mgr = manager();
+        let token = mgr
+            .generate_token(1, "a", "a@a.com", "administrator")
+            .unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
+        // UUIDs are 36 chars: 8-4-4-4-12
+        assert_eq!(claims.jti.len(), 36);
+        assert!(claims.jti.contains('-'));
+    }
+
+    #[test]
+    fn test_jwt_two_tokens_different_jti() {
+        let mgr = manager();
+        let t1 = mgr
+            .generate_token(1, "a", "a@a.com", "administrator")
+            .unwrap();
+        let t2 = mgr
+            .generate_token(1, "a", "a@a.com", "administrator")
+            .unwrap();
+        let c1 = mgr.validate_token(&t1).unwrap();
+        let c2 = mgr.validate_token(&t2).unwrap();
+        assert_ne!(c1.jti, c2.jti);
+    }
+
+    #[test]
+    fn test_jwt_wrong_secret_rejected() {
+        let mgr = manager();
+        let token = mgr
+            .generate_token(1, "admin", "a@a.com", "administrator")
+            .unwrap();
+        let other = JwtManager::new("totally-different-secret-that-is-also-long", 24);
+        assert!(other.validate_token(&token).is_err());
+    }
+
+    #[test]
+    fn test_jwt_tampered_token_rejected() {
+        let mgr = manager();
+        let token = mgr
+            .generate_token(1, "admin", "a@a.com", "administrator")
+            .unwrap();
+        let tampered = token[..token.len() - 3].to_string() + "xxx";
+        assert!(mgr.validate_token(&tampered).is_err());
+    }
+
+    #[test]
+    fn test_jwt_garbage_input_rejected() {
+        let mgr = manager();
+        assert!(mgr.validate_token("not.a.token").is_err());
+        assert!(mgr.validate_token("").is_err());
+    }
+
+    #[test]
+    fn test_jwt_iat_set() {
+        let before = Utc::now().timestamp();
+        let mgr = manager();
+        let token = mgr
+            .generate_token(1, "a", "a@a.com", "administrator")
+            .unwrap();
+        let after = Utc::now().timestamp();
+        let claims = mgr.validate_token(&token).unwrap();
+        assert!(claims.iat >= before);
+        assert!(claims.iat <= after);
+    }
+
+    #[test]
+    fn test_jwt_exp_is_24h_after_iat() {
+        let mgr = manager();
+        let token = mgr
+            .generate_token(1, "a", "a@a.com", "administrator")
+            .unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
+        let diff = claims.exp - claims.iat;
+        // Allow ±2 seconds clock wiggle
+        assert!(diff >= 86398 && diff <= 86402, "diff={diff}");
+    }
+
+    // --- refresh_token ---
+
+    #[test]
+    fn test_jwt_refresh_preserves_user_id() {
+        let mgr = manager();
+        let token = mgr.generate_token(7, "bob", "bob@b.com", "author").unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
+        let refreshed = mgr.refresh_token(&claims).unwrap();
+        let new_claims = mgr.validate_token(&refreshed).unwrap();
+        assert_eq!(new_claims.sub, 7);
+        assert_eq!(new_claims.login, "bob");
+        assert_eq!(new_claims.role, "author");
+    }
+
+    #[test]
+    fn test_jwt_refresh_issues_new_jti() {
+        let mgr = manager();
+        let token = mgr.generate_token(7, "bob", "bob@b.com", "author").unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
+        let orig_jti = claims.jti.clone();
+        let refreshed = mgr.refresh_token(&claims).unwrap();
+        let new_claims = mgr.validate_token(&refreshed).unwrap();
+        assert_ne!(orig_jti, new_claims.jti);
+    }
+
+    // --- generate_pending_token / validate_pending_token ---
+
+    #[test]
+    fn test_pending_token_round_trip() {
+        let mgr = manager();
+        let token = mgr.generate_pending_token(5, "alice").unwrap();
+        let (uid, login) = mgr.validate_pending_token(&token).unwrap();
+        assert_eq!(uid, 5);
+        assert_eq!(login, "alice");
+    }
+
+    #[test]
+    fn test_pending_token_role_is_2fa_pending() {
+        let mgr = manager();
+        let token = mgr.generate_pending_token(5, "alice").unwrap();
+        // Decode without role check to inspect claims
+        let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
+        let data: jsonwebtoken::TokenData<Claims> = jsonwebtoken::decode(
+            &token,
+            &jsonwebtoken::DecodingKey::from_secret(SECRET.as_bytes()),
+            &validation,
+        )
+        .unwrap();
+        assert_eq!(data.claims.role, "2fa_pending");
+    }
+
+    #[test]
+    fn test_pending_token_rejects_full_token() {
+        let mgr = manager();
+        // A full session token (role="administrator") must NOT pass validate_pending_token
+        let full_token = mgr
+            .generate_token(1, "admin", "a@a.com", "administrator")
+            .unwrap();
+        assert!(mgr.validate_pending_token(&full_token).is_err());
+    }
+
+    #[test]
+    fn test_pending_token_wrong_secret_rejected() {
+        let mgr = manager();
+        let token = mgr.generate_pending_token(5, "alice").unwrap();
+        let other = JwtManager::new("another-secret-at-least-32-bytes-long-here", 24);
+        assert!(other.validate_pending_token(&token).is_err());
+    }
+
+    #[test]
+    fn test_pending_token_garbage_rejected() {
+        let mgr = manager();
+        assert!(mgr.validate_pending_token("bad.token.here").is_err());
+    }
+
+    // --- JwtManager::new panics on short secret ---
+
+    #[test]
+    #[should_panic(expected = "JWT secret must be at least 32 bytes")]
+    fn test_jwt_manager_panics_on_short_secret() {
+        JwtManager::new("tooshort", 24);
+    }
+
+    // --- Blacklist integration ---
+
+    #[test]
+    fn test_blacklisted_token_rejected() {
+        let mgr = manager();
+        let token = mgr
+            .generate_token(1, "admin", "a@a.com", "administrator")
+            .unwrap();
+        let claims = mgr.validate_token(&token).unwrap();
+        // Blacklist the jti
+        crate::jwt_blacklist::blacklist_token(&claims.jti);
+        // Should now be rejected
+        assert!(mgr.validate_token(&token).is_err());
     }
 }
