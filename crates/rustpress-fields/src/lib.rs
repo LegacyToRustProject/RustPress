@@ -37,6 +37,7 @@
 //! assert_eq!(title, Some(FieldValue::String("Welcome".into())));
 //! ```
 
+pub mod acf_compat;
 pub mod api;
 pub mod field_group;
 pub mod field_types;
@@ -53,6 +54,7 @@ pub use field_group::{
 pub use field_types::{
     ConditionalOperator, ConditionalRule, FieldDefinition, FieldType, FieldValue,
 };
+pub use acf_compat::{AcfFieldGroupPost, AcfFieldPost, AcfMetaEntry, AcfPostData};
 pub use storage::FieldStorage;
 
 /// Prelude module for convenient glob imports.

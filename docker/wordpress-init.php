@@ -95,3 +95,12 @@ add_action( 'init', function () {
 // Always allow Application Passwords over HTTP (needed for E2E on localhost)
 add_filter( 'wp_is_application_passwords_available', '__return_true' );
 add_filter( 'application_password_is_api_request', '__return_true' );
+
+// Ensure .htaccess always has correct rewrite rules for pretty permalinks
+add_action( 'init', function () {
+    $htaccess = ABSPATH . '.htaccess';
+    if ( get_option( 'permalink_structure' ) && ( ! file_exists( $htaccess ) || filesize( $htaccess ) < 100 ) ) {
+        $rules = "# BEGIN WordPress\n<IfModule mod_rewrite.c>\nRewriteEngine On\nRewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\nRewriteBase /\nRewriteRule ^index\\.php$ - [L]\nRewriteCond %{REQUEST_FILENAME} !-f\nRewriteCond %{REQUEST_FILENAME} !-d\nRewriteRule . /index.php [L]\n</IfModule>\n# END WordPress\n";
+        @file_put_contents( $htaccess, $rules );
+    }
+}, 1 );

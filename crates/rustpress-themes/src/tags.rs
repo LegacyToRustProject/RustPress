@@ -474,12 +474,23 @@ fn strip_unknown_shortcodes(content: &str) -> String {
 }
 
 /// Insert multiple posts (archive/index) data into a Tera context.
+/// Content is run through the WordPress content filter pipeline before insertion.
 pub fn insert_posts_context(
     context: &mut Context,
     posts: &[PostTemplateData],
     pagination: &PaginationData,
 ) {
-    context.insert("posts", posts);
+    // Apply content filters to each post (strip block comments, add layout classes, etc.)
+    let processed_posts: Vec<PostTemplateData> = posts
+        .iter()
+        .map(|post| {
+            let mut p = post.clone();
+            p.content = super::formatting::apply_content_filters(&p.content);
+            p.title = super::formatting::apply_title_filters(&p.title);
+            p
+        })
+        .collect();
+    context.insert("posts", &processed_posts);
     context.insert("pagination", pagination);
     context.insert("have_posts", &!posts.is_empty());
 }

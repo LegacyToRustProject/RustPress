@@ -454,17 +454,17 @@ async fn front_page_or_query(
         let term = wp_terms::Entity::find_by_id(cat_id)
             .one(&state.db)
             .await;
-        let slug = match term {
-            Ok(Some(t)) => t.slug,
-            _ => cat_id.to_string(),
+        let (slug, proper_name) = match term {
+            Ok(Some(t)) => (t.slug.clone(), t.name.clone()),
+            _ => (cat_id.to_string(), cat_id.to_string()),
         };
         let mut context = build_base_context(&state).await;
         let (posts, pagination, term_id) = match taxonomy_posts(&state, &slug, "category", 1).await {
             Ok(v) => v,
             Err(e) => return conv(Err(e)),
         };
-        let term_name = slug.replace('-', " ");
-        context.insert("archive_title", &format!("Category: {}", term_name));
+        context.insert("term_name", &proper_name);
+        context.insert("archive_title", &format!("Category: {}", proper_name));
         insert_posts_context(&mut context, &posts, &pagination);
         return conv(render_theme_page(
             &state,
@@ -481,6 +481,7 @@ async fn front_page_or_query(
             Err(e) => return conv(Err(e)),
         };
         let term_name = tag_slug.replace('-', " ");
+        context.insert("term_name", &term_name);
         context.insert("archive_title", &format!("Tag: {}", term_name));
         insert_posts_context(&mut context, &posts, &pagination);
         return conv(render_theme_page(
@@ -821,6 +822,7 @@ async fn category_archive(
         taxonomy_posts(&state, &slug, "category", params.page.unwrap_or(1)).await?;
 
     let term_name = slug.replace('-', " ");
+    context.insert("term_name", &term_name);
     context.insert("archive_title", &format!("Category: {}", term_name));
     insert_posts_context(&mut context, &posts, &pagination);
 
@@ -846,6 +848,7 @@ async fn tag_archive(
         taxonomy_posts(&state, &slug, "post_tag", params.page.unwrap_or(1)).await?;
 
     let term_name = slug.replace('-', " ");
+    context.insert("term_name", &term_name);
     context.insert("archive_title", &format!("Tag: {}", term_name));
     insert_posts_context(&mut context, &posts, &pagination);
 
@@ -866,6 +869,7 @@ async fn author_archive(
     Query(params): Query<PageQuery>,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
     let mut context = build_base_context(&state).await;
+    context.insert("author_name", &slug);
     context.insert("archive_title", &format!("Author: {}", slug));
 
     // Query posts by the author

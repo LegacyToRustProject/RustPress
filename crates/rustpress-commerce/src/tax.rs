@@ -253,8 +253,8 @@ impl TaxCalculator {
             if rate.postcode.contains("...") {
                 let parts: Vec<&str> = rate.postcode.split("...").collect();
                 if parts.len() == 2 {
-                    let matches = location.postcode >= *parts[0]
-                        && location.postcode <= *parts[1];
+                    let matches = location.postcode.as_str() >= parts[0]
+                        && location.postcode.as_str() <= parts[1];
                     if !matches {
                         return false;
                     }

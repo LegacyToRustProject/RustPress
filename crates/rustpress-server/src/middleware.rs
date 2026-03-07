@@ -290,6 +290,14 @@ pub async fn waf_check(
     let path = request.uri().path().to_string();
     let query = request.uri().query().unwrap_or("").to_string();
 
+    // Skip WAF for static assets and well-known safe paths
+    if path.starts_with("/static/")
+        || path.starts_with("/wp-content/uploads/")
+        || path == "/favicon.ico"
+    {
+        return next.run(request).await;
+    }
+
     // Collect headers for WAF inspection
     let header_map: std::collections::HashMap<String, String> = request
         .headers()

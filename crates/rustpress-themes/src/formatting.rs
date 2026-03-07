@@ -496,6 +496,11 @@ pub fn apply_content_filters(content: &str) -> String {
     // 0. Strip WordPress block editor comments (<!-- wp:xxx --> / <!-- /wp:xxx -->)
     result = strip_block_comments(&result);
 
+    // 0.5. Add WordPress layout classes to block elements
+    if is_block_content {
+        result = add_block_layout_classes(&result);
+    }
+
     // 1. Process shortcodes ([caption], [audio], [video], etc.)
     result = process_shortcodes(&result);
 
@@ -525,8 +530,91 @@ pub fn has_blocks(content: &str) -> bool {
 /// and `<!-- /wp:blockname -->` comments that the block editor stores in post_content.
 /// WordPress's block parser processes these; we strip them since we render raw HTML.
 fn strip_block_comments(content: &str) -> String {
-    let re = Regex::new(r"<!-- /?wp:\S+?(?:\s+\{[^}]*\})?\s*/?-->").unwrap();
+    // Match block comments including nested JSON braces like {"layout":{"type":"constrained"}}
+    let re = Regex::new(r"<!-- /?wp:\S+?(?:\s+\{.*?\})?\s*/?-->").unwrap();
     re.replace_all(content, "").to_string()
+}
+
+/// Add WordPress layout classes to block elements in post content.
+///
+/// WordPress adds `is-layout-flex`/`is-layout-flow` and corresponding
+/// `wp-block-*-is-layout-*` classes at render time. Since RustPress serves
+/// raw post_content from the database, we need to add these classes ourselves.
+fn add_block_layout_classes(content: &str) -> String {
+    let mut result = content.to_string();
+
+    // Block name → (layout type, compound class suffix)
+    let flex_blocks = [
+        ("wp-block-columns", "wp-block-columns-is-layout-flex"),
+        ("wp-block-buttons", "wp-block-buttons-is-layout-flex"),
+        ("wp-block-gallery", "wp-block-gallery-is-layout-flex"),
+    ];
+
+    let flow_blocks = [
+        ("wp-block-quote", "wp-block-quote-is-layout-flow"),
+        ("wp-block-cover__inner-container", "wp-block-cover-is-layout-flow"),
+    ];
+
+    for (block_class, compound_class) in &flex_blocks {
+        let pattern = format!(
+            r#"class="([^"]*\b{}\b(?:(?!\bis-layout-)[^"])*)"#,
+            regex::escape(block_class)
+        );
+        if let Ok(re) = Regex::new(&pattern) {
+            let bc = *block_class;
+            let cc = *compound_class;
+            result = re
+                .replace_all(&result, |caps: &regex::Captures| {
+                    let classes = &caps[1];
+                    if classes.contains("is-layout-") {
+                        return caps[0].to_string();
+                    }
+                    format!("class=\"{} is-layout-flex {}\"", classes, cc)
+                })
+                .to_string();
+            let _ = bc; // block_class used via pattern
+        }
+    }
+
+    for (block_class, compound_class) in &flow_blocks {
+        let pattern = format!(
+            r#"class="([^"]*\b{}\b(?:(?!\bis-layout-)[^"])*)"#,
+            regex::escape(block_class)
+        );
+        if let Ok(re) = Regex::new(&pattern) {
+            let bc = *block_class;
+            let cc = *compound_class;
+            result = re
+                .replace_all(&result, |caps: &regex::Captures| {
+                    let classes = &caps[1];
+                    if classes.contains("is-layout-") {
+                        return caps[0].to_string();
+                    }
+                    format!("class=\"{} is-layout-flow {}\"", classes, cc)
+                })
+                .to_string();
+            let _ = bc;
+        }
+    }
+
+    // wp-block-column (without matching wp-block-columns)
+    // Use word boundary: "wp-block-column" not followed by "s"
+    if let Ok(re) = Regex::new(r#"class="([^"]*\bwp-block-column\b(?!s)(?:(?!\bis-layout-)[^"])*)"#) {
+        result = re
+            .replace_all(&result, |caps: &regex::Captures| {
+                let classes = &caps[1];
+                if classes.contains("is-layout-") {
+                    return caps[0].to_string();
+                }
+                format!(
+                    "class=\"{} is-layout-flow wp-block-column-is-layout-flow\"",
+                    classes
+                )
+            })
+            .to_string();
+    }
+
+    result
 }
 
 /// Apply content filters suitable for titles (no wpautop, just wptexturize).
@@ -571,6 +659,11 @@ pub fn apply_content_filters_full(
 
     // 0. Strip WordPress block editor comments
     result = strip_block_comments(&result);
+
+    // 0.5. Add WordPress layout classes to block elements
+    if is_block_content {
+        result = add_block_layout_classes(&result);
+    }
 
     // 1. Process shortcodes via registry (plugins can add shortcodes here)
     result = shortcodes.do_shortcode(&result);

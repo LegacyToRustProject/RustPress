@@ -322,17 +322,20 @@ impl ThemeJson {
         if let Some(gap) = styles.pointer("/spacing/blockGap").and_then(|v| v.as_str()) {
             body_props.push(format!("\t--wp--style--block-gap: {};", resolve_var_ref(gap)));
         }
+        // WordPress converts body padding to --wp--style--root--padding-* CSS variables,
+        // NOT direct padding properties. These variables are consumed by .wp-site-blocks
+        // and .has-global-padding selectors.
         if let Some(pt) = styles.pointer("/spacing/padding/top").and_then(|v| v.as_str()) {
-            body_props.push(format!("\tpadding-top: {};", resolve_var_ref(pt)));
+            body_props.push(format!("\t--wp--style--root--padding-top: {};", resolve_var_ref(pt)));
         }
         if let Some(pr) = styles.pointer("/spacing/padding/right").and_then(|v| v.as_str()) {
-            body_props.push(format!("\tpadding-right: {};", resolve_var_ref(pr)));
+            body_props.push(format!("\t--wp--style--root--padding-right: {};", resolve_var_ref(pr)));
         }
         if let Some(pb) = styles.pointer("/spacing/padding/bottom").and_then(|v| v.as_str()) {
-            body_props.push(format!("\tpadding-bottom: {};", resolve_var_ref(pb)));
+            body_props.push(format!("\t--wp--style--root--padding-bottom: {};", resolve_var_ref(pb)));
         }
         if let Some(pl) = styles.pointer("/spacing/padding/left").and_then(|v| v.as_str()) {
-            body_props.push(format!("\tpadding-left: {};", resolve_var_ref(pl)));
+            body_props.push(format!("\t--wp--style--root--padding-left: {};", resolve_var_ref(pl)));
         }
 
         if !body_props.is_empty() {

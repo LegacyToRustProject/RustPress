@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_get_field_value_types() {
-        let mut data = AcfPostData {
+        let data = AcfPostData {
             post_id: 1,
             fields: vec![
                 AcfMetaEntry { field_name: "count".into(), field_key: Some("field_1".into()), value: "42".into() },
