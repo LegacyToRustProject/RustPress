@@ -12,22 +12,11 @@
         { "slug": "border", "color": "#dcd7ca", "name": "Border" }
       ]
     },
-    "layout": {
-      "contentSize": "700px",
-      "wideSize": "1200px"
-    },
+    "layout": { "contentSize": "700px", "wideSize": "1200px" },
     "typography": {
       "fontFamilies": [
-        {
-          "fontFamily": "'Noto Serif', serif",
-          "name": "Noto Serif",
-          "slug": "noto-serif"
-        },
-        {
-          "fontFamily": "'Noto Sans', sans-serif",
-          "name": "Noto Sans",
-          "slug": "noto-sans"
-        }
+        { "fontFamily": "'Noto Serif', serif", "name": "Noto Serif", "slug": "noto-serif" },
+        { "fontFamily": "'Noto Sans', sans-serif", "name": "Noto Sans", "slug": "noto-sans" }
       ],
       "fontSizes": [
         { "slug": "small", "size": "0.875rem", "name": "Small" },

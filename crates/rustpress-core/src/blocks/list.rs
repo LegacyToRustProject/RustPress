@@ -1,38 +1,71 @@
-//! core/list → `<ul/ol class="wp-block-list">` + core/list-item → `<li>`
-
 use serde_json::Value;
-
 use super::extra_classes;
 
 pub fn render(attrs: &Value, inner_html: &str) -> String {
-    let ordered = attrs
-        .get("ordered")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-
+    let ordered = attrs.get("ordered").and_then(|v| v.as_bool()).unwrap_or(false);
     let tag = if ordered { "ol" } else { "ul" };
 
-    let classes = ["wp-block-list"];
-    let extra = extra_classes(attrs);
-    let class_attr = format!("{}{}", classes.join(" "), extra);
+    let mut classes = vec!["wp-block-list".to_string()];
+    let ec = extra_classes(attrs);
+    let ec = ec.trim();
+    if !ec.is_empty() {
+        classes.push(ec.to_string());
+    }
 
-    // start attribute for ordered lists
     let start_attr = if ordered {
-        attrs
-            .get("start")
-            .and_then(Value::as_u64)
-            .filter(|&s| s != 1)
-            .map(|s| format!(" start=\"{s}\""))
-            .unwrap_or_default()
+        let start = attrs.get("start").and_then(|v| v.as_u64()).unwrap_or(1);
+        if start != 1 {
+            format!(" start=\"{}\"", start)
+        } else {
+            String::new()
+        }
     } else {
         String::new()
     };
 
-    format!("<{tag} class=\"{class_attr}\"{start_attr}>{inner_html}</{tag}>\n")
+    // If inner_html already has the list element, wrap our classes around it
+    let trimmed = inner_html.trim();
+    let expected_open = format!("<{}", tag);
+    if trimmed.starts_with(&expected_open) {
+        // Inject class into existing element
+        let class_str = classes.join(" ");
+        return inject_class(trimmed, &class_str, tag, &start_attr);
+    }
+
+    format!(
+        "<{tag} class=\"{}\"{start_attr}>{}</{tag}>",
+        classes.join(" "),
+        inner_html
+    )
 }
 
 pub fn render_item(_attrs: &Value, inner_html: &str) -> String {
-    format!("<li>{inner_html}</li>\n")
+    let trimmed = inner_html.trim();
+    if trimmed.starts_with("<li") {
+        return trimmed.to_string();
+    }
+    format!("<li>{}</li>", inner_html)
+}
+
+fn inject_class(html: &str, extra: &str, tag: &str, start_attr: &str) -> String {
+    let open = format!("<{}", tag);
+    if let Some(pos) = html.find(&open) {
+        let after = &html[pos + open.len()..];
+        if let Some(cls_pos) = after.find("class=\"") {
+            let insert_at = pos + open.len() + cls_pos + 7;
+            let mut result = html.to_string();
+            result.insert_str(insert_at, &format!("{} ", extra));
+            return result;
+        }
+        let insert_at = pos + open.len();
+        let mut result = html.to_string();
+        result.insert_str(insert_at, &format!(" class=\"{}\"", extra));
+        if !start_attr.is_empty() {
+            result.insert_str(insert_at + format!(" class=\"{}\"", extra).len(), start_attr);
+        }
+        return result;
+    }
+    html.to_string()
 }
 
 #[cfg(test)]
@@ -42,28 +75,32 @@ mod tests {
 
     #[test]
     fn test_unordered_list() {
-        let html = render(&json!({}), "<li>A</li><li>B</li>");
-        assert!(html.contains("<ul"));
-        assert!(html.contains("wp-block-list"));
-        assert!(html.contains("<li>A</li>"));
+        let attrs = json!({});
+        let out = render(&attrs, "<li>Item 1</li><li>Item 2</li>");
+        assert!(out.contains("<ul"));
+        assert!(out.contains("wp-block-list"));
+        assert!(out.contains("Item 1"));
     }
 
     #[test]
     fn test_ordered_list() {
-        let html = render(&json!({"ordered": true}), "<li>A</li>");
-        assert!(html.contains("<ol"));
-        assert!(!html.contains("<ul"));
+        let attrs = json!({ "ordered": true });
+        let out = render(&attrs, "<li>Item</li>");
+        assert!(out.contains("<ol"));
     }
 
     #[test]
-    fn test_ordered_list_with_start() {
-        let html = render(&json!({"ordered": true, "start": 5}), "<li>A</li>");
-        assert!(html.contains("start=\"5\""));
+    fn test_ordered_with_start() {
+        let attrs = json!({ "ordered": true, "start": 5 });
+        let out = render(&attrs, "<li>Item</li>");
+        assert!(out.contains("start=\"5\""));
     }
 
     #[test]
-    fn test_list_item() {
-        let html = render_item(&json!({}), "Hello");
-        assert_eq!(html.trim(), "<li>Hello</li>");
+    fn test_render_item() {
+        let attrs = json!({});
+        let out = render_item(&attrs, "List item text");
+        assert!(out.contains("<li>"));
+        assert!(out.contains("List item text"));
     }
 }

@@ -1,49 +1,53 @@
-//! core/heading → `<h1-h6 class="wp-block-heading ...">...</h1-h6>`
-
 use serde_json::Value;
-
-use super::{align_class, extra_classes, text_align_class};
+use super::{extra_classes, text_align_class};
 
 pub fn render(attrs: &Value, inner_html: &str) -> String {
     let level = attrs
         .get("level")
-        .and_then(Value::as_u64)
+        .and_then(|v| v.as_u64())
         .unwrap_or(2)
         .clamp(1, 6);
 
-    let mut classes = vec!["wp-block-heading".to_string()];
-
-    if let Some(ac) = align_class(attrs) {
-        classes.push(ac.to_string());
-    }
+    let mut classes = vec![format!("wp-block-heading")];
     if let Some(ta) = text_align_class(attrs) {
         classes.push(ta);
     }
-    if let Some(size) = attrs.get("fontSize").and_then(Value::as_str) {
-        classes.push(format!("has-{size}-font-size"));
+    if let Some(fs) = attrs.get("fontSize").and_then(|v| v.as_str()) {
+        classes.push(format!("has-{}-font-size", fs));
     }
-    if let Some(fg) = attrs.get("textColor").and_then(Value::as_str) {
-        classes.push(format!("has-{fg}-color"));
+    if let Some(fg) = attrs.get("textColor").and_then(|v| v.as_str()) {
+        classes.push(format!("has-{}-color", fg));
         classes.push("has-text-color".to_string());
     }
+    let ec = extra_classes(attrs);
+    let ec = ec.trim();
+    if !ec.is_empty() {
+        classes.push(ec.to_string());
+    }
 
-    let extra = extra_classes(attrs);
-    let class_attr = format!("{}{}", classes.join(" "), extra);
-
+    let tag = format!("h{}", level);
     let content = strip_outer_heading(inner_html, level);
 
-    format!("<h{level} class=\"{class_attr}\">{content}</h{level}>\n")
+    format!(
+        "<{tag} class=\"{}\">{}</{tag}>",
+        classes.join(" "),
+        content
+    )
 }
 
 fn strip_outer_heading(html: &str, level: u64) -> &str {
     let trimmed = html.trim();
-    let open = format!("<h{level}>");
-    let close = format!("</h{level}>");
-    if trimmed.starts_with(&open) && trimmed.ends_with(&close) {
-        &trimmed[open.len()..trimmed.len() - close.len()]
-    } else {
-        trimmed
+    let open = format!("<h{}", level);
+    let close = format!("</h{}>", level);
+    if trimmed.starts_with(&open) {
+        if let Some(content_start) = trimmed.find('>') {
+            let after_open = &trimmed[content_start + 1..];
+            if let Some(stripped) = after_open.strip_suffix(&close) {
+                return stripped;
+            }
+        }
     }
+    html
 }
 
 #[cfg(test)]
@@ -53,29 +57,32 @@ mod tests {
 
     #[test]
     fn test_default_h2() {
-        let html = render(&json!({}), "Hello");
-        assert!(html.starts_with("<h2"));
-        assert!(html.contains("wp-block-heading"));
-        assert!(html.contains("Hello"));
+        let attrs = json!({});
+        let out = render(&attrs, "<h2>Hello</h2>");
+        assert!(out.starts_with("<h2"));
+        assert!(out.contains("wp-block-heading"));
+        assert!(out.contains("Hello"));
     }
 
     #[test]
-    fn test_h1_level() {
-        let html = render(&json!({"level": 1}), "Title");
-        assert!(html.starts_with("<h1"));
-        assert!(html.contains("</h1>"));
+    fn test_custom_level() {
+        let attrs = json!({ "level": 3 });
+        let out = render(&attrs, "<h3>Section</h3>");
+        assert!(out.starts_with("<h3"));
+        assert!(out.ends_with("</h3>"));
     }
 
     #[test]
-    fn test_h3_with_align() {
-        let html = render(&json!({"level": 3, "textAlign": "right"}), "Right");
-        assert!(html.starts_with("<h3"));
-        assert!(html.contains("has-text-align-right"));
+    fn test_level_clamped() {
+        let attrs = json!({ "level": 9 });
+        let out = render(&attrs, "Bad level");
+        assert!(out.starts_with("<h6"));
     }
 
     #[test]
-    fn test_level_clamped_to_6() {
-        let html = render(&json!({"level": 9}), "Clamped");
-        assert!(html.starts_with("<h6"));
+    fn test_text_align() {
+        let attrs = json!({ "level": 1, "textAlign": "center" });
+        let out = render(&attrs, "<h1>Centered</h1>");
+        assert!(out.contains("has-text-align-center"));
     }
 }

@@ -11,22 +11,11 @@
         { "slug": "border", "color": "#767676", "name": "Border" }
       ]
     },
-    "layout": {
-      "contentSize": "740px",
-      "wideSize": "1168px"
-    },
+    "layout": { "contentSize": "740px", "wideSize": "1168px" },
     "typography": {
       "fontFamilies": [
-        {
-          "fontFamily": "Georgia, 'Times New Roman', Times, serif",
-          "name": "Georgia",
-          "slug": "georgia"
-        },
-        {
-          "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif",
-          "name": "System Font",
-          "slug": "system-font"
-        }
+        { "fontFamily": "Georgia, 'Times New Roman', Times, serif", "name": "Georgia", "slug": "georgia" },
+        { "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "name": "System Font", "slug": "system-font" }
       ],
       "fontSizes": [
         { "slug": "small", "size": "0.888rem", "name": "Small" },

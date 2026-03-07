@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="{{ language | default(value='en-US') }}" class="no-js">
+<html lang="{{ language | default(value='en-US') }}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}{{ site_name | default(value="RustPress") }}{% endblock %}</title>
-<meta name="generator" content="RustPress">
 <link rel="stylesheet" href="/wp-content/themes/twentynineteen/style.css">
 <link rel="stylesheet" href="/wp-content/themes/twentynineteen/theme-generated.css">
 {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
