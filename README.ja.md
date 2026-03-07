@@ -3,7 +3,7 @@
 **WordPressをRustで書き直したCMS。** 既存のWordPressデータベースに接続するだけで、コンテンツもテーマもプラグインも変換されて即座に動く。100倍高速に。
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
-[![Rust: 1.88+](https://img.shields.io/badge/Rust-1.88%2B-orange.svg)](https://www.rust-lang.org/)
+[![Rust: 1.88+](https://img.shields.io/badge/Rust-1.91%2B-orange.svg)](https://www.rust-lang.org/)
 [![Status: Alpha](https://img.shields.io/badge/Status-Alpha-yellow.svg)](#ステータス)
 
 [English](README.md)

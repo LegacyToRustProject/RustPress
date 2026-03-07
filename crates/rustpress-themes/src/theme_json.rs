@@ -121,8 +121,8 @@ pub struct FontFace {
 impl ThemeJson {
     /// Load and parse theme.json from a file path.
     pub fn from_file(path: &Path) -> Result<Self, String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read theme.json: {e}"))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| format!("Failed to read theme.json: {e}"))?;
         serde_json::from_str(&content).map_err(|e| format!("Failed to parse theme.json: {e}"))
     }
 
@@ -235,9 +235,7 @@ impl ThemeJson {
                 // viewportFactor = min + ((max - min) * ((100vw - 320px) / (1600 - 320)))
                 let diff = max_rem - min_rem;
                 let factor = diff / 80.0; // (1600-320)/16 = 80rem range
-                format!(
-                    "clamp({min}, calc({min} + ((100vw - 20rem) * {factor:.4})), {max})"
-                )
+                format!("clamp({min}, calc({min} + ((100vw - 20rem) * {factor:.4})), {max})")
             }
             Value::Bool(false) => fs.size.clone(),
             _ => fs.size.clone(),

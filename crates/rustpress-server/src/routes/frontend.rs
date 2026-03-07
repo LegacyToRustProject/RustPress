@@ -830,9 +830,7 @@ async fn single_post_by_slug(
             context.insert("comment_count", &comment_count);
 
             // Generate nonce for comment form (WordPress uses "comment_{post_id}" action)
-            let comment_nonce = state
-                .nonces
-                .create_nonce(&format!("comment_{post_id}"), 0);
+            let comment_nonce = state.nonces.create_nonce(&format!("comment_{post_id}"), 0);
             context.insert("comment_nonce", &comment_nonce);
 
             // Load author info
@@ -1564,10 +1562,7 @@ async fn day_archive(
 
     let mut context = build_base_context(&state).await;
     let month_name = month_to_name(month);
-    context.insert(
-        "archive_title",
-        &format!("{month_name} {day}, {year}"),
-    );
+    context.insert("archive_title", &format!("{month_name} {day}, {year}"));
     context.insert("archive_year", &year);
     context.insert("archive_month", &month);
     context.insert("archive_day", &day);

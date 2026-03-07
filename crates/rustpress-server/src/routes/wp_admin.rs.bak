@@ -1,23 +1,17 @@
 use axum::{
     extract::{Extension, Form, Multipart, Query, State},
-    http::{header, HeaderMap, StatusCode},
+    http::{header, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Json, Router,
 };
-use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect,
-};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustpress_auth::{session::Session, PasswordHasher};
-use rustpress_db::entities::{
-    wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms,
-    wp_usermeta, wp_users,
-};
+use rustpress_db::entities::{wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_usermeta, wp_users};
 use rustpress_themes::ThemeEngine;
 
 use rustpress_auth::roles::Capability;
@@ -26,6 +20,8 @@ use crate::middleware::{
     get_user_role, require_activate_plugins, require_admin, require_admin_session,
     require_list_users, resolve_session_role,
 };
+use rustpress_security::scanner::ScannerContext;
+
 use crate::state::AppState;
 use crate::widgets;
 
@@ -105,6 +101,25 @@ pub struct MediaSettingsForm {
 pub struct PermalinkSettingsForm {
     pub permalink_structure: String,
     pub custom_structure: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct CustomizerForm {
+    pub blogname: Option<String>,
+    pub blogdescription: Option<String>,
+    pub primary_color: Option<String>,
+    pub secondary_color: Option<String>,
+    pub background_color: Option<String>,
+    pub heading_font: Option<String>,
+    pub body_font: Option<String>,
+    pub header_layout: Option<String>,
+    pub show_search: Option<String>,
+    pub footer_text: Option<String>,
+    pub show_credit: Option<String>,
+    pub show_on_front: Option<String>,
+    pub page_on_front: Option<String>,
+    pub page_for_posts: Option<String>,
+    pub custom_css: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -197,61 +212,9 @@ pub struct UserEditForm {
     pub confirm_password: Option<String>,
 }
 
-#[derive(Deserialize)]
-#[allow(dead_code)]
-pub struct PostSubmitForm {
-    pub post_id: Option<u64>,
-    pub post_title: Option<String>,
-    pub post_content: Option<String>,
-    pub post_excerpt: Option<String>,
-    pub post_status: Option<String>,
-    pub post_type: Option<String>,
-    pub post_name: Option<String>,
-    pub comment_status: Option<String>,
-    pub ping_status: Option<String>,
-    #[serde(rename = "_wpnonce")]
-    pub wpnonce: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-pub struct BulkActionForm {
-    pub action: Option<String>,
-    pub action2: Option<String>,
-    pub post: Option<Vec<u64>>,
-    pub post_type: Option<String>,
-    #[serde(rename = "_wpnonce")]
-    pub wpnonce: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-pub struct AdminPostForm {
-    pub action: Option<String>,
-    #[serde(rename = "_wpnonce")]
-    pub wpnonce: Option<String>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, String>,
-}
-
-#[derive(Deserialize)]
-#[allow(dead_code)]
-pub struct AdminAjaxForm {
-    pub action: Option<String>,
-    pub comment_id: Option<u64>,
-    pub comment_status: Option<String>,
-    pub content: Option<String>,
-    pub comment_post_id: Option<u64>,
-    #[serde(rename = "_ajax_nonce")]
-    pub ajax_nonce: Option<String>,
-}
-
 pub fn routes(state: Arc<AppState>) -> Router {
     let public = Router::new()
-        .route(
-            "/wp-login.php",
-            get(login_page_dispatch).post(login_post_dispatch),
-        )
+        .route("/wp-login.php", get(login_page_dispatch).post(login_post_dispatch))
         // Keep old path as redirect for backwards compat
         .route("/wp-admin/login", get(login_page_redirect))
         .with_state(state.clone());
@@ -263,7 +226,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
             "/wp-admin/options-general.php",
             get(settings_page).post(settings_save),
         )
-        .route("/wp-admin/nav-menus.php", get(menus_page).post(menus_save))
+        .route(
+            "/wp-admin/nav-menus.php",
+            get(menus_page).post(menus_save),
+        )
         .route(
             "/wp-admin/themes.php",
             get(themes_page).post(themes_activate),
@@ -272,13 +238,23 @@ pub fn routes(state: Arc<AppState>) -> Router {
             "/wp-admin/widgets.php",
             get(widgets_page).post(widgets_save),
         )
+        .route("/wp-admin/widgets-save", post(widgets_save))
+        .route("/wp-admin/menus-save", post(menus_save_json))
+        .route("/wp-admin/customize.php", get(customizer_page))
+        .route("/wp-admin/customizer-save", post(customizer_save))
         .route("/wp-admin/tools.php", get(tools_page))
         .route(
             "/wp-admin/export.php",
             get(export_page).post(export_download),
         )
-        .route("/wp-admin/import.php", get(import_page).post(import_upload))
+        .route(
+            "/wp-admin/import.php",
+            get(import_page).post(import_upload),
+        )
         .route("/wp-admin/site-health.php", get(site_health_page))
+        .route("/wp-admin/network.php", get(network_admin_page))
+        .route("/wp-admin/network/add-site", post(network_add_site))
+        .route("/wp-admin/network/site-action", post(network_site_action))
         .route(
             "/wp-admin/options-writing.php",
             get(settings_writing_page).post(settings_writing_save),
@@ -298,6 +274,23 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route(
             "/wp-admin/options-permalink.php",
             get(settings_permalink_page).post(settings_permalink_save),
+        )
+        // Plugin admin pages
+        .route(
+            "/wp-admin/admin-seo.php",
+            get(seo_settings_page).post(seo_settings_save),
+        )
+        .route(
+            "/wp-admin/admin-acf.php",
+            get(acf_fields_page).post(acf_fields_save),
+        )
+        .route(
+            "/wp-admin/admin-cf7.php",
+            get(cf7_forms_page).post(cf7_forms_save),
+        )
+        .route(
+            "/wp-admin/admin-security.php",
+            get(security_dashboard_page).post(security_dashboard_save),
         )
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -350,24 +343,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/wp-admin", get(dashboard_redirect))
         .route("/wp-admin/", get(dashboard))
         .route("/wp-admin/index.php", get(dashboard))
-        .route(
-            "/wp-admin/edit.php",
-            get(posts_list).post(bulk_action_posts),
-        )
-        .route(
-            "/wp-admin/post-new.php",
-            get(post_editor_new).post(post_submit),
-        )
-        .route(
-            "/wp-admin/post.php",
-            get(post_editor_edit).post(post_submit),
-        )
-        .route("/wp-admin/admin-post.php", post(admin_post_handler))
-        .route("/wp-admin/admin-ajax.php", post(admin_ajax_handler))
-        .route(
-            "/wp-admin/upload.php",
-            get(media_library).post(media_edit_save),
-        )
+        .route("/wp-admin/edit.php", get(posts_list))
+        .route("/wp-admin/post-new.php", get(post_editor_new))
+        .route("/wp-admin/post.php", get(post_editor_edit))
+        .route("/wp-admin/upload.php", get(media_library).post(media_edit_save))
         .route("/wp-admin/media-upload", post(media_upload))
         .route("/wp-admin/edit-comments.php", get(comments_list))
         .route("/wp-admin/edit-tags.php", get(taxonomy_page))
@@ -398,7 +377,10 @@ fn render_admin(state: &AppState, template: &str, context: &tera::Context) -> Ht
         Ok(html) => Html(html),
         Err(e) => {
             tracing::error!("Admin template error: {}", e);
-            Html(format!("<h1>Admin Template Error</h1><pre>{e}</pre>"))
+            Html(format!(
+                "<h1>Admin Template Error</h1><pre>{}</pre>",
+                e
+            ))
         }
     }
 }
@@ -412,7 +394,10 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
     // Resolve the authoritative role from the database, falling back to
     // the role cached in the session.
     let role = resolve_session_role(session, &state.db).await;
-    let role_str = role.as_ref().map(|r| r.as_str()).unwrap_or(&session.role);
+    let role_str = role
+        .as_ref()
+        .map(|r| r.as_str())
+        .unwrap_or(&session.role);
 
     ctx.insert(
         "current_user",
@@ -424,7 +409,9 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
     );
 
     // Expose per-capability booleans so templates can gate UI elements.
-    let can = |cap: &Capability| -> bool { role.as_ref().map(|r| r.can(cap)).unwrap_or(false) };
+    let can = |cap: &Capability| -> bool {
+        role.as_ref().map(|r| r.can(cap)).unwrap_or(false)
+    };
 
     ctx.insert("can_manage_options", &can(&Capability::ManageOptions));
     ctx.insert("can_list_users", &can(&Capability::ListUsers));
@@ -434,66 +421,16 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
     ctx.insert("can_upload_files", &can(&Capability::UploadFiles));
     ctx.insert("can_edit_posts", &can(&Capability::EditPosts));
     ctx.insert("can_edit_pages", &can(&Capability::EditPages));
-    ctx.insert(
-        "can_edit_theme_options",
-        &can(&Capability::EditThemeOptions),
-    );
+    ctx.insert("can_edit_theme_options", &can(&Capability::EditThemeOptions));
     ctx.insert("can_activate_plugins", &can(&Capability::ActivatePlugins));
 
     // Generate nonces for common admin actions
     let user_id = session.user_id;
-    ctx.insert(
-        "wpnonce_general",
-        &state.nonces.create_nonce("general", user_id),
-    );
-    ctx.insert(
-        "wpnonce_save_post",
-        &state.nonces.create_nonce("save_post", user_id),
-    );
-    ctx.insert(
-        "wpnonce_delete_post",
-        &state.nonces.create_nonce("delete_post", user_id),
-    );
-    ctx.insert(
-        "wpnonce_update_settings",
-        &state.nonces.create_nonce("update_settings", user_id),
-    );
-    ctx.insert(
-        "wpnonce_manage_users",
-        &state.nonces.create_nonce("manage_users", user_id),
-    );
-    ctx.insert(
-        "wpnonce_login",
-        &state.nonces.create_nonce("login", user_id),
-    );
-    ctx.insert(
-        "wpnonce_manage_menus",
-        &state.nonces.create_nonce("manage_menus", user_id),
-    );
-    ctx.insert(
-        "wpnonce_manage_widgets",
-        &state.nonces.create_nonce("manage_widgets", user_id),
-    );
-    ctx.insert(
-        "wpnonce_manage_themes",
-        &state.nonces.create_nonce("manage_themes", user_id),
-    );
-    ctx.insert(
-        "wpnonce_export",
-        &state.nonces.create_nonce("export", user_id),
-    );
-    ctx.insert(
-        "wpnonce_import",
-        &state.nonces.create_nonce("import", user_id),
-    );
-    ctx.insert(
-        "wpnonce_manage_media",
-        &state.nonces.create_nonce("manage_media", user_id),
-    );
-    ctx.insert(
-        "wpnonce_manage_network",
-        &state.nonces.create_nonce("manage_network", user_id),
-    );
+    ctx.insert("wpnonce_general", &state.nonces.create_nonce("general", user_id));
+    ctx.insert("wpnonce_save_post", &state.nonces.create_nonce("save_post", user_id));
+    ctx.insert("wpnonce_delete_post", &state.nonces.create_nonce("delete_post", user_id));
+    ctx.insert("wpnonce_update_settings", &state.nonces.create_nonce("update_settings", user_id));
+    ctx.insert("wpnonce_manage_users", &state.nonces.create_nonce("manage_users", user_id));
 
     ctx
 }
@@ -507,36 +444,9 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
 
 async fn login_page_dispatch(
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     Query(params): Query<LoginQuery>,
 ) -> Response {
     match params.action.as_deref() {
-        Some("logout") => {
-            // WordPress-compatible logout: /wp-login.php?action=logout
-            // Extract session from cookie if present, destroy it, then redirect
-            if let Some(sid) = headers
-                .get(header::COOKIE)
-                .and_then(|v| v.to_str().ok())
-                .and_then(|cookies| {
-                    cookies.split(';').find_map(|c| {
-                        c.trim()
-                            .strip_prefix("rustpress_session=")
-                            .map(|v| v.to_string())
-                    })
-                })
-            {
-                state.sessions.destroy_session(&sid).await;
-            }
-            let cookie = "rustpress_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0";
-            (
-                StatusCode::SEE_OTHER,
-                [
-                    (header::SET_COOKIE, cookie.to_string()),
-                    (header::LOCATION, "/wp-login.php?loggedout=true".to_string()),
-                ],
-            )
-                .into_response()
-        }
         Some("lostpassword") => lost_password_page(State(state)).await.into_response(),
         Some("rp") => {
             let key = params.key.unwrap_or_default();
@@ -550,8 +460,6 @@ async fn login_page_dispatch(
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
             ctx.insert("error", &"");
-            // Nonce for unauthenticated login form (user_id=0)
-            ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
             render_admin(&state, "admin/login.html", &ctx).into_response()
         }
     }
@@ -559,7 +467,6 @@ async fn login_page_dispatch(
 
 async fn login_post_dispatch(
     State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
     Query(params): Query<LoginQuery>,
     form_bytes: axum::body::Bytes,
 ) -> Response {
@@ -573,7 +480,6 @@ async fn login_post_dispatch(
                     ctx.insert("site_name", &site_name);
                     ctx.insert("error", "Invalid form data.");
                     ctx.insert("success", &false);
-                    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
                     return render_admin(&state, "admin/lost-password.html", &ctx).into_response();
                 }
             };
@@ -591,8 +497,8 @@ async fn login_post_dispatch(
                     ctx.insert("error", "Invalid form data.");
                     ctx.insert("success", &false);
                     ctx.insert("invalid_token", &false);
-                    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
-                    return render_admin(&state, "admin/reset-password.html", &ctx).into_response();
+                    return render_admin(&state, "admin/reset-password.html", &ctx)
+                        .into_response();
                 }
             };
             reset_password_submit(State(state), form)
@@ -607,25 +513,17 @@ async fn login_post_dispatch(
                     let site_name = state.options.get_blogname().await.unwrap_or_default();
                     ctx.insert("site_name", &site_name);
                     ctx.insert("error", "Invalid form data.");
-                    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
                     return render_admin(&state, "admin/login.html", &ctx).into_response();
                 }
             };
-            login_submit(State(state), headers, form).await
+            login_submit(State(state), form).await
         }
     }
 }
 
 // --- Login ---
 
-async fn login_submit(
-    State(state): State<Arc<AppState>>,
-    headers: HeaderMap,
-    form: LoginForm,
-) -> Response {
-    // Extract client IP from request headers for audit logging
-    let client_ip = extract_client_ip_from_headers(&headers);
-
+async fn login_submit(State(state): State<Arc<AppState>>, form: LoginForm) -> Response {
     // Find user
     let user = wp_users::Entity::find()
         .filter(wp_users::Column::UserLogin.eq(&form.username))
@@ -635,15 +533,10 @@ async fn login_submit(
     let user = match user {
         Ok(Some(u)) => u,
         _ => {
-            // Log failed login attempt (user not found — same error message to prevent enumeration)
-            state
-                .audit_log
-                .log_login_failure(&client_ip, &form.username);
             let mut ctx = tera::Context::new();
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
             ctx.insert("error", "Invalid username or password.");
-            ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
             return render_admin(&state, "admin/login.html", &ctx).into_response();
         }
     };
@@ -652,15 +545,10 @@ async fn login_submit(
     let valid = PasswordHasher::verify(&form.password, &user.user_pass).unwrap_or(false);
 
     if !valid {
-        // Log failed login attempt (wrong password)
-        state
-            .audit_log
-            .log_login_failure(&client_ip, &form.username);
         let mut ctx = tera::Context::new();
         let site_name = state.options.get_blogname().await.unwrap_or_default();
         ctx.insert("site_name", &site_name);
         ctx.insert("error", "Invalid username or password.");
-        ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
         return render_admin(&state, "admin/login.html", &ctx).into_response();
     }
 
@@ -669,27 +557,22 @@ async fn login_submit(
         .await
         .unwrap_or_else(|| "subscriber".to_string());
 
+    // Fire wp_login action
+    state.hooks.do_action("wp_login", &serde_json::json!({
+        "user_login": user.user_login,
+        "user_id": user.id
+    }));
+
     // Create session
     let session = state
         .sessions
         .create_session(user.id, &user.user_login, &role_str)
         .await;
 
-    // Log successful login
-    state
-        .audit_log
-        .log_login_success(&client_ip, user.id, &user.user_login);
-
-    // Set cookie with security attributes (OWASP A07)
-    // Secure flag added when site_url starts with https
-    let secure_flag = if state.site_url.starts_with("https") {
-        "; Secure"
-    } else {
-        ""
-    };
+    // Set cookie and redirect
     let cookie = format!(
-        "rustpress_session={}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400{}",
-        session.id, secure_flag
+        "rustpress_session={}; HttpOnly; Path=/; SameSite=Lax",
+        session.id
     );
 
     (
@@ -706,14 +589,20 @@ async fn logout(
     State(state): State<Arc<AppState>>,
     Extension(session): Extension<Session>,
 ) -> Response {
+    // Fire wp_logout action
+    state.hooks.do_action("wp_logout", &serde_json::json!({
+        "user_id": session.user_id,
+        "user_login": session.login
+    }));
+
     state.sessions.destroy_session(&session.id).await;
-    let cookie = "rustpress_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0";
+    let cookie = "rustpress_session=; HttpOnly; Path=/; Max-Age=0";
 
     (
         StatusCode::SEE_OTHER,
         [
             (header::SET_COOKIE, cookie.to_string()),
-            (header::LOCATION, "/wp-login.php?loggedout=true".to_string()),
+            (header::LOCATION, "/wp-login.php".to_string()),
         ],
     )
         .into_response()
@@ -747,7 +636,10 @@ async fn dashboard(
         .await
         .unwrap_or(0);
 
-    let user_count = wp_users::Entity::find().count(&state.db).await.unwrap_or(0);
+    let user_count = wp_users::Entity::find()
+        .count(&state.db)
+        .await
+        .unwrap_or(0);
 
     let draft_count = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostStatus.eq("draft"))
@@ -808,22 +700,12 @@ async fn posts_list(
 ) -> Html<String> {
     let post_type = params.post_type.as_deref().unwrap_or("post");
 
-    // Dispatch WooCommerce post types to dedicated plugin admin pages
+    // Dispatch WooCommerce post types to dedicated admin pages
     if post_type == "product" {
-        let q = super::plugin_admin::PluginPostsQuery {
-            post_type: params.post_type.clone(),
-            status: params.status.clone(),
-            page: params.page,
-        };
-        return super::plugin_admin::wc_products_page(state, session, q).await;
+        return wc_products_page(State(state), Extension(session), Query(params)).await;
     }
     if post_type == "shop_order" {
-        let q = super::plugin_admin::PluginPostsQuery {
-            post_type: params.post_type.clone(),
-            status: params.status.clone(),
-            page: params.page,
-        };
-        return super::plugin_admin::wc_orders_page(state, session, q).await;
+        return wc_orders_page(State(state), Extension(session), Query(params)).await;
     }
 
     let mut ctx = admin_context(&state, &session).await;
@@ -867,7 +749,7 @@ async fn posts_list(
     }
 
     if !search.is_empty() {
-        let like = format!("%{search}%");
+        let like = format!("%{}%", search);
         query = query.filter(wp_posts::Column::PostTitle.like(&like));
     }
 
@@ -924,7 +806,7 @@ async fn posts_list(
     let total_pages = if total == 0 {
         1
     } else {
-        total.div_ceil(per_page)
+        (total + per_page - 1) / per_page
     };
 
     let posts = query
@@ -1067,30 +949,19 @@ async fn posts_list(
     let mut seen_months = std::collections::HashSet::new();
     let mut date_months: Vec<serde_json::Value> = Vec::new();
     let month_names = [
-        "",
-        "January",
-        "February",
-        "March",
-        "April",
-        "May",
-        "June",
-        "July",
-        "August",
-        "September",
-        "October",
-        "November",
-        "December",
+        "", "January", "February", "March", "April", "May", "June", "July", "August",
+        "September", "October", "November", "December",
     ];
     for p in &all_posts_dates {
         let y = p.post_date.format("%Y").to_string();
         let m = p.post_date.format("%m").to_string();
-        let key = format!("{y}{m}");
+        let key = format!("{}{}", y, m);
         if seen_months.insert(key.clone()) {
             let month_num = m.parse::<usize>().unwrap_or(0);
             let label = if month_num > 0 && month_num <= 12 {
                 format!("{} {}", month_names[month_num], y)
             } else {
-                format!("{y}-{m}")
+                format!("{}-{}", y, m)
             };
             date_months.push(serde_json::json!({"value": key, "label": label}));
         }
@@ -1131,11 +1002,7 @@ async fn post_editor_new(
     let post_type = params.post_type.as_deref().unwrap_or("post");
     ctx.insert(
         "active_page",
-        if post_type == "page" {
-            "pages"
-        } else {
-            "posts"
-        },
+        if post_type == "page" { "pages" } else { "posts" },
     );
     ctx.insert("editing", &false);
 
@@ -1297,19 +1164,16 @@ async fn media_library(
                 .and_then(|meta| meta.meta_value)
                 .unwrap_or_default();
 
-            ctx.insert(
-                "media_item",
-                &serde_json::json!({
-                    "id": m.id,
-                    "title": m.post_title,
-                    "url": m.guid,
-                    "mime_type": m.post_mime_type,
-                    "date": m.post_date.format("%Y-%m-%d").to_string(),
-                    "alt_text": alt_text,
-                    "caption": m.post_excerpt,
-                    "description": m.post_content,
-                }),
-            );
+            ctx.insert("media_item", &serde_json::json!({
+                "id": m.id,
+                "title": m.post_title,
+                "url": m.guid,
+                "mime_type": m.post_mime_type,
+                "date": m.post_date.format("%Y-%m-%d").to_string(),
+                "alt_text": alt_text,
+                "caption": m.post_excerpt,
+                "description": m.post_content,
+            }));
             ctx.insert("edit_mode", &true);
             return render_admin(&state, "admin/media.html", &ctx);
         }
@@ -1324,11 +1188,7 @@ async fn media_library(
         .count(&state.db)
         .await
         .unwrap_or(0);
-    let total_pages = if total == 0 {
-        1
-    } else {
-        total.div_ceil(per_page)
-    };
+    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
 
     let media = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq("attachment"))
@@ -1553,7 +1413,7 @@ async fn user_new_save(
     let display_name = if let Some(ref first) = form.first_name {
         if let Some(ref last) = form.last_name {
             if !first.is_empty() && !last.is_empty() {
-                format!("{first} {last}")
+                format!("{} {}", first, last)
             } else if !first.is_empty() {
                 first.clone()
             } else {
@@ -1618,7 +1478,7 @@ async fn user_new_save(
         Err(e) => {
             tracing::error!("Failed to create user: {}", e);
             ctx.insert("saved", &false);
-            ctx.insert("error", &format!("Failed to create user: {e}"));
+            ctx.insert("error", &format!("Failed to create user: {}", e));
         }
     }
 
@@ -1952,11 +1812,7 @@ async fn settings_save(
 ) -> Html<String> {
     // Verify nonce
     if let Some(ref nonce) = form.wpnonce {
-        if state
-            .nonces
-            .verify_nonce(nonce, "update_settings", session.user_id)
-            .is_none()
-        {
+        if state.nonces.verify_nonce(nonce, "update_settings", session.user_id).is_none() {
             tracing::warn!("Invalid nonce for settings save");
         }
     }
@@ -2572,7 +2428,8 @@ async fn comments_list(
     let per_page = 20u64;
     let status_filter = params.status.as_deref().unwrap_or("all");
 
-    let mut query = wp_comments::Entity::find().order_by_desc(wp_comments::Column::CommentDate);
+    let mut query = wp_comments::Entity::find()
+        .order_by_desc(wp_comments::Column::CommentDate);
 
     let db_status = match status_filter {
         "approved" => Some("1"),
@@ -2587,11 +2444,7 @@ async fn comments_list(
     }
 
     let total = query.clone().count(&state.db).await.unwrap_or(0);
-    let total_pages = if total == 0 {
-        1
-    } else {
-        total.div_ceil(per_page)
-    };
+    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
 
     let comments = query
         .offset((page - 1) * per_page)
@@ -2618,24 +2471,16 @@ async fn comments_list(
     // Count by status
     let approved_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("1"))
-        .count(&state.db)
-        .await
-        .unwrap_or(0);
+        .count(&state.db).await.unwrap_or(0);
     let pending_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("0"))
-        .count(&state.db)
-        .await
-        .unwrap_or(0);
+        .count(&state.db).await.unwrap_or(0);
     let spam_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("spam"))
-        .count(&state.db)
-        .await
-        .unwrap_or(0);
+        .count(&state.db).await.unwrap_or(0);
     let trash_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("trash"))
-        .count(&state.db)
-        .await
-        .unwrap_or(0);
+        .count(&state.db).await.unwrap_or(0);
 
     ctx.insert("comments", &items);
     ctx.insert("total", &total);
@@ -2762,7 +2607,11 @@ async fn set_usermeta(
 }
 
 /// Helper: delete usermeta rows matching a user_id and meta_key.
-async fn delete_usermeta(db: &sea_orm::DatabaseConnection, user_id: u64, meta_key: &str) {
+async fn delete_usermeta(
+    db: &sea_orm::DatabaseConnection,
+    user_id: u64,
+    meta_key: &str,
+) {
     let _ = wp_usermeta::Entity::delete_many()
         .filter(wp_usermeta::Column::UserId.eq(user_id))
         .filter(wp_usermeta::Column::MetaKey.eq(meta_key))
@@ -2989,7 +2838,6 @@ async fn lost_password_page(State(state): State<Arc<AppState>>) -> Html<String> 
     ctx.insert("site_name", &site_name);
     ctx.insert("error", &"");
     ctx.insert("success", &false);
-    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
     render_admin(&state, "admin/lost-password.html", &ctx)
 }
 
@@ -3004,7 +2852,6 @@ async fn lost_password_submit(
 
     // Always show success to avoid user enumeration
     ctx.insert("success", &true);
-    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
 
     // Look up user by login or email
     let user_login = form.user_login.trim();
@@ -3070,7 +2917,6 @@ async fn reset_password_page(
     ctx.insert("error", &"");
     ctx.insert("success", &false);
     ctx.insert("invalid_token", &false);
-    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
 
     if key.is_empty() || login.is_empty() {
         ctx.insert("invalid_token", &true);
@@ -3110,7 +2956,6 @@ async fn reset_password_submit(
     ctx.insert("invalid_token", &false);
     ctx.insert("rp_key", &form.rp_key);
     ctx.insert("rp_login", &form.rp_login);
-    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
 
     // Validate passwords match
     if form.new_password != form.confirm_password {
@@ -3173,7 +3018,11 @@ async fn reset_password_submit(
 }
 
 /// Validate a password reset token against stored values in wp_usermeta.
-async fn validate_reset_token(db: &sea_orm::DatabaseConnection, user_id: u64, token: &str) -> bool {
+async fn validate_reset_token(
+    db: &sea_orm::DatabaseConnection,
+    user_id: u64,
+    token: &str,
+) -> bool {
     let stored_token = match get_usermeta(db, user_id, "rp_reset_token").await {
         Some(t) => t,
         None => return false,
@@ -3291,7 +3140,10 @@ async fn widgets_page(
     let mut area_widgets = serde_json::Map::new();
     for area_info in widgets::WIDGET_AREAS {
         let instances = config.areas.get(area_info.id).cloned().unwrap_or_default();
-        let items: Vec<serde_json::Value> = instances.iter().map(widget_instance_to_json).collect();
+        let items: Vec<serde_json::Value> = instances
+            .iter()
+            .map(|inst| widget_instance_to_json(inst))
+            .collect();
         area_widgets.insert(area_info.id.to_string(), serde_json::Value::Array(items));
     }
     ctx.insert("area_widgets", &area_widgets);
@@ -3407,7 +3259,10 @@ async fn widgets_save(
     let mut area_widgets = serde_json::Map::new();
     for area_info in widgets::WIDGET_AREAS {
         let instances = config.areas.get(area_info.id).cloned().unwrap_or_default();
-        let items: Vec<serde_json::Value> = instances.iter().map(widget_instance_to_json).collect();
+        let items: Vec<serde_json::Value> = instances
+            .iter()
+            .map(|inst| widget_instance_to_json(inst))
+            .collect();
         area_widgets.insert(area_info.id.to_string(), serde_json::Value::Array(items));
     }
     ctx.insert("area_widgets", &area_widgets);
@@ -3427,7 +3282,10 @@ fn form_decode(s: &str) -> String {
                 i += 1;
             }
             b'%' if i + 2 < bytes.len() => {
-                if let (Some(hi), Some(lo)) = (hex_val(bytes[i + 1]), hex_val(bytes[i + 2])) {
+                if let (Some(hi), Some(lo)) = (
+                    hex_val(bytes[i + 1]),
+                    hex_val(bytes[i + 2]),
+                ) {
                     result.push(hi << 4 | lo);
                     i += 3;
                 } else {
@@ -3571,6 +3429,8 @@ fn parse_widget_form(body: &str) -> widgets::WidgetConfig {
                             .unwrap_or(5);
                         widgets::WidgetType::RecentComments { title, count }
                     }
+                    "Calendar" => widgets::WidgetType::Calendar { title },
+                    "TagCloud" => widgets::WidgetType::TagCloud { title },
                     _ => return None,
                 };
 
@@ -3648,17 +3508,13 @@ async fn themes_activate(
         let mut ctx = admin_context(&state, &session).await;
         ctx.insert("active_page", "themes");
         ctx.insert("activated", &false);
-        ctx.insert("error", &format!("Theme '{theme_slug}' not found."));
+        ctx.insert("error", &format!("Theme '{}' not found.", theme_slug));
         ctx.insert("themes", &available);
         return render_admin(&state, "admin/themes.html", &ctx).into_response();
     }
 
     // Save the new active theme to wp_options.
-    if let Err(e) = state
-        .options
-        .update_option("current_theme", theme_slug)
-        .await
-    {
+    if let Err(e) = state.options.update_option("current_theme", theme_slug).await {
         tracing::error!("Failed to save theme option: {}", e);
         let mut ctx = admin_context(&state, &session).await;
         ctx.insert("active_page", "themes");
@@ -3685,10 +3541,7 @@ async fn themes_activate(
             Err(e) => {
                 tracing::error!("Failed to reload theme engine: {}", e);
                 // Rollback the option to the previous theme.
-                let _ = state
-                    .options
-                    .update_option("current_theme", &active_slug)
-                    .await;
+                let _ = state.options.update_option("current_theme", &active_slug).await;
             }
         }
     }
@@ -3729,7 +3582,8 @@ async fn export_download(
     let content_type = form.content.as_deref().unwrap_or("all");
 
     // Build WXR XML export
-    let mut query = wp_posts::Entity::find().filter(wp_posts::Column::PostStatus.ne("auto-draft"));
+    let mut query = wp_posts::Entity::find()
+        .filter(wp_posts::Column::PostStatus.ne("auto-draft"));
 
     if content_type != "all" {
         query = query.filter(wp_posts::Column::PostType.eq(content_type));
@@ -3741,11 +3595,7 @@ async fn export_download(
         .await
         .unwrap_or_default();
 
-    let site_name = state
-        .options
-        .get_blogname()
-        .await
-        .unwrap_or_else(|_| "RustPress".to_string());
+    let site_name = state.options.get_blogname().await.unwrap_or_else(|_| "RustPress".to_string());
     let site_url = &state.site_url;
 
     let mut xml = String::new();
@@ -3761,59 +3611,26 @@ async fn export_download(
 
     for p in &posts {
         xml.push_str("  <item>\n");
-        xml.push_str(&format!(
-            "    <title>{}</title>\n",
-            xml_escape(&p.post_title)
-        ));
+        xml.push_str(&format!("    <title>{}</title>\n", xml_escape(&p.post_title)));
         xml.push_str(&format!("    <wp:post_id>{}</wp:post_id>\n", p.id));
-        xml.push_str(&format!(
-            "    <wp:post_date>{}</wp:post_date>\n",
-            p.post_date.format("%Y-%m-%d %H:%M:%S")
-        ));
-        xml.push_str(&format!(
-            "    <wp:post_name>{}</wp:post_name>\n",
-            xml_escape(&p.post_name)
-        ));
-        xml.push_str(&format!(
-            "    <wp:post_type>{}</wp:post_type>\n",
-            xml_escape(&p.post_type)
-        ));
-        xml.push_str(&format!(
-            "    <wp:status>{}</wp:status>\n",
-            xml_escape(&p.post_status)
-        ));
-        xml.push_str(&format!(
-            "    <wp:post_parent>{}</wp:post_parent>\n",
-            p.post_parent
-        ));
-        xml.push_str(&format!(
-            "    <wp:menu_order>{}</wp:menu_order>\n",
-            p.menu_order
-        ));
-        xml.push_str(&format!(
-            "    <content:encoded><![CDATA[{}]]></content:encoded>\n",
-            p.post_content
-        ));
-        xml.push_str(&format!(
-            "    <excerpt:encoded><![CDATA[{}]]></excerpt:encoded>\n",
-            p.post_excerpt
-        ));
+        xml.push_str(&format!("    <wp:post_date>{}</wp:post_date>\n", p.post_date.format("%Y-%m-%d %H:%M:%S")));
+        xml.push_str(&format!("    <wp:post_name>{}</wp:post_name>\n", xml_escape(&p.post_name)));
+        xml.push_str(&format!("    <wp:post_type>{}</wp:post_type>\n", xml_escape(&p.post_type)));
+        xml.push_str(&format!("    <wp:status>{}</wp:status>\n", xml_escape(&p.post_status)));
+        xml.push_str(&format!("    <wp:post_parent>{}</wp:post_parent>\n", p.post_parent));
+        xml.push_str(&format!("    <wp:menu_order>{}</wp:menu_order>\n", p.menu_order));
+        xml.push_str(&format!("    <content:encoded><![CDATA[{}]]></content:encoded>\n", p.post_content));
+        xml.push_str(&format!("    <excerpt:encoded><![CDATA[{}]]></excerpt:encoded>\n", p.post_excerpt));
         xml.push_str("  </item>\n");
     }
 
     xml.push_str("</channel>\n</rss>\n");
 
-    let filename = format!(
-        "rustpress-export-{}.xml",
-        chrono::Utc::now().format("%Y-%m-%d")
-    );
+    let filename = format!("rustpress-export-{}.xml", chrono::Utc::now().format("%Y-%m-%d"));
     (
         [
             (header::CONTENT_TYPE, "application/xml; charset=utf-8"),
-            (
-                header::CONTENT_DISPOSITION,
-                &format!("attachment; filename=\"{filename}\""),
-            ),
+            (header::CONTENT_DISPOSITION, &format!("attachment; filename=\"{}\"", filename)),
         ],
         xml,
     )
@@ -3851,7 +3668,7 @@ async fn import_upload(
                     imported = parse_and_import_wxr(&state.db, &xml_str).await;
                 }
                 Err(e) => {
-                    error_msg = format!("Failed to read file: {e}");
+                    error_msg = format!("Failed to read file: {}", e);
                 }
             }
         }
@@ -3920,8 +3737,8 @@ async fn parse_and_import_wxr(db: &sea_orm::DatabaseConnection, xml: &str) -> u6
 }
 
 fn extract_xml_tag(xml: &str, tag: &str) -> Option<String> {
-    let open = format!("<{tag}>");
-    let close = format!("</{tag}>");
+    let open = format!("<{}>", tag);
+    let close = format!("</{}>", tag);
     let start = xml.find(&open)? + open.len();
     let end = xml.find(&close)?;
     if start <= end {
@@ -3932,14 +3749,19 @@ fn extract_xml_tag(xml: &str, tag: &str) -> Option<String> {
 }
 
 fn extract_cdata(xml: &str, tag: &str) -> Option<String> {
-    let open = format!("<{tag}>");
-    let close = format!("</{tag}>");
+    let open = format!("<{}>", tag);
+    let close = format!("</{}>", tag);
     let start = xml.find(&open)? + open.len();
     let end = xml.find(&close)?;
     let content = &xml[start..end];
     // Strip CDATA wrapper
-    let content = content.trim().strip_prefix("<![CDATA[").unwrap_or(content);
-    let content = content.strip_suffix("]]>").unwrap_or(content);
+    let content = content
+        .trim()
+        .strip_prefix("<![CDATA[")
+        .unwrap_or(content);
+    let content = content
+        .strip_suffix("]]>")
+        .unwrap_or(content);
     Some(content.to_string())
 }
 
@@ -3979,7 +3801,10 @@ async fn site_health_page(
         .count(&state.db)
         .await
         .unwrap_or(0);
-    let user_count = wp_users::Entity::find().count(&state.db).await.unwrap_or(0);
+    let user_count = wp_users::Entity::find()
+        .count(&state.db)
+        .await
+        .unwrap_or(0);
     let media_count = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq("attachment"))
         .count(&state.db)
@@ -4059,7 +3884,10 @@ async fn media_upload(
         }
     };
 
-    let raw_name = field.file_name().unwrap_or("upload").to_string();
+    let raw_name = field
+        .file_name()
+        .unwrap_or("upload")
+        .to_string();
     let content_type = field
         .content_type()
         .unwrap_or("application/octet-stream")
@@ -4096,11 +3924,7 @@ async fn media_upload(
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
         .collect::<String>();
-    let file_name = if file_name.is_empty() {
-        "upload".to_string()
-    } else {
-        file_name
-    };
+    let file_name = if file_name.is_empty() { "upload".to_string() } else { file_name };
 
     let uploads_dir = PathBuf::from(
         std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "wp-content/uploads".to_string()),
@@ -4128,11 +3952,11 @@ async fn media_upload(
 
     let display_title = file_name
         .rsplit('.')
-        .next_back()
+        .last()
         .unwrap_or(&file_name)
         .replace(['-', '_'], " ");
 
-    let guid = format!("/wp-content/uploads/{date_dir}/{file_name}");
+    let guid = format!("/wp-content/uploads/{}/{}", date_dir, file_name);
     let slug = file_name
         .split('.')
         .next()
@@ -4193,373 +4017,341 @@ async fn media_upload(
     }
 }
 
-/// Extract client IP from headers (X-Forwarded-For → X-Real-IP → "unknown").
-fn extract_client_ip_from_headers(headers: &HeaderMap) -> String {
-    headers
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.split(',').next().unwrap_or("unknown").trim().to_string())
-        .or_else(|| {
-            headers
-                .get("x-real-ip")
-                .and_then(|v| v.to_str().ok())
-                .map(|s| s.to_string())
-        })
-        .unwrap_or_else(|| "unknown".to_string())
+
+// ---------------------------------------------------------------------------
+// Network Admin (Multisite)
+// ---------------------------------------------------------------------------
+
+#[derive(Deserialize)]
+struct AddSiteForm {
+    path: String,
+    #[allow(dead_code)]
+    title: String,
+    #[allow(dead_code)]
+    admin_email: String,
 }
 
-// --- POST /wp-admin/post.php and /wp-admin/post-new.php ---
+#[derive(Deserialize)]
+struct SiteActionForm {
+    blog_id: u64,
+    action: String,
+}
 
-async fn post_submit(
+async fn network_admin_page(
     State(state): State<Arc<AppState>>,
     Extension(session): Extension<Session>,
-    Form(form): Form<PostSubmitForm>,
-) -> Response {
-    let now = chrono::Utc::now().naive_utc();
-    let post_type = form.post_type.as_deref().unwrap_or("post");
-    let status = form.post_status.as_deref().unwrap_or("draft");
-    let title = form.post_title.as_deref().unwrap_or("");
-    let content = form.post_content.as_deref().unwrap_or("");
-    let excerpt = form.post_excerpt.as_deref().unwrap_or("");
-    let slug: String = form.post_name.clone().unwrap_or_else(|| {
-        title
-            .to_lowercase()
-            .chars()
-            .map(|c: char| if c.is_alphanumeric() { c } else { '-' })
-            .collect()
-    });
+) -> Html<String> {
+    let mut ctx = admin_context(&state, &session).await;
+    ctx.insert("active_page", "network");
 
-    if let Some(post_id) = form.post_id.filter(|&id| id > 0) {
-        // Update existing post
-        let post = wp_posts::Entity::find_by_id(post_id)
-            .one(&state.db)
-            .await
-            .ok()
-            .flatten();
-        if let Some(p) = post {
-            let mut active: wp_posts::ActiveModel = p.into();
-            active.post_title = Set(title.to_string());
-            active.post_content = Set(rustpress_core::wp_kses_post(content));
-            active.post_excerpt = Set(excerpt.to_string());
-            active.post_status = Set(status.to_string());
-            active.post_name = Set(slug);
-            active.post_modified = Set(now);
-            active.post_modified_gmt = Set(now);
-            if let Some(ref cs) = form.comment_status {
-                active.comment_status = sea_orm::ActiveValue::Set(cs.to_string());
+    let multisite_enabled = state.multisite_resolver.is_some();
+    ctx.insert("multisite_enabled", &multisite_enabled);
+
+    if multisite_enabled {
+        if let Some(ref network_mgr) = state.multisite_network {
+            let mgr = network_mgr.read().await;
+            if let Ok(network) = mgr.get_network(1) {
+                ctx.insert("network", &serde_json::json!({
+                    "id": network.id,
+                    "domain": network.domain,
+                    "path": network.path,
+                    "site_name": network.site_name,
+                    "admin_email": network.admin_email,
+                }));
+                ctx.insert("network_domain", &network.domain);
             }
-            if let Some(ref ps) = form.ping_status {
-                active.ping_status = sea_orm::ActiveValue::Set(ps.to_string());
+
+            if let Ok(sites) = mgr.list_sites(1) {
+                let mut active_count = 0u32;
+                let mut archived_count = 0u32;
+                let mut spam_count = 0u32;
+                let mut deleted_count = 0u32;
+                for site in &sites {
+                    if site.deleted { deleted_count += 1; }
+                    else if site.spam { spam_count += 1; }
+                    else if site.archived { archived_count += 1; }
+                    else { active_count += 1; }
+                }
+                let sites_json: Vec<serde_json::Value> = sites.iter().map(|s| {
+                    serde_json::json!({
+                        "blog_id": s.blog_id,
+                        "domain": s.domain,
+                        "path": s.path,
+                        "registered": s.registered.format("%Y-%m-%dT%H:%M:%S").to_string(),
+                        "public": s.public,
+                        "archived": s.archived,
+                        "spam": s.spam,
+                        "deleted": s.deleted,
+                    })
+                }).collect();
+                ctx.insert("sites", &sites_json);
+                ctx.insert("active_count", &active_count);
+                ctx.insert("archived_count", &archived_count);
+                ctx.insert("spam_count", &spam_count);
+                ctx.insert("deleted_count", &deleted_count);
             }
-            let _ = active.update(&state.db).await;
         }
-        Redirect::to(&format!(
-            "/wp-admin/post.php?post={post_id}&action=edit&message=1"
-        ))
-        .into_response()
-    } else {
-        // Create new post
-        let new_post = wp_posts::ActiveModel {
-            post_author: Set(session.user_id),
-            post_date: Set(now),
-            post_date_gmt: Set(now),
-            post_content: Set(rustpress_core::wp_kses_post(content)),
-            post_title: Set(title.to_string()),
-            post_excerpt: Set(excerpt.to_string()),
-            post_status: Set(status.to_string()),
-            comment_status: Set(form.comment_status.unwrap_or_else(|| "open".to_string())),
-            ping_status: Set(form.ping_status.unwrap_or_else(|| "open".to_string())),
-            post_password: Set(String::new()),
-            post_name: Set(slug),
-            to_ping: Set(String::new()),
-            pinged: Set(String::new()),
-            post_modified: Set(now),
-            post_modified_gmt: Set(now),
-            post_content_filtered: Set(String::new()),
-            post_parent: Set(0),
-            guid: Set(String::new()),
-            menu_order: Set(0),
-            post_type: Set(post_type.to_string()),
-            post_mime_type: Set(String::new()),
-            comment_count: Set(0),
-            ..Default::default()
+    }
+
+    render_admin(&state, "admin/network.html", &ctx)
+}
+
+async fn network_add_site(
+    State(state): State<Arc<AppState>>,
+    Extension(_session): Extension<Session>,
+    axum::extract::Form(form): axum::extract::Form<AddSiteForm>,
+) -> Response {
+    if let Some(ref network_mgr) = state.multisite_network {
+        let mgr = network_mgr.read().await;
+        let domain = state.site_url
+            .trim_start_matches("http://")
+            .trim_start_matches("https://")
+            .split('/')
+            .next()
+            .unwrap_or("localhost")
+            .split(':')
+            .next()
+            .unwrap_or("localhost")
+            .to_string();
+
+        let path = format!("/{}/", form.path.trim_matches('/'));
+
+        match mgr.create_site(1, domain, path) {
+            Ok(site) => {
+                if let Some(ref resolver) = state.multisite_resolver {
+                    resolver.register_site(rustpress_multisite::Site {
+                        blog_id: site.blog_id,
+                        domain: site.domain,
+                        path: site.path,
+                        site_id: site.site_id,
+                        registered: site.registered,
+                        last_updated: site.last_updated,
+                        public: site.public,
+                        archived: site.archived,
+                        mature: site.mature,
+                        spam: site.spam,
+                        deleted: site.deleted,
+                        lang_id: site.lang_id,
+                    });
+                }
+                tracing::info!(blog_id = site.blog_id, "Created new multisite site");
+            }
+            Err(e) => {
+                tracing::error!("Failed to create site: {}", e);
+            }
+        }
+    }
+
+    Redirect::to("/wp-admin/network.php?message=site_created").into_response()
+}
+
+async fn network_site_action(
+    State(state): State<Arc<AppState>>,
+    Extension(_session): Extension<Session>,
+    axum::extract::Form(form): axum::extract::Form<SiteActionForm>,
+) -> Response {
+    if let Some(ref network_mgr) = state.multisite_network {
+        let mgr = network_mgr.read().await;
+        let result = match form.action.as_str() {
+            "archive" => mgr.update_site(form.blog_id, |s| s.archived = true),
+            "unarchive" => mgr.update_site(form.blog_id, |s| {
+                s.archived = false;
+                s.deleted = false;
+                s.spam = false;
+            }),
+            "spam" => mgr.update_site(form.blog_id, |s| s.spam = true),
+            "delete" => mgr.delete_site(form.blog_id),
+            _ => return Redirect::to("/wp-admin/network.php").into_response(),
         };
 
-        match new_post.insert(&state.db).await {
-            Ok(result) => Redirect::to(&format!(
-                "/wp-admin/post.php?post={}&action=edit&message=6",
-                result.id
-            ))
-            .into_response(),
-            Err(_) => Redirect::to("/wp-admin/edit.php?message=error").into_response(),
+        match result {
+            Ok(_) => tracing::info!(blog_id = form.blog_id, action = %form.action, "Site action applied"),
+            Err(e) => tracing::error!(blog_id = form.blog_id, "Site action failed: {}", e),
         }
     }
+
+    Redirect::to("/wp-admin/network.php").into_response()
 }
 
-// --- POST /wp-admin/edit.php (bulk actions) ---
+// ---- Theme Customizer ----
 
-async fn bulk_action_posts(
-    State(state): State<Arc<AppState>>,
-    Extension(_session): Extension<Session>,
-    Form(form): Form<BulkActionForm>,
-) -> Response {
-    let action = form
-        .action
-        .as_deref()
-        .filter(|a| *a != "-1")
-        .or(form.action2.as_deref().filter(|a| *a != "-1"))
-        .unwrap_or("-1");
-    let post_type = form.post_type.as_deref().unwrap_or("post");
-    let post_ids = form.post.unwrap_or_default();
-
-    if action == "-1" || post_ids.is_empty() {
-        return Redirect::to(&format!("/wp-admin/edit.php?post_type={post_type}")).into_response();
-    }
-
-    match action {
-        "trash" => {
-            for id in &post_ids {
-                if let Ok(Some(p)) = wp_posts::Entity::find_by_id(*id).one(&state.db).await {
-                    let mut active: wp_posts::ActiveModel = p.into();
-                    active.post_status = Set("trash".to_string());
-                    let _ = active.update(&state.db).await;
-                }
-            }
-        }
-        "untrash" => {
-            for id in &post_ids {
-                if let Ok(Some(p)) = wp_posts::Entity::find_by_id(*id).one(&state.db).await {
-                    let mut active: wp_posts::ActiveModel = p.into();
-                    active.post_status = Set("draft".to_string());
-                    let _ = active.update(&state.db).await;
-                }
-            }
-        }
-        "delete" => {
-            for id in &post_ids {
-                let _ = wp_posts::Entity::delete_by_id(*id).exec(&state.db).await;
-            }
-        }
-        _ => {}
-    }
-
-    Redirect::to(&format!(
-        "/wp-admin/edit.php?post_type={post_type}&message={action}"
-    ))
-    .into_response()
-}
-
-// --- POST /wp-admin/admin-post.php (generic form handler) ---
-
-async fn admin_post_handler(
-    State(_state): State<Arc<AppState>>,
-    Extension(_session): Extension<Session>,
-    Form(form): Form<AdminPostForm>,
-) -> Response {
-    let action = form.action.as_deref().unwrap_or("");
-    tracing::info!("admin-post.php action={}", action);
-
-    match action {
-        "" => Redirect::to("/wp-admin/").into_response(),
-        _ => {
-            tracing::debug!("Unhandled admin-post action: {}", action);
-            Redirect::to("/wp-admin/").into_response()
-        }
-    }
-}
-
-// --- POST /wp-admin/admin-ajax.php ---
-
-async fn admin_ajax_handler(
+async fn customizer_page(
     State(state): State<Arc<AppState>>,
     Extension(session): Extension<Session>,
-    Form(form): Form<AdminAjaxForm>,
+) -> Html<String> {
+    let mut ctx = admin_context(&state, &session).await;
+    ctx.insert("active_page", "themes");
+
+    let blogname = state.options.get_blogname().await.unwrap_or_default();
+    let blogdescription = state
+        .options
+        .get_blogdescription()
+        .await
+        .unwrap_or_default();
+
+    let primary_color = state
+        .options
+        .get_option_or("primary_color", "#1a1a1a")
+        .await
+        .unwrap_or_else(|_| "#1a1a1a".to_string());
+    let secondary_color = state
+        .options
+        .get_option_or("secondary_color", "#4a4a4a")
+        .await
+        .unwrap_or_else(|_| "#4a4a4a".to_string());
+    let background_color = state
+        .options
+        .get_option_or("background_color", "#ffffff")
+        .await
+        .unwrap_or_else(|_| "#ffffff".to_string());
+
+    let heading_font = state
+        .options
+        .get_option_or("heading_font", "system-ui")
+        .await
+        .unwrap_or_else(|_| "system-ui".to_string());
+    let body_font = state
+        .options
+        .get_option_or("body_font", "system-ui")
+        .await
+        .unwrap_or_else(|_| "system-ui".to_string());
+
+    let header_layout = state
+        .options
+        .get_option_or("header_layout", "default")
+        .await
+        .unwrap_or_else(|_| "default".to_string());
+    let show_search = state
+        .options
+        .get_option_or("show_search", "1")
+        .await
+        .unwrap_or_else(|_| "1".to_string());
+
+    let footer_text = state
+        .options
+        .get_option_or("footer_text", "")
+        .await
+        .unwrap_or_default();
+    let show_credit = state
+        .options
+        .get_option_or("show_credit", "1")
+        .await
+        .unwrap_or_else(|_| "1".to_string());
+
+    let show_on_front = state
+        .options
+        .get_option_or("show_on_front", "posts")
+        .await
+        .unwrap_or_else(|_| "posts".to_string());
+    let page_on_front: i64 = state
+        .options
+        .get_option("page_on_front")
+        .await
+        .unwrap_or(None)
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+    let page_for_posts: i64 = state
+        .options
+        .get_option("page_for_posts")
+        .await
+        .unwrap_or(None)
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0);
+
+    let custom_css = state
+        .options
+        .get_option_or("custom_css", "")
+        .await
+        .unwrap_or_default();
+
+    // Load published pages for homepage settings dropdowns
+    let pages = wp_posts::Entity::find()
+        .filter(wp_posts::Column::PostType.eq("page"))
+        .filter(wp_posts::Column::PostStatus.eq("publish"))
+        .order_by_asc(wp_posts::Column::PostTitle)
+        .all(&state.db)
+        .await
+        .unwrap_or_default();
+    let pages_json: Vec<serde_json::Value> = pages
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "id": p.id,
+                "post_title": p.post_title,
+            })
+        })
+        .collect();
+
+    ctx.insert("blogname", &blogname);
+    ctx.insert("blogdescription", &blogdescription);
+    ctx.insert("primary_color", &primary_color);
+    ctx.insert("secondary_color", &secondary_color);
+    ctx.insert("background_color", &background_color);
+    ctx.insert("heading_font", &heading_font);
+    ctx.insert("body_font", &body_font);
+    ctx.insert("header_layout", &header_layout);
+    ctx.insert("show_search", &show_search);
+    ctx.insert("footer_text", &footer_text);
+    ctx.insert("show_credit", &show_credit);
+    ctx.insert("show_on_front", &show_on_front);
+    ctx.insert("page_on_front", &page_on_front);
+    ctx.insert("page_for_posts", &page_for_posts);
+    ctx.insert("custom_css", &custom_css);
+    ctx.insert("pages", &pages_json);
+
+    render_admin(&state, "admin/customizer.html", &ctx)
+}
+
+async fn customizer_save(
+    State(state): State<Arc<AppState>>,
+    Extension(_session): Extension<Session>,
+    Form(form): Form<CustomizerForm>,
 ) -> Response {
-    let action = form.action.as_deref().unwrap_or("");
+    let options = &state.options;
 
-    match action {
-        "dim-comment" | "approve_comment" => {
-            let comment_id = match form.comment_id {
-                Some(id) => id,
-                None => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(serde_json::json!({"success": false, "data": "Missing comment_id"})),
-                    )
-                        .into_response()
-                }
-            };
-
-            let comment = wp_comments::Entity::find_by_id(comment_id)
-                .one(&state.db)
-                .await
-                .ok()
-                .flatten();
-
-            match comment {
-                Some(c) => {
-                    let new_status = if c.comment_approved == "1" { "0" } else { "1" };
-                    let mut active: wp_comments::ActiveModel = c.into();
-                    active.comment_approved = Set(new_status.to_string());
-                    let _ = active.update(&state.db).await;
-
-                    Json(serde_json::json!({
-                        "success": true,
-                        "data": {"comment_id": comment_id, "status": new_status}
-                    }))
-                    .into_response()
-                }
-                None => (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"success": false, "data": "Comment not found"})),
-                )
-                    .into_response(),
-            }
-        }
-
-        "trash-comment" | "delete-comment" => {
-            let comment_id = match form.comment_id {
-                Some(id) => id,
-                None => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(serde_json::json!({"success": false, "data": "Missing comment_id"})),
-                    )
-                        .into_response()
-                }
-            };
-
-            let comment = wp_comments::Entity::find_by_id(comment_id)
-                .one(&state.db)
-                .await
-                .ok()
-                .flatten();
-
-            match comment {
-                Some(c) => {
-                    if action == "delete-comment" {
-                        let _ = wp_comments::Entity::delete_by_id(comment_id)
-                            .exec(&state.db)
-                            .await;
-                    } else {
-                        let mut active: wp_comments::ActiveModel = c.into();
-                        active.comment_approved = Set("trash".to_string());
-                        let _ = active.update(&state.db).await;
-                    }
-
-                    Json(serde_json::json!({"success": true, "data": {"comment_id": comment_id}}))
-                        .into_response()
-                }
-                None => (
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"success": false, "data": "Comment not found"})),
-                )
-                    .into_response(),
-            }
-        }
-
-        "spam-comment" => {
-            let comment_id = match form.comment_id {
-                Some(id) => id,
-                None => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(serde_json::json!({"success": false, "data": "Missing comment_id"})),
-                    )
-                        .into_response()
-                }
-            };
-
-            if let Ok(Some(c)) = wp_comments::Entity::find_by_id(comment_id)
-                .one(&state.db)
-                .await
-            {
-                let mut active: wp_comments::ActiveModel = c.into();
-                active.comment_approved = Set("spam".to_string());
-                let _ = active.update(&state.db).await;
-            }
-
-            Json(serde_json::json!({"success": true, "data": {"comment_id": comment_id}}))
-                .into_response()
-        }
-
-        "replyto-comment" => {
-            let post_id = match form.comment_post_id {
-                Some(id) => id,
-                None => return (
-                    StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({"success": false, "data": "Missing comment_post_id"})),
-                )
-                    .into_response(),
-            };
-            let content = form.content.as_deref().unwrap_or("");
-            if content.is_empty() {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    Json(serde_json::json!({"success": false, "data": "Empty reply"})),
-                )
-                    .into_response();
-            }
-
-            let user = wp_users::Entity::find_by_id(session.user_id)
-                .one(&state.db)
-                .await
-                .ok()
-                .flatten();
-            let (author, author_email) = match user {
-                Some(ref u) => (u.display_name.clone(), u.user_email.clone()),
-                None => (session.login.clone(), String::new()),
-            };
-
-            let now = chrono::Utc::now().naive_utc();
-            let parent_id = form.comment_id.unwrap_or(0);
-
-            let new_comment = wp_comments::ActiveModel {
-                comment_post_id: Set(post_id),
-                comment_author: Set(author),
-                comment_author_email: Set(author_email),
-                comment_author_url: Set(String::new()),
-                comment_author_ip: Set(String::new()),
-                comment_date: Set(now),
-                comment_date_gmt: Set(now),
-                comment_content: Set(content.to_string()),
-                comment_karma: Set(0),
-                comment_approved: Set("1".to_string()),
-                comment_agent: Set("RustPress".to_string()),
-                comment_type: Set("comment".to_string()),
-                comment_parent: Set(parent_id),
-                user_id: Set(session.user_id),
-                ..Default::default()
-            };
-
-            match new_comment.insert(&state.db).await {
-                Ok(result) => Json(serde_json::json!({
-                    "success": true,
-                    "data": {
-                        "comment_id": result.comment_id,
-                        "position": -1,
-                        "content": content,
-                    }
-                }))
-                .into_response(),
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"success": false, "data": e.to_string()})),
-                )
-                    .into_response(),
-            }
-        }
-
-        _ => {
-            tracing::debug!("Unhandled admin-ajax action: {}", action);
-            (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "success": false,
-                    "data": format!("Unknown action: {}", action)
-                })),
-            )
-                .into_response()
-        }
+    if let Some(ref v) = form.blogname {
+        let _ = options.update_option("blogname", v).await;
     }
+    if let Some(ref v) = form.blogdescription {
+        let _ = options.update_option("blogdescription", v).await;
+    }
+    if let Some(ref v) = form.primary_color {
+        let _ = options.update_option("primary_color", v).await;
+    }
+    if let Some(ref v) = form.secondary_color {
+        let _ = options.update_option("secondary_color", v).await;
+    }
+    if let Some(ref v) = form.background_color {
+        let _ = options.update_option("background_color", v).await;
+    }
+    if let Some(ref v) = form.heading_font {
+        let _ = options.update_option("heading_font", v).await;
+    }
+    if let Some(ref v) = form.body_font {
+        let _ = options.update_option("body_font", v).await;
+    }
+    if let Some(ref v) = form.header_layout {
+        let _ = options.update_option("header_layout", v).await;
+    }
+    let show_search = form.show_search.as_deref().unwrap_or("0");
+    let _ = options.update_option("show_search", show_search).await;
+    if let Some(ref v) = form.footer_text {
+        let _ = options.update_option("footer_text", v).await;
+    }
+    let show_credit = form.show_credit.as_deref().unwrap_or("0");
+    let _ = options.update_option("show_credit", show_credit).await;
+    if let Some(ref v) = form.show_on_front {
+        let _ = options.update_option("show_on_front", v).await;
+    }
+    if let Some(ref v) = form.page_on_front {
+        let _ = options.update_option("page_on_front", v).await;
+    }
+    if let Some(ref v) = form.page_for_posts {
+        let _ = options.update_option("page_for_posts", v).await;
+    }
+    if let Some(ref v) = form.custom_css {
+        let _ = options.update_option("custom_css", v).await;
+    }
+
+    (StatusCode::OK, "OK").into_response()
 }

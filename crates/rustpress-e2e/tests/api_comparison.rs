@@ -4657,9 +4657,7 @@ async fn test_rest_api_embed_replies() {
                     let wp_is_array = wp_r.is_array();
                     let rp_is_array = rp_r.is_array();
 
-                    eprintln!(
-                        "  replies is array - WP: {wp_is_array}, RP: {rp_is_array}"
-                    );
+                    eprintln!("  replies is array - WP: {wp_is_array}, RP: {rp_is_array}");
 
                     // Check first reply comment structure
                     let wp_first_comment = wp_r
@@ -5419,7 +5417,8 @@ async fn test_rest_api_patch_post() {
     .await
     .and_then(|v| {
         v.as_array()
-            .and_then(|a| a.first().and_then(|p| p.get("id"))).cloned()
+            .and_then(|a| a.first().and_then(|p| p.get("id")))
+            .cloned()
     })
     .and_then(|v| v.as_u64())
     .unwrap_or(1);
@@ -5431,7 +5430,8 @@ async fn test_rest_api_patch_post() {
     .await
     .and_then(|v| {
         v.as_array()
-            .and_then(|a| a.first().and_then(|p| p.get("id"))).cloned()
+            .and_then(|a| a.first().and_then(|p| p.get("id")))
+            .cloned()
     })
     .and_then(|v| v.as_u64())
     .unwrap_or(1);

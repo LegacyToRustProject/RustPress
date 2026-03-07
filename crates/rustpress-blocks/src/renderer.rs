@@ -88,15 +88,11 @@ impl BlockRenderer {
             }
             "core/row" => {
                 let class = extract_class_attr(block, "is-layout-flex");
-                format!(
-                    "<div class=\"wp-block-group {class}\">{inner_rendered}</div>"
-                )
+                format!("<div class=\"wp-block-group {class}\">{inner_rendered}</div>")
             }
             "core/stack" => {
                 let class = extract_class_attr(block, "is-layout-flex");
-                format!(
-                    "<div class=\"wp-block-group {class}\">{inner_rendered}</div>"
-                )
+                format!("<div class=\"wp-block-group {class}\">{inner_rendered}</div>")
             }
             "core/buttons" => {
                 format!("<div class=\"wp-block-buttons\">{inner_rendered}</div>")

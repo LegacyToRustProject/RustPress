@@ -740,9 +740,7 @@ fn add_block_layout_classes(content: &str) -> String {
                 if classes.contains("wp-block-columns") || classes.contains("is-layout-") {
                     return caps[0].to_string();
                 }
-                format!(
-                    "class=\"{classes} is-layout-flow wp-block-column-is-layout-flow\""
-                )
+                format!("class=\"{classes} is-layout-flow wp-block-column-is-layout-flow\"")
             })
             .to_string();
     }

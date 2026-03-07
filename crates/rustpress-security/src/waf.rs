@@ -128,9 +128,7 @@ impl WafEngine {
             .collect::<Vec<_>>()
             .join("\n");
 
-        let payload = format!(
-            "{method}\n{path}\n{query}\n{body}\n{header_values}"
-        );
+        let payload = format!("{method}\n{path}\n{query}\n{body}\n{header_values}");
 
         for compiled in &self.rules {
             if !compiled.rule.enabled {

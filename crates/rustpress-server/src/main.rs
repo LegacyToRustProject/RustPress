@@ -665,9 +665,7 @@ fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRe
                 .map(|_| "<div class=\"gallery-item\"></div>".to_string())
                 .collect::<Vec<_>>()
                 .join("\n");
-            format!(
-                "<div class=\"gallery gallery-columns-{columns}\">{img_tags}</div>"
-            )
+            format!("<div class=\"gallery gallery-columns-{columns}\">{img_tags}</div>")
         }),
     );
 

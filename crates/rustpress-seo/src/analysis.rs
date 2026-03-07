@@ -98,9 +98,7 @@ fn analyze_title(input: &AnalysisInput, recs: &mut Vec<SeoRecommendation>) {
         recs.push(SeoRecommendation {
             category: "Title".into(),
             score: SeoScore::Ok,
-            message: format!(
-                "Title is too short ({title_len} chars). Aim for 50-60 characters."
-            ),
+            message: format!("Title is too short ({title_len} chars). Aim for 50-60 characters."),
         });
     } else if title_len > 60 {
         recs.push(SeoRecommendation {
@@ -271,9 +269,7 @@ fn analyze_readability_score(score: f64, recs: &mut Vec<SeoRecommendation>) {
         recs.push(SeoRecommendation {
             category: "Readability".into(),
             score: SeoScore::Good,
-            message: format!(
-                "Readability score is good ({score:.0}). Content is easy to read."
-            ),
+            message: format!("Readability score is good ({score:.0}). Content is easy to read."),
         });
     } else if score >= 30.0 {
         recs.push(SeoRecommendation {

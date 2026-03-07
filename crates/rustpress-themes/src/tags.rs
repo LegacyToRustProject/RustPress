@@ -281,9 +281,7 @@ fn process_caption_shortcode(content: &str) -> String {
         let caption_html = if let Some(img_end) = inner.find("/>") {
             let img = &inner[..img_end + 2];
             let caption_text = inner[img_end + 2..].trim();
-            format!(
-                "<figure{align_class}>{img}<figcaption>{caption_text}</figcaption></figure>"
-            )
+            format!("<figure{align_class}>{img}<figcaption>{caption_text}</figcaption></figure>")
         } else {
             format!("<figure{align_class}>{inner}</figure>")
         };
@@ -369,9 +367,7 @@ fn process_gallery_shortcode(content: &str) -> String {
                 .collect::<Vec<_>>()
                 .join("\n");
 
-            let html = format!(
-                "<div class=\"gallery gallery-columns-{columns}\">{img_tags}</div>"
-            );
+            let html = format!("<div class=\"gallery gallery-columns-{columns}\">{img_tags}</div>");
             result = format!("{}{}{}", &result[..start], html, &result[end..]);
         }
     }

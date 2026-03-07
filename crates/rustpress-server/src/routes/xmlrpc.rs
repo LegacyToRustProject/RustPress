@@ -1694,8 +1694,8 @@ async fn handle_get_media_library(state: &AppState, params: &[XmlRpcValue]) -> S
     if !mime_type_filter.is_empty() {
         // Allow prefix match: "image" matches "image/jpeg", "image/png", etc.
         if !mime_type_filter.contains('/') {
-            query = query
-                .filter(wp_posts::Column::PostMimeType.like(format!("{mime_type_filter}/%")));
+            query =
+                query.filter(wp_posts::Column::PostMimeType.like(format!("{mime_type_filter}/%")));
         } else {
             query = query.filter(wp_posts::Column::PostMimeType.eq(&mime_type_filter));
         }
@@ -1792,9 +1792,8 @@ async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> Strin
 
     // Insert pingback comment
     let now = chrono::Utc::now().naive_utc();
-    let pingback_content = format!(
-        "[…] <a href=\"{source_uri}\">Pingback from {source_uri}</a> […]"
-    );
+    let pingback_content =
+        format!("[…] <a href=\"{source_uri}\">Pingback from {source_uri}</a> […]");
 
     let new_pingback = wp_comments::ActiveModel {
         comment_id: sea_orm::ActiveValue::NotSet,

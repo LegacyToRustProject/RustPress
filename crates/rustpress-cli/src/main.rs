@@ -701,9 +701,7 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
             } else {
                 db.execute(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
-                    format!(
-                        "UPDATE wp_posts SET post_status = 'trash' WHERE ID = {id}"
-                    ),
+                    format!("UPDATE wp_posts SET post_status = 'trash' WHERE ID = {id}"),
                 ))
                 .await?;
                 println!("Success: Trashed post {id}.");
@@ -738,9 +736,8 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
             let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
             for i in 1..=count {
                 let title = format!("Generated {post_type} #{i}");
-                let content = format!(
-                    "<p>This is auto-generated {post_type} content number {i}.</p>"
-                );
+                let content =
+                    format!("<p>This is auto-generated {post_type} content number {i}.</p>");
                 let slug = format!("generated-{post_type}-{i}");
                 let sql = format!(
                     "INSERT INTO wp_posts (post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, post_name, post_modified, post_modified_gmt, post_type, to_ping, pinged, post_content_filtered, guid) VALUES (1, '{now}', '{now}', '{content}', '{title}', '', 'publish', '{slug}', '{now}', '{now}', '{post_type}', '', '', '', '')"
@@ -831,9 +828,7 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
             db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
 
-            println!(
-                "Success: Created user '{login}' (ID: {user_id}) with role '{role}'."
-            );
+            println!("Success: Created user '{login}' (ID: {user_id}) with role '{role}'.");
         }
         UserAction::Update {
             id,
@@ -866,9 +861,7 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
             if let Some(target) = reassign {
                 db.execute(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
-                    format!(
-                        "UPDATE wp_posts SET post_author = {target} WHERE post_author = {id}"
-                    ),
+                    format!("UPDATE wp_posts SET post_author = {target} WHERE post_author = {id}"),
                 ))
                 .await?;
             }
@@ -887,9 +880,8 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
         UserAction::ResetPassword { login, password } => {
             let db = get_db().await?;
             let hash = rustpress_auth::PasswordHasher::hash_argon2(&password)?;
-            let sql = format!(
-                "UPDATE wp_users SET user_pass = '{hash}' WHERE user_login = '{login}'"
-            );
+            let sql =
+                format!("UPDATE wp_users SET user_pass = '{hash}' WHERE user_login = '{login}'");
             let result = db
                 .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
@@ -992,9 +984,7 @@ async fn handle_option(action: OptionAction, format: &OutputFormat) -> Result<()
             let rows = db
                 .query_all(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
-                    format!(
-                        "SELECT option_value FROM wp_options WHERE option_name = '{name}'"
-                    ),
+                    format!("SELECT option_value FROM wp_options WHERE option_name = '{name}'"),
                 ))
                 .await?;
             if let Some(row) = rows.first() {
@@ -1220,9 +1210,7 @@ async fn handle_search_replace(
     }
 
     if dry_run {
-        println!(
-            "\nDry run complete. {total_replacements} potential replacements found."
-        );
+        println!("\nDry run complete. {total_replacements} potential replacements found.");
     } else {
         println!("\nSuccess: {total_replacements} replacements made.");
     }
@@ -1296,9 +1284,7 @@ async fn handle_media(action: MediaAction) -> Result<()> {
     match action {
         MediaAction::Regenerate { id } => {
             if let Some(attachment_id) = id {
-                println!(
-                    "Regenerating thumbnails for attachment {attachment_id}..."
-                );
+                println!("Regenerating thumbnails for attachment {attachment_id}...");
                 println!("Success: Thumbnails regenerated.");
             } else {
                 println!("Regenerating all thumbnails...");
@@ -1779,9 +1765,7 @@ async fn migrate_get_option(db: &DatabaseConnection, name: &str) -> Result<Strin
     let rows = db
         .query_all(Statement::from_string(
             sea_orm::DatabaseBackend::MySql,
-            format!(
-                "SELECT option_value FROM wp_options WHERE option_name = '{name}'"
-            ),
+            format!("SELECT option_value FROM wp_options WHERE option_name = '{name}'"),
         ))
         .await?;
     if let Some(row) = rows.first() {
@@ -1851,13 +1835,9 @@ fn migrate_check_theme(theme: &str) -> String {
     if lower.contains("twentytwentyfive") || lower.contains("twentyrust") {
         format!("{theme} -- Fully supported (native RustPress theme)")
     } else if lower.starts_with("twenty") {
-        format!(
-            "{theme} -- WordPress default theme. Partial support via Tera templates."
-        )
+        format!("{theme} -- WordPress default theme. Partial support via Tera templates.")
     } else {
-        format!(
-            "{theme} -- Custom theme. Manual Tera template conversion required."
-        )
+        format!("{theme} -- Custom theme. Manual Tera template conversion required.")
     }
 }
 

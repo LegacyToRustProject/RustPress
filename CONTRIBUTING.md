@@ -13,7 +13,7 @@ Thank you for your interest in contributing to RustPress! This project aims to b
 
 ### Requirements
 
-- Rust 1.88+ (stable)
+- Rust 1.91+ (stable)
 - MySQL 8.0+ or MariaDB 10.5+
 - Docker (optional, for E2E testing)
 

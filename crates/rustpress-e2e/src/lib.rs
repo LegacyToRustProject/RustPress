@@ -908,9 +908,7 @@ pub async fn visual_regression_test(
 
     for (width, height, vp_label) in &viewports {
         let full_label = format!("{label}_{vp_label}");
-        eprintln!(
-            "\n--- Visual test: {full_label} ({width}x{height}) ---"
-        );
+        eprintln!("\n--- Visual test: {full_label} ({width}x{height}) ---");
 
         let result = visual_compare(
             wp_driver,

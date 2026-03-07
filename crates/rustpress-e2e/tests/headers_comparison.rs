@@ -1073,9 +1073,7 @@ async fn test_static_assets_cache_headers() {
                 // Check for ETag or Last-Modified too
                 let has_etag = has_header(&rp_h, "etag");
                 let has_last_mod = has_header(&rp_h, "last-modified");
-                eprintln!(
-                    "    Has ETag: {has_etag}, Has Last-Modified: {has_last_mod}"
-                );
+                eprintln!("    Has ETag: {has_etag}, Has Last-Modified: {has_last_mod}");
             }
             None => eprintln!("    [SKIP] RustPress static asset not available"),
         }

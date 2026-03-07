@@ -503,9 +503,7 @@ fn render_media_text() -> RenderCallback {
 
         let media_html = match media_type {
             "video" => format!("<video controls src=\"{media_url}\"></video>"),
-            _ => format!(
-                "<img src=\"{media_url}\" alt=\"\" class=\"wp-image-media-text\" />"
-            ),
+            _ => format!("<img src=\"{media_url}\" alt=\"\" class=\"wp-image-media-text\" />"),
         };
 
         format!(
@@ -612,9 +610,7 @@ fn render_latest_comments() -> RenderCallback {
                 "<li class=\"wp-block-latest-comments__comment\"><article><footer class=\"wp-block-latest-comments__comment-meta\">Commenter on <a href=\"#\">Post {i}</a></footer><div class=\"wp-block-latest-comments__comment-excerpt\"><p>Comment placeholder...</p></div></article></li>\n"
             ));
         }
-        format!(
-            "<ol class=\"has-dates has-excerpts {class}\">\n{items}</ol>"
-        )
+        format!("<ol class=\"has-dates has-excerpts {class}\">\n{items}</ol>")
     })
 }
 
@@ -696,9 +692,7 @@ fn render_site_title() -> RenderCallback {
         };
         let class = build_class("wp-block-site-title", block);
 
-        format!(
-            "<{tag} class=\"{class}\"><a href=\"/\">Site Title</a></{tag}>"
-        )
+        format!("<{tag} class=\"{class}\"><a href=\"/\">Site Title</a></{tag}>")
     })
 }
 
@@ -749,9 +743,7 @@ fn render_post_title() -> RenderCallback {
             .unwrap_or(false);
 
         if is_link {
-            format!(
-                "<{tag} class=\"{class}\"><a href=\"#\">Post Title</a></{tag}>"
-            )
+            format!("<{tag} class=\"{class}\"><a href=\"#\">Post Title</a></{tag}>")
         } else {
             format!("<{tag} class=\"{class}\">Post Title</{tag}>")
         }
@@ -800,13 +792,9 @@ fn render_post_date() -> RenderCallback {
             .unwrap_or(false);
 
         if is_link {
-            format!(
-                "<div class=\"{class}\"><a href=\"#\"><time>January 1, 2025</time></a></div>"
-            )
+            format!("<div class=\"{class}\"><a href=\"#\"><time>January 1, 2025</time></a></div>")
         } else {
-            format!(
-                "<div class=\"{class}\"><time>January 1, 2025</time></div>"
-            )
+            format!("<div class=\"{class}\"><time>January 1, 2025</time></div>")
         }
     })
 }
@@ -843,9 +831,7 @@ fn render_post_featured_image() -> RenderCallback {
                 "<figure class=\"{class}\"><a href=\"#\"><img src=\"\" alt=\"\" /></a></figure>"
             )
         } else {
-            format!(
-                "<figure class=\"{class}\"><img src=\"\" alt=\"\" /></figure>"
-            )
+            format!("<figure class=\"{class}\"><img src=\"\" alt=\"\" /></figure>")
         }
     })
 }
@@ -901,9 +887,7 @@ fn render_template_part() -> RenderCallback {
             render_inner_blocks_simple(&block.inner_blocks)
         };
 
-        format!(
-            "<{tag_name} class=\"{class} {slug}\">{inner}</{tag_name}>"
-        )
+        format!("<{tag_name} class=\"{class} {slug}\">{inner}</{tag_name}>")
     })
 }
 
@@ -1134,10 +1118,7 @@ mod tests {
             "core/freeform",
         ];
         for name in text_blocks {
-            assert!(
-                registry.has_block_type(name),
-                "Missing text block: {name}"
-            );
+            assert!(registry.has_block_type(name), "Missing text block: {name}");
         }
     }
 
@@ -1156,10 +1137,7 @@ mod tests {
             "core/media-text",
         ];
         for name in media_blocks {
-            assert!(
-                registry.has_block_type(name),
-                "Missing media block: {name}"
-            );
+            assert!(registry.has_block_type(name), "Missing media block: {name}");
         }
     }
 
@@ -1232,10 +1210,7 @@ mod tests {
             "core/template-part",
         ];
         for name in theme_blocks {
-            assert!(
-                registry.has_block_type(name),
-                "Missing theme block: {name}"
-            );
+            assert!(registry.has_block_type(name), "Missing theme block: {name}");
         }
     }
 

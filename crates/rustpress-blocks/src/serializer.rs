@@ -26,13 +26,9 @@ pub fn serialize_block(block: &Block) -> String {
         // Block with inner blocks: serialize children recursively
         let inner = serialize_blocks(&block.inner_blocks);
         if attrs_str.is_empty() {
-            format!(
-                "<!-- wp:{comment_name} -->{inner}<!-- /wp:{comment_name} -->"
-            )
+            format!("<!-- wp:{comment_name} -->{inner}<!-- /wp:{comment_name} -->")
         } else {
-            format!(
-                "<!-- wp:{comment_name} {attrs_str} -->{inner}<!-- /wp:{comment_name} -->"
-            )
+            format!("<!-- wp:{comment_name} {attrs_str} -->{inner}<!-- /wp:{comment_name} -->")
         }
     } else {
         // Standard block with inner_html

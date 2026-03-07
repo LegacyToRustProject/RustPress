@@ -251,9 +251,7 @@ async fn test_login_redirects_to_dashboard() {
             .map(|u| u.to_string())
             .unwrap_or_default();
         let wp_is_admin = wp_current.contains("wp-admin");
-        eprintln!(
-            "WordPress after login: {wp_current} (is admin: {wp_is_admin})"
-        );
+        eprintln!("WordPress after login: {wp_current} (is admin: {wp_is_admin})");
     }
 
     // Clear cookies and login to RustPress
@@ -274,9 +272,7 @@ async fn test_login_redirects_to_dashboard() {
             .map(|u| u.to_string())
             .unwrap_or_default();
         let rp_is_admin = rp_current.contains("wp-admin");
-        eprintln!(
-            "RustPress after login: {rp_current} (is admin: {rp_is_admin})"
-        );
+        eprintln!("RustPress after login: {rp_current} (is admin: {rp_is_admin})");
         assert!(
             rp_is_admin,
             "RustPress login should redirect to wp-admin dashboard"
@@ -1243,9 +1239,7 @@ async fn test_logout_flow() {
             .map(|u| u.to_string())
             .unwrap_or_default();
         let redirected_to_login = after_admin.contains("wp-login") || after_admin.contains("login");
-        eprintln!(
-            "After logout, accessing wp-admin redirects to login: {redirected_to_login}"
-        );
+        eprintln!("After logout, accessing wp-admin redirects to login: {redirected_to_login}");
 
         assert!(
             redirected_to_login,
