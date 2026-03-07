@@ -1,0 +1,16 @@
+[package]
+name = "rustpress-i18n"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Internationalization (i18n) system for RustPress - .mo parser and translation functions"
+
+[dependencies]
+rustpress-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

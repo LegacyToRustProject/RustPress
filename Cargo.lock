@@ -3553,16 +3553,34 @@ name = "rustpress-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "dotenvy",
  "rustpress-auth",
+ "rustpress-cache",
  "rustpress-core",
+ "rustpress-cron",
  "rustpress-db",
  "rustpress-migrate",
  "rustpress-plugins",
+ "sea-orm",
+ "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "rustpress-commerce"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rustpress-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -3621,6 +3639,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustpress-fields"
+version = "0.1.0"
+dependencies = [
+ "rustpress-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "rustpress-forms"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "regex",
+ "rustpress-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "rustpress-migrate"
 version = "0.1.0"
 dependencies = [
@@ -3632,6 +3675,18 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "rustpress-multisite"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rustpress-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
  "tracing",
 ]
 
@@ -3661,6 +3716,18 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "rustpress-seo"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "regex",
+ "rustpress-core",
+ "serde",
+ "serde_json",
  "tracing",
 ]
 

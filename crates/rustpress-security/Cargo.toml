@@ -1,0 +1,18 @@
+[package]
+name = "rustpress-security"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Security plugin for RustPress - WAF, rate limiting, and login protection"
+
+[dependencies]
+rustpress-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]

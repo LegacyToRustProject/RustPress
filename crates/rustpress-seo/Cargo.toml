@@ -1,0 +1,17 @@
+[package]
+name = "rustpress-seo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "SEO plugin for RustPress - meta tags, sitemaps, and Open Graph"
+
+[dependencies]
+rustpress-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+regex = { workspace = true }
+
+[dev-dependencies]

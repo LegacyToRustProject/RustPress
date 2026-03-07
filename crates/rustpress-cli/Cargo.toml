@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "CLI tool for RustPress"
+description = "CLI tool for RustPress - WP-CLI compatible"
 
 [[bin]]
 name = "rustpress-cli"
@@ -16,9 +16,14 @@ rustpress-db = { workspace = true }
 rustpress-auth = { workspace = true }
 rustpress-migrate = { workspace = true }
 rustpress-plugins = { workspace = true }
+rustpress-cache = { workspace = true }
+rustpress-cron = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 dotenvy = { workspace = true }
 anyhow = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+sea-orm = { workspace = true }
