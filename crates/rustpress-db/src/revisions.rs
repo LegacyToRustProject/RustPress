@@ -151,4 +151,104 @@ impl RevisionManager {
             .await?;
         Ok(count)
     }
+
+    /// Build a revision title from the original post title.
+    ///
+    /// WordPress appends " — Revision" to the original title.
+    pub fn revision_title(original_title: &str) -> String {
+        format!("{} — Revision", original_title)
+    }
+
+    /// Build a revision post_name (slug) from the original post ID.
+    ///
+    /// WordPress uses the pattern `{post_id}-revision-v1`.
+    pub fn revision_post_name(post_id: u64) -> String {
+        format!("{}-revision-v1", post_id)
+    }
+
+    /// Strip the revision suffix from a revision title to recover the original.
+    ///
+    /// This reverses `revision_title()`.
+    pub fn strip_revision_suffix(revision_title: &str) -> String {
+        revision_title.replace(" — Revision", "")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_revision_title_format() {
+        assert_eq!(
+            RevisionManager::revision_title("Hello World"),
+            "Hello World — Revision"
+        );
+    }
+
+    #[test]
+    fn test_revision_title_empty() {
+        assert_eq!(RevisionManager::revision_title(""), " — Revision");
+    }
+
+    #[test]
+    fn test_revision_title_with_special_chars() {
+        assert_eq!(
+            RevisionManager::revision_title("Post with <HTML> & \"quotes\""),
+            "Post with <HTML> & \"quotes\" — Revision"
+        );
+    }
+
+    #[test]
+    fn test_revision_post_name() {
+        assert_eq!(RevisionManager::revision_post_name(42), "42-revision-v1");
+    }
+
+    #[test]
+    fn test_revision_post_name_zero() {
+        assert_eq!(RevisionManager::revision_post_name(0), "0-revision-v1");
+    }
+
+    #[test]
+    fn test_revision_post_name_large_id() {
+        assert_eq!(
+            RevisionManager::revision_post_name(999999),
+            "999999-revision-v1"
+        );
+    }
+
+    #[test]
+    fn test_strip_revision_suffix() {
+        assert_eq!(
+            RevisionManager::strip_revision_suffix("Hello World — Revision"),
+            "Hello World"
+        );
+    }
+
+    #[test]
+    fn test_strip_revision_suffix_no_match() {
+        // If there's no suffix, the title is returned unchanged.
+        assert_eq!(
+            RevisionManager::strip_revision_suffix("Hello World"),
+            "Hello World"
+        );
+    }
+
+    #[test]
+    fn test_strip_revision_suffix_multiple() {
+        // `.replace()` strips all occurrences, matching the behavior in
+        // `restore_revision`.
+        assert_eq!(
+            RevisionManager::strip_revision_suffix("A — Revision — Revision"),
+            "A"
+        );
+    }
+
+    #[test]
+    fn test_roundtrip_title() {
+        let original = "My Great Post";
+        let rev_title = RevisionManager::revision_title(original);
+        let restored = RevisionManager::strip_revision_suffix(&rev_title);
+        assert_eq!(restored, original);
+    }
 }

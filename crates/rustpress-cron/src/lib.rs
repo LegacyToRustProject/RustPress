@@ -299,4 +299,171 @@ mod tests {
         let schedules = manager.get_schedules();
         assert!(schedules.iter().any(|s| s.name == "every_5_minutes" && s.interval == 300));
     }
+
+    #[test]
+    fn test_recurring_event_reschedules() {
+        let manager = CronManager::new();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        let c = counter.clone();
+        manager.register_callback(
+            "recurring_hook",
+            Arc::new(move || {
+                c.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        // Schedule a recurring event in the past (immediately due)
+        manager.schedule_event(0, "hourly", "recurring_hook", vec![]);
+        manager.run_due_events();
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
+
+        // The recurring event should have been rescheduled
+        let next = manager.next_scheduled("recurring_hook");
+        assert!(next.is_some(), "recurring event should be rescheduled");
+        assert!(next.unwrap() > 0, "rescheduled timestamp should be in the future");
+
+        // Verify there is still exactly one event
+        let events = manager.get_events();
+        let recurring_events: Vec<_> = events.iter().filter(|e| e.hook == "recurring_hook").collect();
+        assert_eq!(recurring_events.len(), 1);
+        assert_eq!(recurring_events[0].interval, Some(3600));
+    }
+
+    #[test]
+    fn test_schedule_single_event_no_reschedule() {
+        let manager = CronManager::new();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        let c = counter.clone();
+        manager.register_callback(
+            "single_hook",
+            Arc::new(move || {
+                c.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        // Schedule a single event in the past (immediately due)
+        manager.schedule_single_event(0, "single_hook", vec![]);
+        manager.run_due_events();
+        assert_eq!(counter.load(Ordering::SeqCst), 1);
+
+        // Single event should NOT be rescheduled
+        assert!(
+            manager.next_scheduled("single_hook").is_none(),
+            "single event should not be rescheduled"
+        );
+        assert!(
+            manager.get_events().iter().all(|e| e.hook != "single_hook"),
+            "single event should be removed after execution"
+        );
+    }
+
+    #[test]
+    fn test_multiple_hooks_run_independently() {
+        let manager = CronManager::new();
+        let counter_a = Arc::new(AtomicUsize::new(0));
+        let counter_b = Arc::new(AtomicUsize::new(0));
+
+        let ca = counter_a.clone();
+        manager.register_callback(
+            "hook_a",
+            Arc::new(move || {
+                ca.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        let cb = counter_b.clone();
+        manager.register_callback(
+            "hook_b",
+            Arc::new(move || {
+                cb.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        // Schedule both hooks in the past (immediately due)
+        manager.schedule_single_event(0, "hook_a", vec![]);
+        manager.schedule_single_event(0, "hook_b", vec![]);
+        manager.run_due_events();
+
+        assert_eq!(counter_a.load(Ordering::SeqCst), 1);
+        assert_eq!(counter_b.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn test_future_event_not_run() {
+        let manager = CronManager::new();
+        let counter = Arc::new(AtomicUsize::new(0));
+
+        let c = counter.clone();
+        manager.register_callback(
+            "future_hook",
+            Arc::new(move || {
+                c.fetch_add(1, Ordering::SeqCst);
+            }),
+        );
+
+        // Schedule far in the future
+        manager.schedule_single_event(99999999999, "future_hook", vec![]);
+        manager.run_due_events();
+
+        // Callback should NOT have been invoked
+        assert_eq!(counter.load(Ordering::SeqCst), 0);
+
+        // Event should still be present
+        assert!(
+            manager.next_scheduled("future_hook").is_some(),
+            "future event should remain scheduled"
+        );
+    }
+
+    #[test]
+    fn test_get_events() {
+        let manager = CronManager::new();
+
+        manager.schedule_single_event(100, "hook_x", vec!["arg1".to_string()]);
+        manager.schedule_event(200, "daily", "hook_y", vec![]);
+        manager.schedule_single_event(300, "hook_z", vec![]);
+
+        let events = manager.get_events();
+        assert_eq!(events.len(), 3);
+
+        let hooks: Vec<&str> = events.iter().map(|e| e.hook.as_str()).collect();
+        assert!(hooks.contains(&"hook_x"));
+        assert!(hooks.contains(&"hook_y"));
+        assert!(hooks.contains(&"hook_z"));
+    }
+
+    #[test]
+    fn test_callback_not_registered() {
+        let manager = CronManager::new();
+
+        // Schedule an event with no callback registered — should not panic
+        manager.schedule_single_event(0, "no_callback_hook", vec![]);
+        manager.run_due_events();
+
+        // Event should still be removed even without a callback
+        assert!(
+            manager.next_scheduled("no_callback_hook").is_none(),
+            "event with no callback should still be removed after due"
+        );
+    }
+
+    #[test]
+    fn test_default_impl() {
+        let manager_default = CronManager::default();
+        let manager_new = CronManager::new();
+
+        let schedules_default = manager_default.get_schedules();
+        let schedules_new = manager_new.get_schedules();
+
+        assert_eq!(schedules_default.len(), schedules_new.len());
+
+        for s in &schedules_new {
+            assert!(
+                schedules_default.iter().any(|d| d.name == s.name && d.interval == s.interval),
+                "default() should have the same schedules as new()"
+            );
+        }
+    }
 }

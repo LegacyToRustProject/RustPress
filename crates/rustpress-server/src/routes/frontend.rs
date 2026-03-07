@@ -1280,7 +1280,7 @@ async fn month_archive(
 
     let mut context = build_base_context(&state).await;
     let month_name = month_to_name(month);
-    context.insert("archive_title", &format!("{} {}", month_name, year));
+    context.insert("archive_title", &format!("Month: {} {}", month_name, year));
     context.insert("archive_year", &year);
     context.insert("archive_month", &month);
 

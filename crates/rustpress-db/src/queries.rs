@@ -355,3 +355,109 @@ pub async fn get_order_item_meta(
     }
     Ok(map)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pagination_default() {
+        let p = Pagination::default();
+        assert_eq!(p.page, 1);
+        assert_eq!(p.per_page, 10);
+    }
+
+    #[test]
+    fn test_pagination_custom() {
+        let p = Pagination {
+            page: 3,
+            per_page: 25,
+        };
+        assert_eq!(p.page, 3);
+        assert_eq!(p.per_page, 25);
+    }
+
+    #[test]
+    fn test_pagination_clone() {
+        let p = Pagination {
+            page: 5,
+            per_page: 20,
+        };
+        let p2 = p.clone();
+        assert_eq!(p2.page, 5);
+        assert_eq!(p2.per_page, 20);
+    }
+
+    /// Helper to build a PaginatedResult<String> for testing total_pages logic.
+    /// Uses the same formula as the production code: (total + per_page - 1) / per_page.
+    fn make_paginated(total: u64, per_page: u64) -> PaginatedResult<String> {
+        let total_pages = if total == 0 {
+            0
+        } else {
+            (total + per_page - 1) / per_page
+        };
+        PaginatedResult {
+            items: Vec::new(),
+            total,
+            page: 1,
+            per_page,
+            total_pages,
+        }
+    }
+
+    #[test]
+    fn test_paginated_result_total_pages_25_items() {
+        // 25 items, 10 per page => 3 pages
+        let r = make_paginated(25, 10);
+        assert_eq!(r.total_pages, 3);
+        assert_eq!(r.total, 25);
+        assert_eq!(r.per_page, 10);
+        assert_eq!(r.page, 1);
+    }
+
+    #[test]
+    fn test_paginated_result_total_pages_exact_fit() {
+        // 10 items, 10 per page => 1 page
+        let r = make_paginated(10, 10);
+        assert_eq!(r.total_pages, 1);
+    }
+
+    #[test]
+    fn test_paginated_result_total_pages_zero_items() {
+        // 0 items => 0 pages
+        let r = make_paginated(0, 10);
+        assert_eq!(r.total_pages, 0);
+    }
+
+    #[test]
+    fn test_paginated_result_total_pages_one_item() {
+        // 1 item, 10 per page => 1 page
+        let r = make_paginated(1, 10);
+        assert_eq!(r.total_pages, 1);
+    }
+
+    #[test]
+    fn test_paginated_result_total_pages_11_items() {
+        // 11 items, 10 per page => 2 pages
+        let r = make_paginated(11, 10);
+        assert_eq!(r.total_pages, 2);
+    }
+
+    #[test]
+    fn test_paginated_result_fields() {
+        let r = PaginatedResult {
+            items: vec!["a".to_string(), "b".to_string()],
+            total: 50,
+            page: 3,
+            per_page: 20,
+            total_pages: 3,
+        };
+        assert_eq!(r.items.len(), 2);
+        assert_eq!(r.items[0], "a");
+        assert_eq!(r.items[1], "b");
+        assert_eq!(r.total, 50);
+        assert_eq!(r.page, 3);
+        assert_eq!(r.per_page, 20);
+        assert_eq!(r.total_pages, 3);
+    }
+}

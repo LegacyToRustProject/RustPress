@@ -573,9 +573,9 @@ mod tests {
         let words: Vec<String> = (0..100).map(|i| format!("word{}", i)).collect();
         let content = words.join(" ");
         let excerpt = generate_excerpt(&content, 10);
-        assert!(excerpt.ends_with("[&hellip;]"));
-        // Count words before "[&hellip;]"
-        let excerpt_words: Vec<&str> = excerpt.trim_end_matches(" [&hellip;]").split_whitespace().collect();
+        assert!(excerpt.ends_with("[\u{2026}]"));
+        // Count words before ellipsis suffix
+        let excerpt_words: Vec<&str> = excerpt.trim_end_matches(" [\u{2026}]").split_whitespace().collect();
         assert_eq!(excerpt_words.len(), 10);
     }
 

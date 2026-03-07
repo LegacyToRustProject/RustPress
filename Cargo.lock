@@ -4078,6 +4078,7 @@ dependencies = [
  "chrono",
  "dotenvy",
  "image",
+ "md-5",
  "regex",
  "rustpress-admin",
  "rustpress-api",

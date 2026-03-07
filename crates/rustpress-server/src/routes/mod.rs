@@ -6,7 +6,7 @@ mod auth;
 pub mod commerce;
 pub mod forms;
 mod frontend;
-mod health;
+pub mod health;
 mod posts;
 pub mod seo;
 mod users;

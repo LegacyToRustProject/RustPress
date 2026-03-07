@@ -392,3 +392,61 @@ pub async fn rate_limit(
         rustpress_security::RateLimitResult::Allowed { .. } => next.run(request).await,
     }
 }
+
+/// Middleware: compute ETag for GET responses and return 304 Not Modified
+/// when the client sends a matching `If-None-Match` header.
+pub async fn etag_headers(request: Request, next: Next) -> Response {
+    use axum::http::Method;
+    use md5::{Digest, Md5};
+
+    // Only apply to GET requests
+    if request.method() != Method::GET {
+        return next.run(request).await;
+    }
+
+    let if_none_match = request
+        .headers()
+        .get(header::IF_NONE_MATCH)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+
+    let response = next.run(request).await;
+
+    // Only compute ETag for successful HTML/JSON responses
+    let content_type = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    if !content_type.contains("text/html") && !content_type.contains("application/json") {
+        return response;
+    }
+
+    // Extract body bytes
+    let (parts, body) = response.into_parts();
+    let bytes = match axum::body::to_bytes(body, 10_000_000).await {
+        Ok(b) => b,
+        Err(_) => return axum::http::Response::from_parts(parts, axum::body::Body::empty()),
+    };
+
+    // Compute ETag
+    let mut hasher = Md5::new();
+    hasher.update(&bytes);
+    let hash = hasher.finalize();
+    let etag = format!("\"{:x}\"", hash);
+
+    // Check If-None-Match
+    if let Some(inm) = if_none_match {
+        if inm == etag || inm == format!("W/{}", etag) {
+            return (StatusCode::NOT_MODIFIED, [(header::ETAG, etag)]).into_response();
+        }
+    }
+
+    // Rebuild response with ETag header
+    let mut response = axum::http::Response::from_parts(parts, axum::body::Body::from(bytes));
+    response
+        .headers_mut()
+        .insert(header::ETAG, HeaderValue::from_str(&etag).unwrap());
+    response
+}

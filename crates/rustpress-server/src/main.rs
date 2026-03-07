@@ -42,6 +42,9 @@ async fn main() -> Result<()> {
 
     dotenvy::dotenv().ok();
 
+    // Initialize health check start time for uptime tracking
+    routes::health::init_start_time();
+
     let config = config::AppConfig::from_env();
 
     info!(
@@ -468,6 +471,9 @@ async fn main() -> Result<()> {
         .layer(axum::middleware::from_fn(
             middleware::security_headers,
         ))
+        .layer(axum::middleware::from_fn(
+            middleware::etag_headers,
+        ))
         .layer(tower_http::compression::CompressionLayer::new());
 
     // Apply multisite middleware (only if multisite is enabled)
@@ -492,7 +498,9 @@ async fn main() -> Result<()> {
     info!("  Health: http://{}/health", addr);
     info!("  Shop:   http://{}/shop", addr);
 
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
     Ok(())
 }
@@ -928,4 +936,30 @@ fn register_default_hooks(hooks: &HookRegistry) {
             tracing::trace!("wp_logout action fired");
         }),
     );
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::info!("Shutdown signal received, starting graceful shutdown...");
 }

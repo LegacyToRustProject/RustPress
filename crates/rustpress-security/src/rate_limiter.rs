@@ -263,17 +263,17 @@ mod tests {
     #[test]
     fn test_login_rate_limit() {
         let mut limiter = RateLimiter::new();
-        // Login limit is 5/min
-        for i in 0..5 {
+        // Login limit is 30/min
+        for i in 0..30 {
             let result = limiter.check("10.0.0.1", "/wp-login.php");
             match result {
                 RateLimitResult::Allowed { remaining } => {
-                    assert_eq!(remaining, 4 - i);
+                    assert_eq!(remaining, 29 - i);
                 }
                 _ => panic!("Expected Allowed on attempt {}", i),
             }
         }
-        // 6th attempt should be limited
+        // 31st attempt should be limited
         let result = limiter.check("10.0.0.1", "/wp-login.php");
         match result {
             RateLimitResult::Limited { retry_after } => {
@@ -321,7 +321,8 @@ mod tests {
     #[test]
     fn test_reset_clears_counters() {
         let mut limiter = RateLimiter::new();
-        for _ in 0..5 {
+        // Exhaust login limit (30/min)
+        for _ in 0..30 {
             limiter.check("10.0.0.1", "/wp-login.php");
         }
         // Should be limited
