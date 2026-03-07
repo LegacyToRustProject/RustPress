@@ -124,6 +124,52 @@ impl JwtManager {
     pub fn refresh_token(&self, claims: &Claims) -> Result<String, JwtError> {
         self.generate_token(claims.sub, &claims.login, &claims.email, &claims.role)
     }
+
+    /// Generate a short-lived (5-minute) "2FA pending" token.
+    ///
+    /// This token proves that password verification succeeded but the full
+    /// session is withheld until the TOTP code is verified.
+    /// The role is set to the sentinel value `"2fa_pending"`.
+    pub fn generate_pending_token(&self, user_id: u64, login: &str) -> Result<String, JwtError> {
+        let now = Utc::now();
+        let exp = now + Duration::minutes(5);
+        let claims = Claims {
+            jti: Uuid::new_v4().to_string(),
+            sub: user_id,
+            login: login.to_string(),
+            email: String::new(),
+            role: "2fa_pending".to_string(),
+            iat: now.timestamp(),
+            exp: exp.timestamp(),
+        };
+        encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(self.secret.as_bytes()),
+        )
+        .map_err(|e| JwtError::Encode(e.to_string()))
+    }
+
+    /// Validate a "2FA pending" token and return `(user_id, login)`.
+    ///
+    /// Only accepts tokens whose role is exactly `"2fa_pending"`.
+    pub fn validate_pending_token(&self, token: &str) -> Result<(u64, String), JwtError> {
+        let validation = Validation::new(Algorithm::HS256);
+        let token_data: TokenData<Claims> = decode(
+            token,
+            &DecodingKey::from_secret(self.secret.as_bytes()),
+            &validation,
+        )
+        .map_err(|e| match e.kind() {
+            jsonwebtoken::errors::ErrorKind::ExpiredSignature => JwtError::Expired,
+            _ => JwtError::Decode(e.to_string()),
+        })?;
+
+        if token_data.claims.role != "2fa_pending" {
+            return Err(JwtError::Invalid);
+        }
+        Ok((token_data.claims.sub, token_data.claims.login))
+    }
 }
 
 #[cfg(test)]
