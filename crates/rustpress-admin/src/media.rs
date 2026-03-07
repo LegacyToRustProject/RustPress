@@ -130,10 +130,7 @@ fn sanitize_filename(name: &str) -> String {
 /// Generate a unique filename by appending -1, -2, etc. if a file already exists.
 async fn unique_filename(dir: &std::path::Path, name: &str) -> String {
     let path = std::path::Path::new(name);
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("");
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
     let stem = path
         .file_stem()
         .and_then(|s| s.to_str())
@@ -175,7 +172,7 @@ async fn list_media(
         .order_by_desc(wp_posts::Column::PostDate);
 
     if let Some(ref mime) = params.mime_type {
-        query = query.filter(wp_posts::Column::PostMimeType.like(&format!("{}%", mime)));
+        query = query.filter(wp_posts::Column::PostMimeType.like(format!("{}%", mime)));
     }
 
     let total = query
@@ -227,10 +224,7 @@ async fn upload_media(
         .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
         .ok_or((StatusCode::BAD_REQUEST, "No file provided".to_string()))?;
 
-    let raw_name = field
-        .file_name()
-        .unwrap_or("upload")
-        .to_string();
+    let raw_name = field.file_name().unwrap_or("upload").to_string();
     let content_type = field
         .content_type()
         .unwrap_or("application/octet-stream")
@@ -283,7 +277,7 @@ async fn upload_media(
     // Human-readable title from filename stem
     let display_title = file_name
         .rsplit('.')
-        .last()
+        .next_back()
         .unwrap_or(&file_name)
         .replace(['-', '_'], " ");
 

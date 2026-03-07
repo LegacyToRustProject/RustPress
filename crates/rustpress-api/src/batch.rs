@@ -1,10 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::post, Json, Router};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -225,9 +219,7 @@ async fn execute_sub_request(req: &SubRequest, state: &ApiState) -> SubResponse 
         ("PUT" | "PATCH", "categories", Some(id)) => {
             dispatch_update_term(state, "category", id, req.body.clone().unwrap_or(json!({}))).await
         }
-        ("DELETE", "categories", Some(id)) => {
-            dispatch_delete_term(state, "category", id).await
-        }
+        ("DELETE", "categories", Some(id)) => dispatch_delete_term(state, "category", id).await,
 
         // Tags
         ("POST", "tags", None) => {
@@ -785,7 +777,10 @@ mod tests {
     #[test]
     fn test_normalize_path() {
         assert_eq!(normalize_path("/wp/v2/posts"), "/wp/v2/posts");
-        assert_eq!(normalize_path("/wp-json/wp/v2/posts"), "/wp-json/wp/v2/posts");
+        assert_eq!(
+            normalize_path("/wp-json/wp/v2/posts"),
+            "/wp-json/wp/v2/posts"
+        );
         assert_eq!(normalize_path("posts"), "/wp/v2/posts");
         assert_eq!(normalize_path("/posts"), "/wp/v2/posts");
     }
@@ -814,10 +809,7 @@ mod tests {
             ]
         }"#;
         let batch: BatchRequest = serde_json::from_str(json_str).unwrap();
-        assert_eq!(
-            batch.validation.as_deref(),
-            Some("require-all-validate")
-        );
+        assert_eq!(batch.validation.as_deref(), Some("require-all-validate"));
         assert_eq!(batch.requests.len(), 1);
     }
 

@@ -88,10 +88,7 @@ pub async fn require_auth_jwt_or_session(
 /// `a:1:{s:13:"administrator";b:1;}`.  We extract the role name from that
 /// serialized blob.  If the meta row is missing we fall back to the role
 /// stored in the session (which is set at login time).
-pub async fn get_user_role(
-    user_id: u64,
-    db: &sea_orm::DatabaseConnection,
-) -> Option<String> {
+pub async fn get_user_role(user_id: u64, db: &sea_orm::DatabaseConnection) -> Option<String> {
     // Try the standard WordPress meta key first
     let meta = wp_usermeta::Entity::find()
         .filter(wp_usermeta::Column::UserId.eq(user_id))
@@ -205,13 +202,11 @@ pub async fn require_capability(
 
     match role {
         Some(r) if r.can(&capability) => next.run(request).await,
-        _ => {
-            (
-                StatusCode::FORBIDDEN,
-                "Sorry, you are not allowed to access this page.",
-            )
-                .into_response()
-        }
+        _ => (
+            StatusCode::FORBIDDEN,
+            "Sorry, you are not allowed to access this page.",
+        )
+            .into_response(),
     }
 }
 
@@ -339,11 +334,7 @@ pub async fn waf_check(
     let header_map: std::collections::HashMap<String, String> = request
         .headers()
         .iter()
-        .filter_map(|(k, v)| {
-            v.to_str()
-                .ok()
-                .map(|val| (k.to_string(), val.to_string()))
-        })
+        .filter_map(|(k, v)| v.to_str().ok().map(|val| (k.to_string(), val.to_string())))
         .collect();
 
     let waf = state.waf.read().await;

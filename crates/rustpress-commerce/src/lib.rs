@@ -10,7 +10,9 @@ pub mod tax;
 pub mod woo_compat;
 
 pub use cart::{Cart, CartItem, CartManager};
-pub use checkout::{CheckoutError, CheckoutProcessor, CheckoutRequest, CheckoutResult, CheckoutSummary};
+pub use checkout::{
+    CheckoutError, CheckoutProcessor, CheckoutRequest, CheckoutResult, CheckoutSummary,
+};
 pub use coupon::{Coupon, CouponManager, DiscountResult, DiscountType};
 pub use inventory::{InventoryManager, StockAdjustment, StockAdjustmentReason, StockReservation};
 pub use order::{Address, Order, OrderItem, OrderManager, OrderStatus};

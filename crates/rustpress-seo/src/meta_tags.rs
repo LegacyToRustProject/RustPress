@@ -32,7 +32,10 @@ pub fn generate_meta_tags(meta: &SeoMeta) -> String {
     }
 
     if let Some(ref canonical) = meta.canonical {
-        tags.push(format!(r#"<link rel="canonical" href="{}" />"#, escape_attr(canonical)));
+        tags.push(format!(
+            r#"<link rel="canonical" href="{}" />"#,
+            escape_attr(canonical)
+        ));
     }
 
     if let Some(ref robots) = meta.robots {
@@ -44,36 +47,66 @@ pub fn generate_meta_tags(meta: &SeoMeta) -> String {
 
     // Open Graph tags
     if let Some(ref v) = meta.og_title {
-        tags.push(format!(r#"<meta property="og:title" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta property="og:title" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.og_description {
-        tags.push(format!(r#"<meta property="og:description" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta property="og:description" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.og_image {
-        tags.push(format!(r#"<meta property="og:image" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta property="og:image" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.og_url {
-        tags.push(format!(r#"<meta property="og:url" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta property="og:url" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.og_type {
-        tags.push(format!(r#"<meta property="og:type" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta property="og:type" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.og_site_name {
-        tags.push(format!(r#"<meta property="og:site_name" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta property="og:site_name" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
 
     // Twitter Card tags
     if let Some(ref v) = meta.twitter_card {
-        tags.push(format!(r#"<meta name="twitter:card" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta name="twitter:card" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.twitter_title {
-        tags.push(format!(r#"<meta name="twitter:title" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta name="twitter:title" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.twitter_description {
-        tags.push(format!(r#"<meta name="twitter:description" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta name="twitter:description" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
     if let Some(ref v) = meta.twitter_image {
-        tags.push(format!(r#"<meta name="twitter:image" content="{}" />"#, escape_attr(v)));
+        tags.push(format!(
+            r#"<meta name="twitter:image" content="{}" />"#,
+            escape_attr(v)
+        ));
     }
 
     tags.join("\n")
@@ -176,7 +209,7 @@ mod tests {
         let desc = auto_generate_description(content, 30);
         assert!(desc.ends_with("..."));
         assert!(desc.len() <= 40); // truncated + "..."
-        // Should break at word boundary
+                                   // Should break at word boundary
         assert!(!desc.contains("truncat"));
     }
 

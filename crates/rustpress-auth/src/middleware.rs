@@ -33,15 +33,8 @@ impl AuthLayer {
 
 /// Middleware function that requires authentication.
 /// Adds Claims to request extensions if authentication succeeds.
-pub async fn require_auth(
-    headers: HeaderMap,
-    mut request: Request,
-    next: Next,
-) -> Response {
-    let jwt_manager = request
-        .extensions()
-        .get::<JwtManager>()
-        .cloned();
+pub async fn require_auth(headers: HeaderMap, mut request: Request, next: Next) -> Response {
+    let jwt_manager = request.extensions().get::<JwtManager>().cloned();
 
     let jwt_manager = match jwt_manager {
         Some(m) => m,
@@ -80,11 +73,7 @@ pub async fn require_auth(
 
 /// Middleware function that optionally extracts authentication.
 /// Adds Claims to request extensions if a valid token is present, but doesn't require it.
-pub async fn optional_auth(
-    headers: HeaderMap,
-    mut request: Request,
-    next: Next,
-) -> Response {
+pub async fn optional_auth(headers: HeaderMap, mut request: Request, next: Next) -> Response {
     if let Some(jwt_manager) = request.extensions().get::<JwtManager>().cloned() {
         if let Some(token) = extract_bearer_token(&headers) {
             if let Ok(claims) = jwt_manager.validate_token(token) {

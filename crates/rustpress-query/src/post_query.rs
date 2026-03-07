@@ -262,7 +262,7 @@ impl PostQuery {
         // Count total
         let found_posts = query.clone().count(db).await?;
         let max_num_pages = if self.posts_per_page > 0 {
-            (found_posts + self.posts_per_page - 1) / self.posts_per_page
+            found_posts.div_ceil(self.posts_per_page)
         } else {
             1
         };
@@ -306,8 +306,7 @@ mod tests {
 
     #[test]
     fn test_builder_multiple_types() {
-        let query = PostQuery::new()
-            .post_types(vec!["post".to_string(), "page".to_string()]);
+        let query = PostQuery::new().post_types(vec!["post".to_string(), "page".to_string()]);
         assert_eq!(query.post_type.len(), 2);
     }
 
@@ -344,9 +343,7 @@ mod tests {
 
     #[test]
     fn test_builder_order() {
-        let query = PostQuery::new()
-            .orderby(OrderBy::Title)
-            .order(Order::Asc);
+        let query = PostQuery::new().orderby(OrderBy::Title).order(Order::Asc);
         assert!(matches!(query.orderby, OrderBy::Title));
         assert!(matches!(query.order, Order::Asc));
     }

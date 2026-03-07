@@ -6,15 +6,17 @@ use axum::{
     Json, Router,
 };
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, QuerySelect,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use rustpress_db::entities::{wp_term_relationships, wp_term_taxonomy, wp_terms};
 
-use crate::common::{filter_term_context, pagination_headers, slugify, term_links, RestContext, WpError};
+use crate::common::{
+    filter_term_context, pagination_headers, slugify, term_links, RestContext, WpError,
+};
 use crate::ApiState;
 
 /// WordPress REST API Tag response format.
@@ -82,7 +84,9 @@ pub fn write_routes() -> Router<ApiState> {
         .route("/wp-json/wp/v2/tags", axum::routing::post(create_tag))
         .route(
             "/wp-json/wp/v2/tags/{id}",
-            axum::routing::put(update_tag).patch(update_tag).delete(delete_tag),
+            axum::routing::put(update_tag)
+                .patch(update_tag)
+                .delete(delete_tag),
         )
 }
 
@@ -101,12 +105,12 @@ async fn list_tags(
     let per_page = params.per_page.unwrap_or(10).min(100);
 
     // Build base query for counting
-    let mut count_query = wp_term_taxonomy::Entity::find()
-        .filter(wp_term_taxonomy::Column::Taxonomy.eq("post_tag"));
+    let mut count_query =
+        wp_term_taxonomy::Entity::find().filter(wp_term_taxonomy::Column::Taxonomy.eq("post_tag"));
 
     // Build paginated query
-    let mut query = wp_term_taxonomy::Entity::find()
-        .filter(wp_term_taxonomy::Column::Taxonomy.eq("post_tag"));
+    let mut query =
+        wp_term_taxonomy::Entity::find().filter(wp_term_taxonomy::Column::Taxonomy.eq("post_tag"));
 
     // Filter: hide_empty (count > 0)
     if params.hide_empty.unwrap_or(false) {
@@ -118,10 +122,9 @@ async fn list_tags(
     if let Some(ref exclude) = params.exclude {
         let ids = parse_id_list(exclude);
         if !ids.is_empty() {
-            count_query = count_query
-                .filter(wp_term_taxonomy::Column::TermTaxonomyId.is_not_in(ids.clone()));
-            query =
-                query.filter(wp_term_taxonomy::Column::TermTaxonomyId.is_not_in(ids));
+            count_query =
+                count_query.filter(wp_term_taxonomy::Column::TermTaxonomyId.is_not_in(ids.clone()));
+            query = query.filter(wp_term_taxonomy::Column::TermTaxonomyId.is_not_in(ids));
         }
     }
 
@@ -139,9 +142,9 @@ async fn list_tags(
     let total = count_query
         .count(&state.db)
         .await
-        .map_err(|e| WpError::internal(e.to_string()))? as u64;
+        .map_err(|e| WpError::internal(e.to_string()))?;
     let total_pages = if per_page > 0 {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     } else {
         1
     };
@@ -191,11 +194,7 @@ async fn list_tags(
         {
             // Filter: search (match on term name)
             if let Some(ref search) = params.search {
-                if !term
-                    .name
-                    .to_lowercase()
-                    .contains(&search.to_lowercase())
-                {
+                if !term.name.to_lowercase().contains(&search.to_lowercase()) {
                     continue;
                 }
             }
@@ -257,8 +256,8 @@ async fn get_tag(
         .ok_or(WpError::not_found("Term not found"))?;
 
     let context = RestContext::from_option(params.context.as_deref());
-    let mut val = serde_json::to_value(&build_wp_tag(&state.site_url, &term, &tax))
-        .unwrap_or_default();
+    let mut val =
+        serde_json::to_value(build_wp_tag(&state.site_url, &term, &tax)).unwrap_or_default();
     filter_term_context(&mut val, context);
     Ok(Json(val))
 }
@@ -366,7 +365,9 @@ async fn delete_tag(
     auth.require(&rustpress_auth::Capability::ManageCategories)?;
     let force = params.force.unwrap_or(false);
     if !force {
-        return Err(WpError::bad_request("Tags do not support trashing. Set force=true to delete."));
+        return Err(WpError::bad_request(
+            "Tags do not support trashing. Set force=true to delete.",
+        ));
     }
 
     // Find the taxonomy entry
@@ -416,20 +417,12 @@ async fn delete_tag(
 }
 
 /// Helper: build a WpTag from term + taxonomy models.
-fn build_wp_tag(
-    site_url: &str,
-    term: &wp_terms::Model,
-    tax: &wp_term_taxonomy::Model,
-) -> WpTag {
+fn build_wp_tag(site_url: &str, term: &wp_terms::Model, tax: &wp_term_taxonomy::Model) -> WpTag {
     WpTag {
         id: tax.term_taxonomy_id,
         count: tax.count,
         description: tax.description.clone(),
-        link: format!(
-            "{}/tag/{}",
-            site_url.trim_end_matches('/'),
-            term.slug
-        ),
+        link: format!("{}/tag/{}", site_url.trim_end_matches('/'), term.slug),
         name: term.name.clone(),
         slug: term.slug.clone(),
         taxonomy: "post_tag".to_string(),

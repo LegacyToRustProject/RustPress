@@ -111,12 +111,7 @@ pub fn process_image(
             (size.width, size.height)
         } else {
             // Scale proportionally
-            calculate_proportional_size(
-                original_width,
-                original_height,
-                size.width,
-                size.height,
-            )
+            calculate_proportional_size(original_width, original_height, size.width, size.height)
         };
 
         if new_width == 0 || new_height == 0 {
@@ -169,12 +164,7 @@ pub fn process_image(
 }
 
 /// Calculate proportional dimensions while respecting max width/height.
-fn calculate_proportional_size(
-    orig_w: u32,
-    orig_h: u32,
-    max_w: u32,
-    max_h: u32,
-) -> (u32, u32) {
+fn calculate_proportional_size(orig_w: u32, orig_h: u32, max_w: u32, max_h: u32) -> (u32, u32) {
     let ratio = orig_w as f64 / orig_h as f64;
 
     let (mut new_w, mut new_h) = if max_w > 0 && max_h > 0 {

@@ -10,7 +10,9 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 
-use rustpress_db::entities::{wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms};
+use rustpress_db::entities::{
+    wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms,
+};
 
 use crate::AdminState;
 
@@ -116,12 +118,14 @@ async fn list_posts(
         .order_by_desc(wp_posts::Column::PostDate);
 
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(&format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
     }
 
-    let total = query.clone().count(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let total = query
+        .clone()
+        .count(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let posts = query
         .offset((page - 1) * per_page)
@@ -190,17 +194,21 @@ async fn create_post(
         ..Default::default()
     };
 
-    let result = new_post.insert(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let result = new_post
+        .insert(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Fire save_post action
-    state.hooks.do_action("save_post", &serde_json::json!({
-        "post_id": result.id,
-        "post_type": result.post_type,
-        "post_status": result.post_status,
-        "is_new": true
-    }));
+    state.hooks.do_action(
+        "save_post",
+        &serde_json::json!({
+            "post_id": result.id,
+            "post_type": result.post_type,
+            "post_status": result.post_status,
+            "is_new": true
+        }),
+    );
 
     Ok((StatusCode::CREATED, Json(PostResponse::from(result))))
 }
@@ -234,17 +242,21 @@ async fn update_post(
     active.post_modified = Set(now);
     active.post_modified_gmt = Set(now);
 
-    let updated = active.update(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let updated = active
+        .update(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Fire save_post action
-    state.hooks.do_action("save_post", &serde_json::json!({
-        "post_id": updated.id,
-        "post_type": updated.post_type,
-        "post_status": updated.post_status,
-        "is_new": false
-    }));
+    state.hooks.do_action(
+        "save_post",
+        &serde_json::json!({
+            "post_id": updated.id,
+            "post_type": updated.post_type,
+            "post_status": updated.post_status,
+            "is_new": false
+        }),
+    );
 
     Ok(Json(PostResponse::from(updated)))
 }
@@ -254,9 +266,12 @@ async fn delete_post(
     Path(id): Path<u64>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     // Fire delete_post action before deletion
-    state.hooks.do_action("delete_post", &serde_json::json!({
-        "post_id": id
-    }));
+    state.hooks.do_action(
+        "delete_post",
+        &serde_json::json!({
+            "post_id": id
+        }),
+    );
 
     // Move to trash instead of hard delete
     let post = wp_posts::Entity::find_by_id(id)
@@ -267,9 +282,10 @@ async fn delete_post(
 
     let mut active: wp_posts::ActiveModel = post.into();
     active.post_status = Set("trash".to_string());
-    active.update(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    active
+        .update(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -478,7 +494,10 @@ async fn create_post_meta(
     }
 
     if input.key.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Meta key cannot be empty".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Meta key cannot be empty".to_string(),
+        ));
     }
 
     let new_meta = wp_postmeta::ActiveModel {
@@ -488,9 +507,10 @@ async fn create_post_meta(
         ..Default::default()
     };
 
-    let result = new_meta.insert(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let result = new_meta
+        .insert(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok((
         StatusCode::CREATED,
@@ -516,7 +536,10 @@ async fn update_post_meta(
 
     // Verify it belongs to the correct post
     if meta.post_id != id {
-        return Err((StatusCode::NOT_FOUND, "Meta field not found for this post".to_string()));
+        return Err((
+            StatusCode::NOT_FOUND,
+            "Meta field not found for this post".to_string(),
+        ));
     }
 
     // Block updates to internal meta keys
@@ -542,7 +565,10 @@ async fn update_post_meta(
             ));
         }
         if key.trim().is_empty() {
-            return Err((StatusCode::BAD_REQUEST, "Meta key cannot be empty".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Meta key cannot be empty".to_string(),
+            ));
         }
         active.meta_key = Set(Some(key));
     }
@@ -550,9 +576,10 @@ async fn update_post_meta(
         active.meta_value = Set(Some(value));
     }
 
-    let updated = active.update(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let updated = active
+        .update(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(PostMetaResponse {
         meta_id: updated.meta_id,
@@ -574,7 +601,10 @@ async fn delete_post_meta(
 
     // Verify it belongs to the correct post
     if meta.post_id != id {
-        return Err((StatusCode::NOT_FOUND, "Meta field not found for this post".to_string()));
+        return Err((
+            StatusCode::NOT_FOUND,
+            "Meta field not found for this post".to_string(),
+        ));
     }
 
     // Block deletion of internal meta keys

@@ -245,9 +245,7 @@ impl CommentQuery {
                 super::post_query::Order::Desc => {
                     query.order_by_desc(wp_comments::Column::CommentId)
                 }
-                super::post_query::Order::Asc => {
-                    query.order_by_asc(wp_comments::Column::CommentId)
-                }
+                super::post_query::Order::Asc => query.order_by_asc(wp_comments::Column::CommentId),
             },
             CommentOrderBy::CommentPostId => match self.order {
                 super::post_query::Order::Desc => {
@@ -270,7 +268,7 @@ impl CommentQuery {
         // Count total
         let found_comments = query.clone().count(db).await?;
         let max_num_pages = if self.number > 0 {
-            (found_comments + self.number - 1) / self.number
+            found_comments.div_ceil(self.number)
         } else {
             1
         };

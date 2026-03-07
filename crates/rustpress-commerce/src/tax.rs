@@ -11,18 +11,15 @@ use std::collections::HashMap;
 
 /// Tax class categories.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum TaxClass {
+    #[default]
     Standard,
     Reduced,
     Zero,
     Custom(String),
 }
 
-impl Default for TaxClass {
-    fn default() -> Self {
-        TaxClass::Standard
-    }
-}
 
 /// A tax rate definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,9 +106,7 @@ impl TaxCalculator {
         let mut matched: Vec<&TaxRate> = self
             .rates
             .iter()
-            .filter(|r| {
-                r.tax_class == *tax_class && Self::location_matches(r, location)
-            })
+            .filter(|r| r.tax_class == *tax_class && Self::location_matches(r, location))
             .collect();
 
         // Sort by priority (lower = higher priority)
@@ -265,11 +260,10 @@ impl TaxCalculator {
         }
 
         // City match (empty means "all cities")
-        if !rate.city.is_empty() && rate.city != "*" {
-            if rate.city.to_lowercase() != location.city.to_lowercase() {
+        if !rate.city.is_empty() && rate.city != "*"
+            && rate.city.to_lowercase() != location.city.to_lowercase() {
                 return false;
             }
-        }
 
         true
     }
@@ -438,8 +432,8 @@ mod tests {
         calc.add_rate(reduced);
 
         let items = vec![
-            (100.0, TaxClass::Standard),  // 7.25
-            (50.0, TaxClass::Reduced),     // 1.50
+            (100.0, TaxClass::Standard), // 7.25
+            (50.0, TaxClass::Reduced),   // 1.50
         ];
 
         let result = calc.calculate_cart_tax(&items, &us_ca_location());

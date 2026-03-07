@@ -298,7 +298,10 @@ mod tests {
         let mgr = NetworkManager::new();
         let result = mgr.get_network(999);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), MultisiteError::NetworkNotFound(999)));
+        assert!(matches!(
+            result.unwrap_err(),
+            MultisiteError::NetworkNotFound(999)
+        ));
     }
 
     #[test]
@@ -328,26 +331,44 @@ mod tests {
     #[test]
     fn test_duplicate_site_rejected() {
         let mgr = NetworkManager::new();
-        mgr.create_network("example.com".into(), "/".into(), "Net".into(), "a@b.com".into());
-        mgr.create_site(1, "example.com".into(), "/".into()).unwrap();
+        mgr.create_network(
+            "example.com".into(),
+            "/".into(),
+            "Net".into(),
+            "a@b.com".into(),
+        );
+        mgr.create_site(1, "example.com".into(), "/".into())
+            .unwrap();
 
         let result = mgr.create_site(1, "example.com".into(), "/".into());
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), MultisiteError::DuplicateSite { .. }));
+        assert!(matches!(
+            result.unwrap_err(),
+            MultisiteError::DuplicateSite { .. }
+        ));
     }
 
     #[test]
     fn test_create_site_invalid_network() {
         let mgr = NetworkManager::new();
         let result = mgr.create_site(999, "x.com".into(), "/".into());
-        assert!(matches!(result.unwrap_err(), MultisiteError::NetworkNotFound(999)));
+        assert!(matches!(
+            result.unwrap_err(),
+            MultisiteError::NetworkNotFound(999)
+        ));
     }
 
     #[test]
     fn test_update_and_delete_site() {
         let mgr = NetworkManager::new();
-        mgr.create_network("example.com".into(), "/".into(), "Net".into(), "a@b.com".into());
-        mgr.create_site(1, "example.com".into(), "/".into()).unwrap();
+        mgr.create_network(
+            "example.com".into(),
+            "/".into(),
+            "Net".into(),
+            "a@b.com".into(),
+        );
+        mgr.create_site(1, "example.com".into(), "/".into())
+            .unwrap();
 
         // Update: archive the site
         let updated = mgr
@@ -366,9 +387,18 @@ mod tests {
 
     #[test]
     fn test_site_status_from_flags() {
-        assert_eq!(SiteStatus::from_flags(false, false, false), SiteStatus::Active);
-        assert_eq!(SiteStatus::from_flags(true, false, false), SiteStatus::Archived);
-        assert_eq!(SiteStatus::from_flags(false, true, false), SiteStatus::Deleted);
+        assert_eq!(
+            SiteStatus::from_flags(false, false, false),
+            SiteStatus::Active
+        );
+        assert_eq!(
+            SiteStatus::from_flags(true, false, false),
+            SiteStatus::Archived
+        );
+        assert_eq!(
+            SiteStatus::from_flags(false, true, false),
+            SiteStatus::Deleted
+        );
         assert_eq!(SiteStatus::from_flags(false, false, true), SiteStatus::Spam);
         // Spam takes priority
         assert_eq!(SiteStatus::from_flags(true, true, true), SiteStatus::Spam);

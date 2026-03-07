@@ -152,7 +152,9 @@ pub fn write_routes() -> Router<ApiState> {
         )
         .route(
             "/wp-json/wp/v2/comments/{id}",
-            axum::routing::put(update_comment).patch(update_comment).delete(delete_comment),
+            axum::routing::put(update_comment)
+                .patch(update_comment)
+                .delete(delete_comment),
         )
 }
 
@@ -225,7 +227,7 @@ async fn list_comments(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
     let total_pages = if per_page > 0 {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     } else {
         1
     };
@@ -297,8 +299,8 @@ async fn get_comment(
         .ok_or(WpError::not_found("Comment not found"))?;
 
     let context = RestContext::from_option(params.context.as_deref());
-    let mut val = serde_json::to_value(&build_comment(comment, &state.site_url))
-        .unwrap_or_default();
+    let mut val =
+        serde_json::to_value(build_comment(comment, &state.site_url)).unwrap_or_default();
     filter_comment_context(&mut val, context);
     Ok(Json(val))
 }

@@ -22,17 +22,25 @@ pub fn routes() -> Router<ApiState> {
 /// List installed plugins.
 ///
 /// WordPress stores active plugins in `active_plugins` option.
-async fn list_plugins(
-    State(state): State<ApiState>,
-) -> Json<Vec<Value>> {
-    let active_list = get_option(&state, "active_plugins").await.unwrap_or_default();
-    let active_slugs: Vec<&str> = active_list.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+async fn list_plugins(State(state): State<ApiState>) -> Json<Vec<Value>> {
+    let active_list = get_option(&state, "active_plugins")
+        .await
+        .unwrap_or_default();
+    let active_slugs: Vec<&str> = active_list
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .collect();
 
     // Return a built-in "hello" plugin like WordPress ships with
-    let plugins = vec![
-        plugin_json("hello-rustpress", "Hello RustPress", "1.0", "A demo plugin.",
-                     active_slugs.contains(&"hello-rustpress"), &state.site_url),
-    ];
+    let plugins = vec![plugin_json(
+        "hello-rustpress",
+        "Hello RustPress",
+        "1.0",
+        "A demo plugin.",
+        active_slugs.contains(&"hello-rustpress"),
+        &state.site_url,
+    )];
 
     Json(plugins)
 }
@@ -42,17 +50,33 @@ async fn get_plugin(
     State(state): State<ApiState>,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, WpError> {
-    let active_list = get_option(&state, "active_plugins").await.unwrap_or_default();
+    let active_list = get_option(&state, "active_plugins")
+        .await
+        .unwrap_or_default();
     let is_active = active_list.split(',').any(|s| s.trim() == slug);
 
     if slug == "hello-rustpress" {
-        Ok(Json(plugin_json("hello-rustpress", "Hello RustPress", "1.0", "A demo plugin.", is_active, &state.site_url)))
+        Ok(Json(plugin_json(
+            "hello-rustpress",
+            "Hello RustPress",
+            "1.0",
+            "A demo plugin.",
+            is_active,
+            &state.site_url,
+        )))
     } else {
         Err(WpError::not_found("Plugin not found"))
     }
 }
 
-fn plugin_json(slug: &str, name: &str, version: &str, description: &str, active: bool, site_url: &str) -> Value {
+fn plugin_json(
+    slug: &str,
+    name: &str,
+    version: &str,
+    description: &str,
+    active: bool,
+    site_url: &str,
+) -> Value {
     let base = site_url.trim_end_matches('/');
     let status = if active { "active" } else { "inactive" };
     json!({
@@ -88,6 +112,10 @@ async fn get_option(state: &ApiState, key: &str) -> Option<String> {
         .flatten()
         .and_then(|o| {
             let val = o.option_value.trim().to_string();
-            if val.is_empty() { None } else { Some(val) }
+            if val.is_empty() {
+                None
+            } else {
+                Some(val)
+            }
         })
 }

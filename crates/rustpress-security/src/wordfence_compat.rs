@@ -92,40 +92,19 @@ impl WordfenceSettings {
 
         Self {
             firewall_enabled: is_enabled(options.get(option_keys::FIREWALL_ENABLED), true),
-            login_security_enabled: is_enabled(
-                options.get(option_keys::LOGIN_SEC_ENABLED),
-                true,
-            ),
-            max_login_failures: parse_u32(
-                options.get(option_keys::LOGIN_SEC_MAX_FAILURES),
-                5,
-            ),
-            lockout_minutes: parse_u32(
-                options.get(option_keys::LOGIN_SEC_LOCKOUT_MINS),
-                30,
-            ),
-            rate_limit_enabled: is_enabled(
-                options.get(option_keys::RATE_LIMIT_ENABLED),
-                true,
-            ),
-            max_requests_per_minute: parse_u32(
-                options.get(option_keys::RATE_LIMIT_MAX_RPM),
-                120,
-            ),
+            login_security_enabled: is_enabled(options.get(option_keys::LOGIN_SEC_ENABLED), true),
+            max_login_failures: parse_u32(options.get(option_keys::LOGIN_SEC_MAX_FAILURES), 5),
+            lockout_minutes: parse_u32(options.get(option_keys::LOGIN_SEC_LOCKOUT_MINS), 30),
+            rate_limit_enabled: is_enabled(options.get(option_keys::RATE_LIMIT_ENABLED), true),
+            max_requests_per_minute: parse_u32(options.get(option_keys::RATE_LIMIT_MAX_RPM), 120),
             blocked_ips,
             whitelisted_ips,
             scan_schedule: options
                 .get(option_keys::SCAN_SCHEDULE)
                 .cloned()
                 .unwrap_or_else(|| "daily".into()),
-            two_factor_enabled: is_enabled(
-                options.get(option_keys::TWO_FACTOR_ENABLED),
-                false,
-            ),
-            country_blocking_enabled: is_enabled(
-                options.get(option_keys::COUNTRY_BLOCKING),
-                false,
-            ),
+            two_factor_enabled: is_enabled(options.get(option_keys::TWO_FACTOR_ENABLED), false),
+            country_blocking_enabled: is_enabled(options.get(option_keys::COUNTRY_BLOCKING), false),
         }
     }
 
@@ -156,10 +135,7 @@ impl WordfenceSettings {
                 option_keys::RATE_LIMIT_MAX_RPM.into(),
                 self.max_requests_per_minute.to_string(),
             ),
-            (
-                option_keys::BLOCKED_IPS.into(),
-                self.blocked_ips.join(","),
-            ),
+            (option_keys::BLOCKED_IPS.into(), self.blocked_ips.join(",")),
             (
                 option_keys::WHITELISTED_IPS.into(),
                 self.whitelisted_ips.join(","),

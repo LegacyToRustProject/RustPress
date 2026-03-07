@@ -76,24 +76,15 @@ impl BlockRenderer {
         match block.name.as_str() {
             "core/columns" => {
                 let class = extract_class_attr(block, "wp-block-columns");
-                format!(
-                    "<div class=\"{}\">{}</div>",
-                    class, inner_rendered
-                )
+                format!("<div class=\"{}\">{}</div>", class, inner_rendered)
             }
             "core/column" => {
                 let class = extract_class_attr(block, "wp-block-column");
-                format!(
-                    "<div class=\"{}\">{}</div>",
-                    class, inner_rendered
-                )
+                format!("<div class=\"{}\">{}</div>", class, inner_rendered)
             }
             "core/group" => {
                 let class = extract_class_attr(block, "wp-block-group");
-                format!(
-                    "<div class=\"{}\">{}</div>",
-                    class, inner_rendered
-                )
+                format!("<div class=\"{}\">{}</div>", class, inner_rendered)
             }
             "core/row" => {
                 let class = extract_class_attr(block, "is-layout-flex");
@@ -110,14 +101,9 @@ impl BlockRenderer {
                 )
             }
             "core/buttons" => {
-                format!(
-                    "<div class=\"wp-block-buttons\">{}</div>",
-                    inner_rendered
-                )
+                format!("<div class=\"wp-block-buttons\">{}</div>", inner_rendered)
             }
-            "core/query" | "core/query-loop" => {
-                inner_rendered
-            }
+            "core/query" | "core/query-loop" => inner_rendered,
             _ => {
                 // Unknown container: just render inner blocks
                 inner_rendered
@@ -150,9 +136,8 @@ mod tests {
     #[test]
     fn test_render_simple_paragraph() {
         let renderer = make_renderer();
-        let blocks = parse_blocks(
-            r#"<!-- wp:paragraph --><p>Hello world</p><!-- /wp:paragraph -->"#,
-        );
+        let blocks =
+            parse_blocks(r#"<!-- wp:paragraph --><p>Hello world</p><!-- /wp:paragraph -->"#);
         let html = renderer.render_blocks(&blocks);
         assert_eq!(html, "<p>Hello world</p>");
     }

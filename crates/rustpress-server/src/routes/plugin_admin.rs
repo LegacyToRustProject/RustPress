@@ -13,7 +13,10 @@ use axum::{
     routing::get,
     Router,
 };
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect,
+};
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -101,10 +104,7 @@ fn render_admin(state: &AppState, template: &str, context: &tera::Context) -> Ht
         Ok(html) => Html(html),
         Err(e) => {
             tracing::error!("Plugin admin template error: {}", e);
-            Html(format!(
-                "<h1>Admin Template Error</h1><pre>{}</pre>",
-                e
-            ))
+            Html(format!("<h1>Admin Template Error</h1><pre>{}</pre>", e))
         }
     }
 }
@@ -399,7 +399,10 @@ async fn seo_settings_page(
         .unwrap_or(0);
 
     ctx.insert("title_separator", &sep);
-    ctx.insert("separators", &vec!["-", "|", "/", "\\", "*", "~", "&bull;", "&mdash;"]);
+    ctx.insert(
+        "separators",
+        &vec!["-", "|", "/", "\\", "*", "~", "&bull;", "&mdash;"],
+    );
     ctx.insert("homepage_title", &homepage_title);
     ctx.insert("homepage_desc", &homepage_desc);
     ctx.insert("post_title_template", &post_title);
@@ -422,14 +425,46 @@ async fn seo_settings_save(
     Form(form): Form<SeoSettingsForm>,
 ) -> Html<String> {
     let options = vec![
-        ("_yoast_wpseo_separator", form.seo_title_separator.unwrap_or_else(|| "-".into())),
-        ("_yoast_wpseo_title-homepage", form.seo_homepage_title.unwrap_or_default()),
-        ("_yoast_wpseo_metadesc-homepage", form.seo_homepage_desc.unwrap_or_default()),
-        ("_yoast_wpseo_title-post", form.seo_post_title.unwrap_or_default()),
-        ("_yoast_wpseo_title-page", form.seo_page_title.unwrap_or_default()),
-        ("_yoast_wpseo_noindex-subpages", if form.seo_noindex_empty_cat.is_some() { "1".into() } else { "0".into() }),
-        ("_yoast_wpseo_og_default_image", form.seo_og_default_image.unwrap_or_default()),
-        ("_yoast_wpseo_opengraph", if form.seo_og_enabled.is_some() { "1".into() } else { "0".into() }),
+        (
+            "_yoast_wpseo_separator",
+            form.seo_title_separator.unwrap_or_else(|| "-".into()),
+        ),
+        (
+            "_yoast_wpseo_title-homepage",
+            form.seo_homepage_title.unwrap_or_default(),
+        ),
+        (
+            "_yoast_wpseo_metadesc-homepage",
+            form.seo_homepage_desc.unwrap_or_default(),
+        ),
+        (
+            "_yoast_wpseo_title-post",
+            form.seo_post_title.unwrap_or_default(),
+        ),
+        (
+            "_yoast_wpseo_title-page",
+            form.seo_page_title.unwrap_or_default(),
+        ),
+        (
+            "_yoast_wpseo_noindex-subpages",
+            if form.seo_noindex_empty_cat.is_some() {
+                "1".into()
+            } else {
+                "0".into()
+            },
+        ),
+        (
+            "_yoast_wpseo_og_default_image",
+            form.seo_og_default_image.unwrap_or_default(),
+        ),
+        (
+            "_yoast_wpseo_opengraph",
+            if form.seo_og_enabled.is_some() {
+                "1".into()
+            } else {
+                "0".into()
+            },
+        ),
     ];
 
     for (key, value) in options {
@@ -573,7 +608,9 @@ async fn acf_fields_save(
                 post_date: Set(now),
                 post_date_gmt: Set(now),
                 post_content: Set(format!(
-                    "a:1:{{s:4:\"type\";s:{}:\"{}\";}}", field_type.len(), field_type
+                    "a:1:{{s:4:\"type\";s:{}:\"{}\";}}",
+                    field_type.len(),
+                    field_type
                 )),
                 post_title: Set(label.clone()),
                 post_excerpt: Set(field_name),
@@ -833,7 +870,10 @@ async fn security_dashboard_save(
         }
         "firewall" => {
             let enabled = if form.waf_enabled.is_some() { "1" } else { "0" };
-            let _ = state.options.update_option("wf_firewall_enabled", enabled).await;
+            let _ = state
+                .options
+                .update_option("wf_firewall_enabled", enabled)
+                .await;
         }
         "rate_limit" => {
             let enabled = if form.rate_limit_enabled.is_some() {

@@ -190,7 +190,14 @@ mod tests {
         let names: Vec<&str> = sizes.iter().map(|s| s.name.as_str()).collect();
         assert_eq!(
             names,
-            vec!["thumbnail", "medium", "medium_large", "large", "1536x1536", "2048x2048"]
+            vec![
+                "thumbnail",
+                "medium",
+                "medium_large",
+                "large",
+                "1536x1536",
+                "2048x2048"
+            ]
         );
     }
 

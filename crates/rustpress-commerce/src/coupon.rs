@@ -147,7 +147,10 @@ impl CouponManager {
                         let excluded = coupon.excluded_product_ids.contains(&item.product_id);
                         included && !excluded
                     })
-                    .map(|item| (coupon.amount * item.quantity as f64).min(item.price * item.quantity as f64))
+                    .map(|item| {
+                        (coupon.amount * item.quantity as f64)
+                            .min(item.price * item.quantity as f64)
+                    })
                     .sum();
                 applicable_total
             }

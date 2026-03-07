@@ -1,5 +1,7 @@
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher as ArgonHasher, PasswordVerifier, SaltString},
+    password_hash::{
+        rand_core::OsRng, PasswordHash, PasswordHasher as ArgonHasher, PasswordVerifier, SaltString,
+    },
     Argon2,
 };
 use md5::{Digest, Md5};
@@ -33,8 +35,7 @@ impl PasswordHasher {
 
     /// Hash a password using bcrypt (WordPress legacy compatibility).
     pub fn hash_bcrypt(password: &str) -> Result<String, PasswordError> {
-        bcrypt::hash(password, bcrypt::DEFAULT_COST)
-            .map_err(|e| PasswordError::Hash(e.to_string()))
+        bcrypt::hash(password, bcrypt::DEFAULT_COST).map_err(|e| PasswordError::Hash(e.to_string()))
     }
 
     /// Verify a password against a stored hash.
@@ -43,8 +44,7 @@ impl PasswordHasher {
         // Argon2 hashes start with $argon2
         if hash.starts_with("$argon2") {
             debug!("verifying argon2 hash");
-            let parsed = PasswordHash::new(hash)
-                .map_err(|e| PasswordError::Hash(e.to_string()))?;
+            let parsed = PasswordHash::new(hash).map_err(|e| PasswordError::Hash(e.to_string()))?;
             return Ok(Argon2::default()
                 .verify_password(password.as_bytes(), &parsed)
                 .is_ok());
@@ -53,8 +53,7 @@ impl PasswordHasher {
         // bcrypt hashes start with $2a$, $2b$, or $2y$
         if hash.starts_with("$2a$") || hash.starts_with("$2b$") || hash.starts_with("$2y$") {
             debug!("verifying bcrypt hash");
-            return bcrypt::verify(password, hash)
-                .map_err(|e| PasswordError::Hash(e.to_string()));
+            return bcrypt::verify(password, hash).map_err(|e| PasswordError::Hash(e.to_string()));
         }
 
         // WordPress PHPass hashes start with $P$ or $H$
@@ -122,7 +121,7 @@ fn phpass_verify(password: &str, hash: &str) -> Result<bool, PasswordError> {
     // Iterate: digest = MD5(digest + password)
     for _ in 0..count {
         let mut hasher = Md5::new();
-        hasher.update(&digest);
+        hasher.update(digest);
         hasher.update(password.as_bytes());
         digest = hasher.finalize();
     }

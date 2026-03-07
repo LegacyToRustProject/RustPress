@@ -13,34 +13,17 @@ pub struct TemplateHierarchy {
 #[derive(Debug, Clone)]
 pub enum PageType {
     /// Single post: single-{post_type}-{slug}.html -> single-{post_type}.html -> single.html -> singular.html -> index.html
-    Single {
-        post_type: String,
-        slug: String,
-    },
+    Single { post_type: String, slug: String },
     /// Single page: page-{slug}.html -> page-{id}.html -> page.html -> singular.html -> index.html
-    Page {
-        slug: String,
-        id: u64,
-    },
+    Page { slug: String, id: u64 },
     /// Archive: archive-{post_type}.html -> archive.html -> index.html
-    Archive {
-        post_type: String,
-    },
+    Archive { post_type: String },
     /// Category: category-{slug}.html -> category-{id}.html -> category.html -> archive.html -> index.html
-    Category {
-        slug: String,
-        id: u64,
-    },
+    Category { slug: String, id: u64 },
     /// Tag: tag-{slug}.html -> tag-{id}.html -> tag.html -> archive.html -> index.html
-    Tag {
-        slug: String,
-        id: u64,
-    },
+    Tag { slug: String, id: u64 },
     /// Author: author-{nicename}.html -> author-{id}.html -> author.html -> archive.html -> index.html
-    Author {
-        nicename: String,
-        id: u64,
-    },
+    Author { nicename: String, id: u64 },
     /// Date archive
     DateArchive,
     /// Search results
@@ -52,9 +35,7 @@ pub enum PageType {
     /// Home (blog posts index)
     Home,
     /// Attachment
-    Attachment {
-        mime_type: String,
-    },
+    Attachment { mime_type: String },
 }
 
 impl TemplateHierarchy {
@@ -164,13 +145,16 @@ mod tests {
             slug: "hello-world".to_string(),
         });
 
-        assert_eq!(candidates, vec![
-            "single-post-hello-world.html",
-            "single-post.html",
-            "single.html",
-            "singular.html",
-            "index.html",
-        ]);
+        assert_eq!(
+            candidates,
+            vec![
+                "single-post-hello-world.html",
+                "single-post.html",
+                "single.html",
+                "singular.html",
+                "index.html",
+            ]
+        );
     }
 
     #[test]
@@ -181,13 +165,16 @@ mod tests {
             id: 42,
         });
 
-        assert_eq!(candidates, vec![
-            "page-about.html",
-            "page-42.html",
-            "page.html",
-            "singular.html",
-            "index.html",
-        ]);
+        assert_eq!(
+            candidates,
+            vec![
+                "page-about.html",
+                "page-42.html",
+                "page.html",
+                "singular.html",
+                "index.html",
+            ]
+        );
     }
 
     #[test]
@@ -198,13 +185,16 @@ mod tests {
             id: 5,
         });
 
-        assert_eq!(candidates, vec![
-            "category-news.html",
-            "category-5.html",
-            "category.html",
-            "archive.html",
-            "index.html",
-        ]);
+        assert_eq!(
+            candidates,
+            vec![
+                "category-news.html",
+                "category-5.html",
+                "category.html",
+                "archive.html",
+                "index.html",
+            ]
+        );
     }
 
     #[test]
@@ -225,11 +215,10 @@ mod tests {
     fn test_front_page_candidates() {
         let hierarchy = TemplateHierarchy::new("/tmp/theme");
         let candidates = hierarchy.get_candidates(&PageType::FrontPage);
-        assert_eq!(candidates, vec![
-            "front-page.html",
-            "home.html",
-            "index.html",
-        ]);
+        assert_eq!(
+            candidates,
+            vec!["front-page.html", "home.html", "index.html",]
+        );
     }
 
     #[test]

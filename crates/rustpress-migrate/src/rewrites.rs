@@ -101,9 +101,9 @@ pub fn extract_redirects(rules: &[RewriteRule]) -> Vec<RedirectRule> {
     rules
         .iter()
         .filter(|r| {
-            r.flags.iter().any(|f| {
-                f.starts_with("R=") || f == "R" || f == "redirect" || f == "permanent"
-            })
+            r.flags
+                .iter()
+                .any(|f| f.starts_with("R=") || f == "R" || f == "redirect" || f == "permanent")
         })
         .map(|r| {
             let status = if r.flags.iter().any(|f| f == "R=301" || f == "permanent") {

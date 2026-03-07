@@ -142,8 +142,7 @@ impl BlockRegistry {
     /// it will be replaced.
     pub fn register_block_type(&mut self, block_type: BlockType) {
         tracing::debug!("Registering block type: {}", block_type.name);
-        self.block_types
-            .insert(block_type.name.clone(), block_type);
+        self.block_types.insert(block_type.name.clone(), block_type);
     }
 
     /// Get a registered block type by name.

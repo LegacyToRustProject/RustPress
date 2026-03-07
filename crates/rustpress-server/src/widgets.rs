@@ -233,7 +233,7 @@ impl WidgetConfig {
         for area in WIDGET_AREAS {
             self.areas
                 .entry(area.id.to_string())
-                .or_insert_with(Vec::new);
+                .or_default();
         }
     }
 }
@@ -309,9 +309,7 @@ async fn render_single_widget(
         WidgetType::RecentPosts { title, count } => {
             render_recent_posts(title, *count, db, site_url).await
         }
-        WidgetType::Categories { title, display } => {
-            render_categories(title, display, db).await
-        }
+        WidgetType::Categories { title, display } => render_categories(title, display, db).await,
         WidgetType::Archives { title } => render_archives(title, db).await,
         WidgetType::Search { title } => render_search(title),
         WidgetType::Text { title, content } => render_text(title, content),
@@ -348,7 +346,10 @@ async fn render_recent_posts(
         title
     };
 
-    let mut html = format!("<h3 class=\"widget-title\">{}</h3>\n<ul>\n", escape_html(display_title));
+    let mut html = format!(
+        "<h3 class=\"widget-title\">{}</h3>\n<ul>\n",
+        escape_html(display_title)
+    );
     for p in &posts {
         html.push_str(&format!(
             "  <li><a href=\"/{}\">{}</a></li>\n",
@@ -360,11 +361,7 @@ async fn render_recent_posts(
     html
 }
 
-async fn render_categories(
-    title: &str,
-    display: &str,
-    db: &DatabaseConnection,
-) -> String {
+async fn render_categories(title: &str, display: &str, db: &DatabaseConnection) -> String {
     let tt_records = wp_term_taxonomy::Entity::find()
         .filter(wp_term_taxonomy::Column::Taxonomy.eq("category"))
         .all(db)
@@ -384,10 +381,8 @@ async fn render_categories(
         .unwrap_or_default();
 
     // Build a count map from term_taxonomy
-    let count_map: std::collections::HashMap<u64, i64> = tt_records
-        .iter()
-        .map(|tt| (tt.term_id, tt.count))
-        .collect();
+    let count_map: std::collections::HashMap<u64, i64> =
+        tt_records.iter().map(|tt| (tt.term_id, tt.count)).collect();
 
     let display_title = if title.is_empty() {
         "Categories"
@@ -395,7 +390,10 @@ async fn render_categories(
         title
     };
 
-    let mut html = format!("<h3 class=\"widget-title\">{}</h3>\n", escape_html(display_title));
+    let mut html = format!(
+        "<h3 class=\"widget-title\">{}</h3>\n",
+        escape_html(display_title)
+    );
 
     if display == "dropdown" {
         html.push_str("<form>\n<select onchange=\"if(this.value)location.href=this.value\">\n");
@@ -432,13 +430,12 @@ async fn render_archives(title: &str, db: &DatabaseConnection) -> String {
     use sea_orm::{ConnectionTrait, Statement};
     let sql = "SELECT DATE_FORMAT(post_date, '%Y-%m') AS ym, COUNT(*) AS cnt FROM wp_posts WHERE post_type='post' AND post_status='publish' GROUP BY ym ORDER BY ym DESC LIMIT 12";
 
-    let display_title = if title.is_empty() {
-        "Archives"
-    } else {
-        title
-    };
+    let display_title = if title.is_empty() { "Archives" } else { title };
 
-    let mut html = format!("<h3 class=\"widget-title\">{}</h3>\n<ul>\n", escape_html(display_title));
+    let mut html = format!(
+        "<h3 class=\"widget-title\">{}</h3>\n<ul>\n",
+        escape_html(display_title)
+    );
 
     if let Ok(rows) = db
         .query_all(Statement::from_string(
@@ -489,11 +486,7 @@ async fn render_archives(title: &str, db: &DatabaseConnection) -> String {
 }
 
 fn render_search(title: &str) -> String {
-    let display_title = if title.is_empty() {
-        "Search"
-    } else {
-        title
-    };
+    let display_title = if title.is_empty() { "Search" } else { title };
 
     format!(
         r#"<h3 class="widget-title">{}</h3>
@@ -516,7 +509,10 @@ fn render_text(title: &str, content: &str) -> String {
             escape_html(title)
         ));
     }
-    html.push_str(&format!("<div class=\"textwidget\">{}</div>", escape_html(content)));
+    html.push_str(&format!(
+        "<div class=\"textwidget\">{}</div>",
+        escape_html(content)
+    ));
     html
 }
 
@@ -529,7 +525,10 @@ fn render_custom_html(title: &str, content: &str) -> String {
         ));
     }
     // CustomHTML: output raw HTML (not escaped)
-    html.push_str(&format!("<div class=\"custom-html-widget\">{}</div>", content));
+    html.push_str(&format!(
+        "<div class=\"custom-html-widget\">{}</div>",
+        content
+    ));
     html
 }
 
@@ -547,11 +546,7 @@ fn render_meta(title: &str, _site_url: &str) -> String {
     )
 }
 
-async fn render_recent_comments(
-    title: &str,
-    count: u32,
-    db: &DatabaseConnection,
-) -> String {
+async fn render_recent_comments(title: &str, count: u32, db: &DatabaseConnection) -> String {
     let comments = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("1"))
         .filter(wp_comments::Column::CommentType.eq("comment"))
@@ -567,14 +562,16 @@ async fn render_recent_comments(
         title
     };
 
-    let mut html = format!("<h3 class=\"widget-title\">{}</h3>\n<ul>\n", escape_html(display_title));
+    let mut html = format!(
+        "<h3 class=\"widget-title\">{}</h3>\n<ul>\n",
+        escape_html(display_title)
+    );
 
     for c in &comments {
         // Try to load the post title for context
-        let post_title = if let Ok(Some(post)) =
-            wp_posts::Entity::find_by_id(c.comment_post_id)
-                .one(db)
-                .await
+        let post_title = if let Ok(Some(post)) = wp_posts::Entity::find_by_id(c.comment_post_id)
+            .one(db)
+            .await
         {
             post.post_title
         } else {
@@ -618,10 +615,7 @@ async fn render_calendar(title: &str, db: &DatabaseConnection) -> String {
     );
     let mut post_days: std::collections::HashSet<u32> = std::collections::HashSet::new();
     if let Ok(rows) = db
-        .query_all(Statement::from_string(
-            sea_orm::DatabaseBackend::MySql,
-            sql,
-        ))
+        .query_all(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
         .await
     {
         for row in &rows {
@@ -640,7 +634,8 @@ async fn render_calendar(title: &str, db: &DatabaseConnection) -> String {
     // Simple calendar grid
     let y: i32 = year.parse().unwrap_or(2026);
     let m: u32 = month.parse().unwrap_or(1);
-    let first_day = chrono::NaiveDate::from_ymd_opt(y, m, 1).unwrap_or(chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
+    let first_day = chrono::NaiveDate::from_ymd_opt(y, m, 1)
+        .unwrap_or(chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
     let days_in_month = if m == 12 {
         chrono::NaiveDate::from_ymd_opt(y + 1, 1, 1)
     } else {
@@ -690,7 +685,11 @@ async fn render_tag_cloud(title: &str, db: &DatabaseConnection) -> String {
         .await
         .unwrap_or_default();
 
-    let term_ids: Vec<u64> = tt_records.iter().filter(|tt| tt.count > 0).map(|tt| tt.term_id).collect();
+    let term_ids: Vec<u64> = tt_records
+        .iter()
+        .filter(|tt| tt.count > 0)
+        .map(|tt| tt.term_id)
+        .collect();
     if term_ids.is_empty() {
         return format!(
             "<h3 class=\"widget-title\">{}</h3>\n<p>No tags found.</p>",
@@ -705,10 +704,8 @@ async fn render_tag_cloud(title: &str, db: &DatabaseConnection) -> String {
         .await
         .unwrap_or_default();
 
-    let count_map: std::collections::HashMap<u64, i64> = tt_records
-        .iter()
-        .map(|tt| (tt.term_id, tt.count))
-        .collect();
+    let count_map: std::collections::HashMap<u64, i64> =
+        tt_records.iter().map(|tt| (tt.term_id, tt.count)).collect();
 
     let max_count = count_map.values().copied().max().unwrap_or(1) as f64;
 

@@ -16,9 +16,7 @@ pub fn routes() -> Router<Arc<AppState>> {
     Router::new().route("/health", get(health_check))
 }
 
-async fn health_check(
-    State(state): State<Arc<AppState>>,
-) -> (axum::http::StatusCode, Json<Value>) {
+async fn health_check(State(state): State<Arc<AppState>>) -> (axum::http::StatusCode, Json<Value>) {
     let uptime = START_TIME.get().map(|t| t.elapsed().as_secs()).unwrap_or(0);
 
     // Check DB connectivity

@@ -18,14 +18,8 @@ pub struct PluginActionResponse {
 
 pub fn routes() -> Router<AdminState> {
     Router::new()
-        .route(
-            "/admin/plugins/{name}/activate",
-            post(activate_plugin),
-        )
-        .route(
-            "/admin/plugins/{name}/deactivate",
-            post(deactivate_plugin),
-        )
+        .route("/admin/plugins/{name}/activate", post(activate_plugin))
+        .route("/admin/plugins/{name}/deactivate", post(deactivate_plugin))
 }
 
 async fn activate_plugin(

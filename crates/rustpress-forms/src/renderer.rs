@@ -55,7 +55,11 @@ pub fn render_field(field: &FieldConfig) -> String {
 
     let id = format!("field-{}", &field.name);
     let required_attr = if field.required { " required" } else { "" };
-    let required_marker = if field.required { " <span class=\"required\">*</span>" } else { "" };
+    let required_marker = if field.required {
+        " <span class=\"required\">*</span>"
+    } else {
+        ""
+    };
 
     // Label (skip for hidden fields)
     if field.field_type != FormField::Hidden {
@@ -253,10 +257,7 @@ mod tests {
             placeholder: Some("Enter username".into()),
             default_value: None,
             options: vec![],
-            validation_rules: vec![
-                ValidationRule::MinLength(3),
-                ValidationRule::MaxLength(20),
-            ],
+            validation_rules: vec![ValidationRule::MinLength(3), ValidationRule::MaxLength(20)],
         };
 
         let html = render_field(&field_cfg);

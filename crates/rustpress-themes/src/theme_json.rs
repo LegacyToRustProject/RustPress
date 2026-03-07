@@ -123,14 +123,12 @@ impl ThemeJson {
     pub fn from_file(path: &Path) -> Result<Self, String> {
         let content = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read theme.json: {}", e))?;
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse theme.json: {}", e))
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse theme.json: {}", e))
     }
 
     /// Load from a JSON string.
     pub fn from_str(json: &str) -> Result<Self, String> {
-        serde_json::from_str(json)
-            .map_err(|e| format!("Failed to parse theme.json: {}", e))
+        serde_json::from_str(json).map_err(|e| format!("Failed to parse theme.json: {}", e))
     }
 
     /// Generate CSS custom properties matching WordPress's global-styles-inline-css output.
@@ -260,21 +258,26 @@ impl ThemeJson {
                     css.push_str(&format!("\tfont-style: {};\n", face.font_style));
                 }
                 // Convert file:./assets/fonts/... to /static/fonts/...
-                let srcs: Vec<String> = face.src.iter().map(|s| {
-                    let path = s.replace("file:./assets/fonts/", "/static/fonts/")
-                        .replace("file:./", "/static/");
-                    // Determine format from extension
-                    let format = if path.ends_with(".woff2") {
-                        "woff2"
-                    } else if path.ends_with(".woff") {
-                        "woff"
-                    } else if path.ends_with(".ttf") {
-                        "truetype"
-                    } else {
-                        "woff2"
-                    };
-                    format!("url(\"{}\") format(\"{}\")", path, format)
-                }).collect();
+                let srcs: Vec<String> = face
+                    .src
+                    .iter()
+                    .map(|s| {
+                        let path = s
+                            .replace("file:./assets/fonts/", "/static/fonts/")
+                            .replace("file:./", "/static/");
+                        // Determine format from extension
+                        let format = if path.ends_with(".woff2") {
+                            "woff2"
+                        } else if path.ends_with(".woff") {
+                            "woff"
+                        } else if path.ends_with(".ttf") {
+                            "truetype"
+                        } else {
+                            "woff2"
+                        };
+                        format!("url(\"{}\") format(\"{}\")", path, format)
+                    })
+                    .collect();
                 css.push_str(&format!("\tsrc: {};\n", srcs.join(", ")));
                 css.push_str("\tfont-display: fallback;\n");
                 css.push_str("}\n");
@@ -302,40 +305,82 @@ impl ThemeJson {
         }
 
         // Typography
-        if let Some(ff) = styles.pointer("/typography/fontFamily").and_then(|v| v.as_str()) {
+        if let Some(ff) = styles
+            .pointer("/typography/fontFamily")
+            .and_then(|v| v.as_str())
+        {
             body_props.push(format!("\tfont-family: {};", resolve_var_ref(ff)));
         }
-        if let Some(fs) = styles.pointer("/typography/fontSize").and_then(|v| v.as_str()) {
+        if let Some(fs) = styles
+            .pointer("/typography/fontSize")
+            .and_then(|v| v.as_str())
+        {
             body_props.push(format!("\tfont-size: {};", resolve_var_ref(fs)));
         }
-        if let Some(fw) = styles.pointer("/typography/fontWeight").and_then(|v| v.as_str()) {
+        if let Some(fw) = styles
+            .pointer("/typography/fontWeight")
+            .and_then(|v| v.as_str())
+        {
             body_props.push(format!("\tfont-weight: {};", fw));
         }
-        if let Some(lh) = styles.pointer("/typography/lineHeight").and_then(|v| v.as_str()) {
+        if let Some(lh) = styles
+            .pointer("/typography/lineHeight")
+            .and_then(|v| v.as_str())
+        {
             body_props.push(format!("\tline-height: {};", lh));
         }
-        if let Some(ls) = styles.pointer("/typography/letterSpacing").and_then(|v| v.as_str()) {
+        if let Some(ls) = styles
+            .pointer("/typography/letterSpacing")
+            .and_then(|v| v.as_str())
+        {
             body_props.push(format!("\tletter-spacing: {};", ls));
         }
 
         // Spacing
         if let Some(gap) = styles.pointer("/spacing/blockGap").and_then(|v| v.as_str()) {
-            body_props.push(format!("\t--wp--style--block-gap: {};", resolve_var_ref(gap)));
+            body_props.push(format!(
+                "\t--wp--style--block-gap: {};",
+                resolve_var_ref(gap)
+            ));
         }
         // WordPress converts body padding to --wp--style--root--padding-* CSS variables,
         // NOT direct padding properties. These variables are consumed by .wp-site-blocks
         // and .has-global-padding selectors.
-        if let Some(pt) = styles.pointer("/spacing/padding/top").and_then(|v| v.as_str()) {
-            body_props.push(format!("\t--wp--style--root--padding-top: {};", resolve_var_ref(pt)));
+        if let Some(pt) = styles
+            .pointer("/spacing/padding/top")
+            .and_then(|v| v.as_str())
+        {
+            body_props.push(format!(
+                "\t--wp--style--root--padding-top: {};",
+                resolve_var_ref(pt)
+            ));
         }
-        if let Some(pr) = styles.pointer("/spacing/padding/right").and_then(|v| v.as_str()) {
-            body_props.push(format!("\t--wp--style--root--padding-right: {};", resolve_var_ref(pr)));
+        if let Some(pr) = styles
+            .pointer("/spacing/padding/right")
+            .and_then(|v| v.as_str())
+        {
+            body_props.push(format!(
+                "\t--wp--style--root--padding-right: {};",
+                resolve_var_ref(pr)
+            ));
         }
-        if let Some(pb) = styles.pointer("/spacing/padding/bottom").and_then(|v| v.as_str()) {
-            body_props.push(format!("\t--wp--style--root--padding-bottom: {};", resolve_var_ref(pb)));
+        if let Some(pb) = styles
+            .pointer("/spacing/padding/bottom")
+            .and_then(|v| v.as_str())
+        {
+            body_props.push(format!(
+                "\t--wp--style--root--padding-bottom: {};",
+                resolve_var_ref(pb)
+            ));
         }
-        if let Some(pl) = styles.pointer("/spacing/padding/left").and_then(|v| v.as_str()) {
-            body_props.push(format!("\t--wp--style--root--padding-left: {};", resolve_var_ref(pl)));
+        if let Some(pl) = styles
+            .pointer("/spacing/padding/left")
+            .and_then(|v| v.as_str())
+        {
+            body_props.push(format!(
+                "\t--wp--style--root--padding-left: {};",
+                resolve_var_ref(pl)
+            ));
         }
 
         if !body_props.is_empty() {
@@ -563,45 +608,84 @@ fn extract_css_declarations(props: &Value) -> Vec<String> {
     }
 
     // Typography
-    if let Some(ff) = props.pointer("/typography/fontFamily").and_then(|v| v.as_str()) {
+    if let Some(ff) = props
+        .pointer("/typography/fontFamily")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("font-family: {}", resolve_var_ref(ff)));
     }
-    if let Some(fs) = props.pointer("/typography/fontSize").and_then(|v| v.as_str()) {
+    if let Some(fs) = props
+        .pointer("/typography/fontSize")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("font-size: {}", resolve_var_ref(fs)));
     }
-    if let Some(fw) = props.pointer("/typography/fontWeight").and_then(|v| v.as_str()) {
+    if let Some(fw) = props
+        .pointer("/typography/fontWeight")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("font-weight: {}", fw));
     }
-    if let Some(lh) = props.pointer("/typography/lineHeight").and_then(|v| v.as_str()) {
+    if let Some(lh) = props
+        .pointer("/typography/lineHeight")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("line-height: {}", lh));
     }
-    if let Some(ls) = props.pointer("/typography/letterSpacing").and_then(|v| v.as_str()) {
+    if let Some(ls) = props
+        .pointer("/typography/letterSpacing")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("letter-spacing: {}", ls));
     }
-    if let Some(td) = props.pointer("/typography/textDecoration").and_then(|v| v.as_str()) {
+    if let Some(td) = props
+        .pointer("/typography/textDecoration")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("text-decoration: {}", td));
     }
-    if let Some(tt) = props.pointer("/typography/textTransform").and_then(|v| v.as_str()) {
+    if let Some(tt) = props
+        .pointer("/typography/textTransform")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("text-transform: {}", tt));
     }
 
     // Spacing
-    if let Some(mt) = props.pointer("/spacing/margin/top").and_then(|v| v.as_str()) {
+    if let Some(mt) = props
+        .pointer("/spacing/margin/top")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("margin-top: {}", resolve_var_ref(mt)));
     }
-    if let Some(mb) = props.pointer("/spacing/margin/bottom").and_then(|v| v.as_str()) {
+    if let Some(mb) = props
+        .pointer("/spacing/margin/bottom")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("margin-bottom: {}", resolve_var_ref(mb)));
     }
-    if let Some(pt) = props.pointer("/spacing/padding/top").and_then(|v| v.as_str()) {
+    if let Some(pt) = props
+        .pointer("/spacing/padding/top")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("padding-top: {}", resolve_var_ref(pt)));
     }
-    if let Some(pr) = props.pointer("/spacing/padding/right").and_then(|v| v.as_str()) {
+    if let Some(pr) = props
+        .pointer("/spacing/padding/right")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("padding-right: {}", resolve_var_ref(pr)));
     }
-    if let Some(pb) = props.pointer("/spacing/padding/bottom").and_then(|v| v.as_str()) {
+    if let Some(pb) = props
+        .pointer("/spacing/padding/bottom")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("padding-bottom: {}", resolve_var_ref(pb)));
     }
-    if let Some(pl) = props.pointer("/spacing/padding/left").and_then(|v| v.as_str()) {
+    if let Some(pl) = props
+        .pointer("/spacing/padding/left")
+        .and_then(|v| v.as_str())
+    {
         decls.push(format!("padding-left: {}", resolve_var_ref(pl)));
     }
     if let Some(gap) = props.pointer("/spacing/blockGap").and_then(|v| v.as_str()) {
@@ -643,7 +727,10 @@ mod tests {
     fn test_block_name_to_selector() {
         assert_eq!(block_name_to_selector("core/heading"), ".wp-block-heading");
         assert_eq!(block_name_to_selector("core/button"), ".wp-block-button");
-        assert_eq!(block_name_to_selector("core/unknown-block"), ".wp-block-unknown-block");
+        assert_eq!(
+            block_name_to_selector("core/unknown-block"),
+            ".wp-block-unknown-block"
+        );
     }
 
     #[test]

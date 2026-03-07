@@ -118,27 +118,15 @@ pub fn wpautop(text: &str) -> String {
     text = re_empty_p.replace_all(&text, "").to_string();
 
     // If an opening or closing block element tag is wrapped in a <p>, unwrap it.
-    let re_p_block = Regex::new(&format!(
-        r"<p>\s*(</?\s*{}[^>]*>)\s*</p>",
-        allblocks
-    ))
-    .unwrap();
+    let re_p_block = Regex::new(&format!(r"<p>\s*(</?\s*{}[^>]*>)\s*</p>", allblocks)).unwrap();
     text = re_p_block.replace_all(&text, "$1").to_string();
 
     // Remove <p> that wraps around block-level opening tags.
-    let re_p_before_block = Regex::new(&format!(
-        r"<p>\s*(</?\s*{}[^>]*>)",
-        allblocks
-    ))
-    .unwrap();
+    let re_p_before_block = Regex::new(&format!(r"<p>\s*(</?\s*{}[^>]*>)", allblocks)).unwrap();
     text = re_p_before_block.replace_all(&text, "$1").to_string();
 
     // Remove </p> that follows block-level closing tags.
-    let re_block_before_p = Regex::new(&format!(
-        r"(</?\s*{}[^>]*>)\s*</p>",
-        allblocks
-    ))
-    .unwrap();
+    let re_block_before_p = Regex::new(&format!(r"(</?\s*{}[^>]*>)\s*</p>", allblocks)).unwrap();
     text = re_block_before_p.replace_all(&text, "$1").to_string();
 
     // If li is wrapped in a <p>, remove the <p>.
@@ -157,18 +145,12 @@ pub fn wpautop(text: &str) -> String {
     text = text.replace("<WPPreserveNewline />", "\n");
 
     // If a <br /> tag is right after a block element tag, remove it.
-    let re_br_after_block = Regex::new(&format!(
-        r"(</?\s*{}[^>]*>)\s*<br />",
-        allblocks
-    ))
-    .unwrap();
+    let re_br_after_block = Regex::new(&format!(r"(</?\s*{}[^>]*>)\s*<br />", allblocks)).unwrap();
     text = re_br_after_block.replace_all(&text, "$1").to_string();
 
     // If a <br /> tag is before certain closing block tags, remove it.
-    let re_br_before_block = Regex::new(
-        r"<br />\s*(</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)",
-    )
-    .unwrap();
+    let re_br_before_block =
+        Regex::new(r"<br />\s*(</?(?:p|li|div|dl|dd|dt|th|pre|td|ul|ol)[^>]*>)").unwrap();
     text = re_br_before_block.replace_all(&text, "$1").to_string();
 
     // Remove trailing newline from last </p>.
@@ -234,7 +216,10 @@ fn add_br_tags(text: &str) -> String {
         if i < lines.len() - 1 {
             // Check if this line already ends with <br /> (possibly with trailing whitespace)
             let trimmed = line.trim_end();
-            if trimmed.ends_with("<br />") || trimmed.ends_with("<br/>") || trimmed.ends_with("<br>") {
+            if trimmed.ends_with("<br />")
+                || trimmed.ends_with("<br/>")
+                || trimmed.ends_with("<br>")
+            {
                 result.push('\n');
             } else {
                 result.push_str("<br />\n");
@@ -279,9 +264,7 @@ pub fn wptexturize(text: &str) -> String {
 
     // Split text by HTML tags so we only process text nodes.
     // Tags that should not have their contents processed.
-    let no_texturize_tags = [
-        "pre", "code", "kbd", "style", "script", "tt", "textarea",
-    ];
+    let no_texturize_tags = ["pre", "code", "kbd", "style", "script", "tt", "textarea"];
     let mut result = String::with_capacity(text.len());
     let mut skip_depth: Vec<String> = Vec::new();
 
@@ -386,7 +369,11 @@ fn convert_single_quotes(text: &str) -> String {
 
     while i < chars.len() {
         if chars[i] == '\'' {
-            if i > 0 && i + 1 < chars.len() && chars[i - 1].is_alphanumeric() && chars[i + 1].is_alphanumeric() {
+            if i > 0
+                && i + 1 < chars.len()
+                && chars[i - 1].is_alphanumeric()
+                && chars[i + 1].is_alphanumeric()
+            {
                 // Apostrophe (e.g., it's, don't)
                 result.push('\u{2019}'); // '
             } else if i == 0 || is_opening_context(chars[i.saturating_sub(1)]) {
@@ -544,11 +531,19 @@ pub fn convert_chars(text: &str) -> String {
         if bytes[i] == b'&' {
             // Check if this is already an entity like &amp; &#123; &#x1F;
             let rest = &result[i + 1..];
-            let is_entity = rest.starts_with('#')
-                .then(|| rest[1..].find(';').map(|p| p < 8 && rest[1..1 + p].chars().all(|c| c.is_alphanumeric())))
+            let is_entity = rest
+                .starts_with('#')
+                .then(|| {
+                    rest[1..]
+                        .find(';')
+                        .map(|p| p < 8 && rest[1..1 + p].chars().all(|c| c.is_alphanumeric()))
+                })
                 .flatten()
                 .unwrap_or(false)
-                || rest.find(';').map(|p| p > 0 && p < 10 && rest[..p].chars().all(|c| c.is_alphanumeric())).unwrap_or(false);
+                || rest
+                    .find(';')
+                    .map(|p| p > 0 && p < 10 && rest[..p].chars().all(|c| c.is_alphanumeric()))
+                    .unwrap_or(false);
             if is_entity {
                 out.push('&');
             } else {
@@ -692,7 +687,10 @@ fn add_block_layout_classes(content: &str) -> String {
 
     let flow_blocks = [
         ("wp-block-quote", "wp-block-quote-is-layout-flow"),
-        ("wp-block-cover__inner-container", "wp-block-cover-is-layout-flow"),
+        (
+            "wp-block-cover__inner-container",
+            "wp-block-cover-is-layout-flow",
+        ),
     ];
 
     for (block_class, compound_class) in &flex_blocks {
@@ -739,7 +737,8 @@ fn add_block_layout_classes(content: &str) -> String {
 
     // wp-block-column (without matching wp-block-columns)
     // Use word boundary: "wp-block-column" not followed by "s"
-    if let Ok(re) = Regex::new(r#"class="([^"]*\bwp-block-column\b(?!s)(?:(?!\bis-layout-)[^"])*)"#) {
+    if let Ok(re) = Regex::new(r#"class="([^"]*\bwp-block-column\b(?!s)(?:(?!\bis-layout-)[^"])*)"#)
+    {
         result = re
             .replace_all(&result, |caps: &regex::Captures| {
                 let classes = &caps[1];
@@ -1068,7 +1067,7 @@ mod tests {
         assert!(result.contains('\u{2019}')); // apostrophe
         assert!(result.contains('\u{201c}')); // opening quote
         assert!(result.contains('\u{2026}')); // ellipsis
-        // Should NOT contain <p> tags
+                                              // Should NOT contain <p> tags
         assert!(!result.contains("<p>"));
     }
 }

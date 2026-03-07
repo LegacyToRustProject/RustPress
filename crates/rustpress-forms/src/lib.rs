@@ -16,11 +16,11 @@ pub mod submission;
 pub mod validation;
 
 pub use builder::{FieldConfig, FormBuilder, FormConfig, FormField};
+pub use cf7_compat::Cf7FormData;
 pub use notification::{
     default_notification_config, AutoReplyConfig, EmailMessage, EmailSender, LogEmailSender,
     NotificationConfig, NotificationProcessor, NotificationResult,
 };
 pub use renderer::{render_field, render_form};
 pub use submission::{FormSubmission, SubmissionStatus, SubmissionStore};
-pub use cf7_compat::Cf7FormData;
 pub use validation::{validate_submission, ValidationError, ValidationRule};

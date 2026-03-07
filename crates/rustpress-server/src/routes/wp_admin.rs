@@ -5,13 +5,19 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect,
+};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustpress_auth::{session::Session, PasswordHasher};
-use rustpress_db::entities::{wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_usermeta, wp_users};
+use rustpress_db::entities::{
+    wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms,
+    wp_usermeta, wp_users,
+};
 use rustpress_themes::ThemeEngine;
 
 use rustpress_auth::roles::Capability;
@@ -193,7 +199,10 @@ pub struct UserEditForm {
 
 pub fn routes(state: Arc<AppState>) -> Router {
     let public = Router::new()
-        .route("/wp-login.php", get(login_page_dispatch).post(login_post_dispatch))
+        .route(
+            "/wp-login.php",
+            get(login_page_dispatch).post(login_post_dispatch),
+        )
         // Keep old path as redirect for backwards compat
         .route("/wp-admin/login", get(login_page_redirect))
         .with_state(state.clone());
@@ -205,10 +214,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
             "/wp-admin/options-general.php",
             get(settings_page).post(settings_save),
         )
-        .route(
-            "/wp-admin/nav-menus.php",
-            get(menus_page).post(menus_save),
-        )
+        .route("/wp-admin/nav-menus.php", get(menus_page).post(menus_save))
         .route(
             "/wp-admin/themes.php",
             get(themes_page).post(themes_activate),
@@ -222,10 +228,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
             "/wp-admin/export.php",
             get(export_page).post(export_download),
         )
-        .route(
-            "/wp-admin/import.php",
-            get(import_page).post(import_upload),
-        )
+        .route("/wp-admin/import.php", get(import_page).post(import_upload))
         .route("/wp-admin/site-health.php", get(site_health_page))
         .route(
             "/wp-admin/options-writing.php",
@@ -301,7 +304,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/wp-admin/edit.php", get(posts_list))
         .route("/wp-admin/post-new.php", get(post_editor_new))
         .route("/wp-admin/post.php", get(post_editor_edit))
-        .route("/wp-admin/upload.php", get(media_library).post(media_edit_save))
+        .route(
+            "/wp-admin/upload.php",
+            get(media_library).post(media_edit_save),
+        )
         .route("/wp-admin/media-upload", post(media_upload))
         .route("/wp-admin/edit-comments.php", get(comments_list))
         .route("/wp-admin/edit-tags.php", get(taxonomy_page))
@@ -332,10 +338,7 @@ fn render_admin(state: &AppState, template: &str, context: &tera::Context) -> Ht
         Ok(html) => Html(html),
         Err(e) => {
             tracing::error!("Admin template error: {}", e);
-            Html(format!(
-                "<h1>Admin Template Error</h1><pre>{}</pre>",
-                e
-            ))
+            Html(format!("<h1>Admin Template Error</h1><pre>{}</pre>", e))
         }
     }
 }
@@ -349,10 +352,7 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
     // Resolve the authoritative role from the database, falling back to
     // the role cached in the session.
     let role = resolve_session_role(session, &state.db).await;
-    let role_str = role
-        .as_ref()
-        .map(|r| r.as_str())
-        .unwrap_or(&session.role);
+    let role_str = role.as_ref().map(|r| r.as_str()).unwrap_or(&session.role);
 
     ctx.insert(
         "current_user",
@@ -364,9 +364,7 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
     );
 
     // Expose per-capability booleans so templates can gate UI elements.
-    let can = |cap: &Capability| -> bool {
-        role.as_ref().map(|r| r.can(cap)).unwrap_or(false)
-    };
+    let can = |cap: &Capability| -> bool { role.as_ref().map(|r| r.can(cap)).unwrap_or(false) };
 
     ctx.insert("can_manage_options", &can(&Capability::ManageOptions));
     ctx.insert("can_list_users", &can(&Capability::ListUsers));
@@ -376,16 +374,34 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
     ctx.insert("can_upload_files", &can(&Capability::UploadFiles));
     ctx.insert("can_edit_posts", &can(&Capability::EditPosts));
     ctx.insert("can_edit_pages", &can(&Capability::EditPages));
-    ctx.insert("can_edit_theme_options", &can(&Capability::EditThemeOptions));
+    ctx.insert(
+        "can_edit_theme_options",
+        &can(&Capability::EditThemeOptions),
+    );
     ctx.insert("can_activate_plugins", &can(&Capability::ActivatePlugins));
 
     // Generate nonces for common admin actions
     let user_id = session.user_id;
-    ctx.insert("wpnonce_general", &state.nonces.create_nonce("general", user_id));
-    ctx.insert("wpnonce_save_post", &state.nonces.create_nonce("save_post", user_id));
-    ctx.insert("wpnonce_delete_post", &state.nonces.create_nonce("delete_post", user_id));
-    ctx.insert("wpnonce_update_settings", &state.nonces.create_nonce("update_settings", user_id));
-    ctx.insert("wpnonce_manage_users", &state.nonces.create_nonce("manage_users", user_id));
+    ctx.insert(
+        "wpnonce_general",
+        &state.nonces.create_nonce("general", user_id),
+    );
+    ctx.insert(
+        "wpnonce_save_post",
+        &state.nonces.create_nonce("save_post", user_id),
+    );
+    ctx.insert(
+        "wpnonce_delete_post",
+        &state.nonces.create_nonce("delete_post", user_id),
+    );
+    ctx.insert(
+        "wpnonce_update_settings",
+        &state.nonces.create_nonce("update_settings", user_id),
+    );
+    ctx.insert(
+        "wpnonce_manage_users",
+        &state.nonces.create_nonce("manage_users", user_id),
+    );
 
     ctx
 }
@@ -452,8 +468,7 @@ async fn login_post_dispatch(
                     ctx.insert("error", "Invalid form data.");
                     ctx.insert("success", &false);
                     ctx.insert("invalid_token", &false);
-                    return render_admin(&state, "admin/reset-password.html", &ctx)
-                        .into_response();
+                    return render_admin(&state, "admin/reset-password.html", &ctx).into_response();
                 }
             };
             reset_password_submit(State(state), form)
@@ -579,10 +594,7 @@ async fn dashboard(
         .await
         .unwrap_or(0);
 
-    let user_count = wp_users::Entity::find()
-        .count(&state.db)
-        .await
-        .unwrap_or(0);
+    let user_count = wp_users::Entity::find().count(&state.db).await.unwrap_or(0);
 
     let draft_count = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostStatus.eq("draft"))
@@ -759,7 +771,7 @@ async fn posts_list(
     let total_pages = if total == 0 {
         1
     } else {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     };
 
     let posts = query
@@ -902,8 +914,19 @@ async fn posts_list(
     let mut seen_months = std::collections::HashSet::new();
     let mut date_months: Vec<serde_json::Value> = Vec::new();
     let month_names = [
-        "", "January", "February", "March", "April", "May", "June", "July", "August",
-        "September", "October", "November", "December",
+        "",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
     ];
     for p in &all_posts_dates {
         let y = p.post_date.format("%Y").to_string();
@@ -955,7 +978,11 @@ async fn post_editor_new(
     let post_type = params.post_type.as_deref().unwrap_or("post");
     ctx.insert(
         "active_page",
-        if post_type == "page" { "pages" } else { "posts" },
+        if post_type == "page" {
+            "pages"
+        } else {
+            "posts"
+        },
     );
     ctx.insert("editing", &false);
 
@@ -1117,16 +1144,19 @@ async fn media_library(
                 .and_then(|meta| meta.meta_value)
                 .unwrap_or_default();
 
-            ctx.insert("media_item", &serde_json::json!({
-                "id": m.id,
-                "title": m.post_title,
-                "url": m.guid,
-                "mime_type": m.post_mime_type,
-                "date": m.post_date.format("%Y-%m-%d").to_string(),
-                "alt_text": alt_text,
-                "caption": m.post_excerpt,
-                "description": m.post_content,
-            }));
+            ctx.insert(
+                "media_item",
+                &serde_json::json!({
+                    "id": m.id,
+                    "title": m.post_title,
+                    "url": m.guid,
+                    "mime_type": m.post_mime_type,
+                    "date": m.post_date.format("%Y-%m-%d").to_string(),
+                    "alt_text": alt_text,
+                    "caption": m.post_excerpt,
+                    "description": m.post_content,
+                }),
+            );
             ctx.insert("edit_mode", &true);
             return render_admin(&state, "admin/media.html", &ctx);
         }
@@ -1141,7 +1171,11 @@ async fn media_library(
         .count(&state.db)
         .await
         .unwrap_or(0);
-    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+    let total_pages = if total == 0 {
+        1
+    } else {
+        total.div_ceil(per_page)
+    };
 
     let media = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq("attachment"))
@@ -1765,7 +1799,11 @@ async fn settings_save(
 ) -> Html<String> {
     // Verify nonce
     if let Some(ref nonce) = form.wpnonce {
-        if state.nonces.verify_nonce(nonce, "update_settings", session.user_id).is_none() {
+        if state
+            .nonces
+            .verify_nonce(nonce, "update_settings", session.user_id)
+            .is_none()
+        {
             tracing::warn!("Invalid nonce for settings save");
         }
     }
@@ -2381,8 +2419,7 @@ async fn comments_list(
     let per_page = 20u64;
     let status_filter = params.status.as_deref().unwrap_or("all");
 
-    let mut query = wp_comments::Entity::find()
-        .order_by_desc(wp_comments::Column::CommentDate);
+    let mut query = wp_comments::Entity::find().order_by_desc(wp_comments::Column::CommentDate);
 
     let db_status = match status_filter {
         "approved" => Some("1"),
@@ -2397,7 +2434,11 @@ async fn comments_list(
     }
 
     let total = query.clone().count(&state.db).await.unwrap_or(0);
-    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+    let total_pages = if total == 0 {
+        1
+    } else {
+        total.div_ceil(per_page)
+    };
 
     let comments = query
         .offset((page - 1) * per_page)
@@ -2424,16 +2465,24 @@ async fn comments_list(
     // Count by status
     let approved_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("1"))
-        .count(&state.db).await.unwrap_or(0);
+        .count(&state.db)
+        .await
+        .unwrap_or(0);
     let pending_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("0"))
-        .count(&state.db).await.unwrap_or(0);
+        .count(&state.db)
+        .await
+        .unwrap_or(0);
     let spam_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("spam"))
-        .count(&state.db).await.unwrap_or(0);
+        .count(&state.db)
+        .await
+        .unwrap_or(0);
     let trash_count = wp_comments::Entity::find()
         .filter(wp_comments::Column::CommentApproved.eq("trash"))
-        .count(&state.db).await.unwrap_or(0);
+        .count(&state.db)
+        .await
+        .unwrap_or(0);
 
     ctx.insert("comments", &items);
     ctx.insert("total", &total);
@@ -2560,11 +2609,7 @@ async fn set_usermeta(
 }
 
 /// Helper: delete usermeta rows matching a user_id and meta_key.
-async fn delete_usermeta(
-    db: &sea_orm::DatabaseConnection,
-    user_id: u64,
-    meta_key: &str,
-) {
+async fn delete_usermeta(db: &sea_orm::DatabaseConnection, user_id: u64, meta_key: &str) {
     let _ = wp_usermeta::Entity::delete_many()
         .filter(wp_usermeta::Column::UserId.eq(user_id))
         .filter(wp_usermeta::Column::MetaKey.eq(meta_key))
@@ -2971,11 +3016,7 @@ async fn reset_password_submit(
 }
 
 /// Validate a password reset token against stored values in wp_usermeta.
-async fn validate_reset_token(
-    db: &sea_orm::DatabaseConnection,
-    user_id: u64,
-    token: &str,
-) -> bool {
+async fn validate_reset_token(db: &sea_orm::DatabaseConnection, user_id: u64, token: &str) -> bool {
     let stored_token = match get_usermeta(db, user_id, "rp_reset_token").await {
         Some(t) => t,
         None => return false,
@@ -3095,7 +3136,7 @@ async fn widgets_page(
         let instances = config.areas.get(area_info.id).cloned().unwrap_or_default();
         let items: Vec<serde_json::Value> = instances
             .iter()
-            .map(|inst| widget_instance_to_json(inst))
+            .map(widget_instance_to_json)
             .collect();
         area_widgets.insert(area_info.id.to_string(), serde_json::Value::Array(items));
     }
@@ -3214,7 +3255,7 @@ async fn widgets_save(
         let instances = config.areas.get(area_info.id).cloned().unwrap_or_default();
         let items: Vec<serde_json::Value> = instances
             .iter()
-            .map(|inst| widget_instance_to_json(inst))
+            .map(widget_instance_to_json)
             .collect();
         area_widgets.insert(area_info.id.to_string(), serde_json::Value::Array(items));
     }
@@ -3235,10 +3276,7 @@ fn form_decode(s: &str) -> String {
                 i += 1;
             }
             b'%' if i + 2 < bytes.len() => {
-                if let (Some(hi), Some(lo)) = (
-                    hex_val(bytes[i + 1]),
-                    hex_val(bytes[i + 2]),
-                ) {
+                if let (Some(hi), Some(lo)) = (hex_val(bytes[i + 1]), hex_val(bytes[i + 2])) {
                     result.push(hi << 4 | lo);
                     i += 3;
                 } else {
@@ -3465,7 +3503,11 @@ async fn themes_activate(
     }
 
     // Save the new active theme to wp_options.
-    if let Err(e) = state.options.update_option("current_theme", theme_slug).await {
+    if let Err(e) = state
+        .options
+        .update_option("current_theme", theme_slug)
+        .await
+    {
         tracing::error!("Failed to save theme option: {}", e);
         let mut ctx = admin_context(&state, &session).await;
         ctx.insert("active_page", "themes");
@@ -3492,7 +3534,10 @@ async fn themes_activate(
             Err(e) => {
                 tracing::error!("Failed to reload theme engine: {}", e);
                 // Rollback the option to the previous theme.
-                let _ = state.options.update_option("current_theme", &active_slug).await;
+                let _ = state
+                    .options
+                    .update_option("current_theme", &active_slug)
+                    .await;
             }
         }
     }
@@ -3533,8 +3578,7 @@ async fn export_download(
     let content_type = form.content.as_deref().unwrap_or("all");
 
     // Build WXR XML export
-    let mut query = wp_posts::Entity::find()
-        .filter(wp_posts::Column::PostStatus.ne("auto-draft"));
+    let mut query = wp_posts::Entity::find().filter(wp_posts::Column::PostStatus.ne("auto-draft"));
 
     if content_type != "all" {
         query = query.filter(wp_posts::Column::PostType.eq(content_type));
@@ -3546,7 +3590,11 @@ async fn export_download(
         .await
         .unwrap_or_default();
 
-    let site_name = state.options.get_blogname().await.unwrap_or_else(|_| "RustPress".to_string());
+    let site_name = state
+        .options
+        .get_blogname()
+        .await
+        .unwrap_or_else(|_| "RustPress".to_string());
     let site_url = &state.site_url;
 
     let mut xml = String::new();
@@ -3562,26 +3610,59 @@ async fn export_download(
 
     for p in &posts {
         xml.push_str("  <item>\n");
-        xml.push_str(&format!("    <title>{}</title>\n", xml_escape(&p.post_title)));
+        xml.push_str(&format!(
+            "    <title>{}</title>\n",
+            xml_escape(&p.post_title)
+        ));
         xml.push_str(&format!("    <wp:post_id>{}</wp:post_id>\n", p.id));
-        xml.push_str(&format!("    <wp:post_date>{}</wp:post_date>\n", p.post_date.format("%Y-%m-%d %H:%M:%S")));
-        xml.push_str(&format!("    <wp:post_name>{}</wp:post_name>\n", xml_escape(&p.post_name)));
-        xml.push_str(&format!("    <wp:post_type>{}</wp:post_type>\n", xml_escape(&p.post_type)));
-        xml.push_str(&format!("    <wp:status>{}</wp:status>\n", xml_escape(&p.post_status)));
-        xml.push_str(&format!("    <wp:post_parent>{}</wp:post_parent>\n", p.post_parent));
-        xml.push_str(&format!("    <wp:menu_order>{}</wp:menu_order>\n", p.menu_order));
-        xml.push_str(&format!("    <content:encoded><![CDATA[{}]]></content:encoded>\n", p.post_content));
-        xml.push_str(&format!("    <excerpt:encoded><![CDATA[{}]]></excerpt:encoded>\n", p.post_excerpt));
+        xml.push_str(&format!(
+            "    <wp:post_date>{}</wp:post_date>\n",
+            p.post_date.format("%Y-%m-%d %H:%M:%S")
+        ));
+        xml.push_str(&format!(
+            "    <wp:post_name>{}</wp:post_name>\n",
+            xml_escape(&p.post_name)
+        ));
+        xml.push_str(&format!(
+            "    <wp:post_type>{}</wp:post_type>\n",
+            xml_escape(&p.post_type)
+        ));
+        xml.push_str(&format!(
+            "    <wp:status>{}</wp:status>\n",
+            xml_escape(&p.post_status)
+        ));
+        xml.push_str(&format!(
+            "    <wp:post_parent>{}</wp:post_parent>\n",
+            p.post_parent
+        ));
+        xml.push_str(&format!(
+            "    <wp:menu_order>{}</wp:menu_order>\n",
+            p.menu_order
+        ));
+        xml.push_str(&format!(
+            "    <content:encoded><![CDATA[{}]]></content:encoded>\n",
+            p.post_content
+        ));
+        xml.push_str(&format!(
+            "    <excerpt:encoded><![CDATA[{}]]></excerpt:encoded>\n",
+            p.post_excerpt
+        ));
         xml.push_str("  </item>\n");
     }
 
     xml.push_str("</channel>\n</rss>\n");
 
-    let filename = format!("rustpress-export-{}.xml", chrono::Utc::now().format("%Y-%m-%d"));
+    let filename = format!(
+        "rustpress-export-{}.xml",
+        chrono::Utc::now().format("%Y-%m-%d")
+    );
     (
         [
             (header::CONTENT_TYPE, "application/xml; charset=utf-8"),
-            (header::CONTENT_DISPOSITION, &format!("attachment; filename=\"{}\"", filename)),
+            (
+                header::CONTENT_DISPOSITION,
+                &format!("attachment; filename=\"{}\"", filename),
+            ),
         ],
         xml,
     )
@@ -3706,13 +3787,8 @@ fn extract_cdata(xml: &str, tag: &str) -> Option<String> {
     let end = xml.find(&close)?;
     let content = &xml[start..end];
     // Strip CDATA wrapper
-    let content = content
-        .trim()
-        .strip_prefix("<![CDATA[")
-        .unwrap_or(content);
-    let content = content
-        .strip_suffix("]]>")
-        .unwrap_or(content);
+    let content = content.trim().strip_prefix("<![CDATA[").unwrap_or(content);
+    let content = content.strip_suffix("]]>").unwrap_or(content);
     Some(content.to_string())
 }
 
@@ -3752,10 +3828,7 @@ async fn site_health_page(
         .count(&state.db)
         .await
         .unwrap_or(0);
-    let user_count = wp_users::Entity::find()
-        .count(&state.db)
-        .await
-        .unwrap_or(0);
+    let user_count = wp_users::Entity::find().count(&state.db).await.unwrap_or(0);
     let media_count = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq("attachment"))
         .count(&state.db)
@@ -3835,10 +3908,7 @@ async fn media_upload(
         }
     };
 
-    let raw_name = field
-        .file_name()
-        .unwrap_or("upload")
-        .to_string();
+    let raw_name = field.file_name().unwrap_or("upload").to_string();
     let content_type = field
         .content_type()
         .unwrap_or("application/octet-stream")
@@ -3875,7 +3945,11 @@ async fn media_upload(
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
         .collect::<String>();
-    let file_name = if file_name.is_empty() { "upload".to_string() } else { file_name };
+    let file_name = if file_name.is_empty() {
+        "upload".to_string()
+    } else {
+        file_name
+    };
 
     let uploads_dir = PathBuf::from(
         std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "wp-content/uploads".to_string()),
@@ -3903,7 +3977,7 @@ async fn media_upload(
 
     let display_title = file_name
         .rsplit('.')
-        .last()
+        .next_back()
         .unwrap_or(&file_name)
         .replace(['-', '_'], " ");
 
@@ -3967,4 +4041,3 @@ async fn media_upload(
         }
     }
 }
-

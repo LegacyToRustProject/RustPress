@@ -104,10 +104,7 @@ mod tests {
     #[test]
     fn test_serialize_block_with_attributes() {
         let mut attrs = serde_json::Map::new();
-        attrs.insert(
-            "align".to_string(),
-            Value::String("center".to_string()),
-        );
+        attrs.insert("align".to_string(), Value::String("center".to_string()));
         let block = Block {
             name: "core/paragraph".to_string(),
             attrs: Value::Object(attrs),
@@ -123,10 +120,7 @@ mod tests {
     #[test]
     fn test_serialize_self_closing_block() {
         let mut attrs = serde_json::Map::new();
-        attrs.insert(
-            "height".to_string(),
-            Value::String("50px".to_string()),
-        );
+        attrs.insert("height".to_string(), Value::String("50px".to_string()));
         let block = Block {
             name: "core/spacer".to_string(),
             attrs: Value::Object(attrs),

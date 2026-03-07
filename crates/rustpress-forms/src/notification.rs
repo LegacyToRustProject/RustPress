@@ -127,11 +127,7 @@ impl NotificationProcessor {
         Ok(result)
     }
 
-    fn build_admin_email(
-        &self,
-        form: &FormConfig,
-        submission: &FormSubmission,
-    ) -> EmailMessage {
+    fn build_admin_email(&self, form: &FormConfig, submission: &FormSubmission) -> EmailMessage {
         let subject = self.expand_template(&self.config.subject_template, &submission.data);
 
         let mut body = self.expand_template(&self.config.body_template, &submission.data);
@@ -152,9 +148,11 @@ impl NotificationProcessor {
             body.push_str(&format!("IP: {}\n", ip));
         }
 
-        let reply_to = submission.data.values().find(|v| {
-            v.contains('@') && v.contains('.')
-        }).cloned();
+        let reply_to = submission
+            .data
+            .values()
+            .find(|v| v.contains('@') && v.contains('.'))
+            .cloned();
 
         EmailMessage {
             to: self.config.to.clone(),
@@ -320,7 +318,8 @@ mod tests {
             auto_reply: Some(AutoReplyConfig {
                 email_field: "email".into(),
                 subject: "Thank you for contacting us".into(),
-                body_template: "Hi {name},\n\nThank you for your message. We will get back to you soon.".into(),
+                body_template:
+                    "Hi {name},\n\nThank you for your message. We will get back to you soon.".into(),
                 from: "noreply@example.com".into(),
             }),
         }
@@ -337,8 +336,14 @@ mod tests {
         assert_eq!(result.admin_email.to, vec!["admin@example.com"]);
         assert_eq!(result.admin_email.subject, "New message from Alice");
         assert!(result.admin_email.body_text.contains("Name: Alice"));
-        assert!(result.admin_email.body_text.contains("Email: alice@example.com"));
-        assert!(result.admin_email.body_text.contains("Message: Hello, I have a question."));
+        assert!(result
+            .admin_email
+            .body_text
+            .contains("Email: alice@example.com"));
+        assert!(result
+            .admin_email
+            .body_text
+            .contains("Message: Hello, I have a question."));
         assert!(result.admin_email.body_text.contains("Form: Contact Us"));
         assert!(result.admin_email.body_text.contains("IP: 127.0.0.1"));
         assert!(result.admin_email.body_html.is_some());
@@ -356,7 +361,9 @@ mod tests {
         assert_eq!(auto_reply.to, vec!["alice@example.com"]);
         assert_eq!(auto_reply.subject, "Thank you for contacting us");
         assert!(auto_reply.body_text.contains("Hi Alice"));
-        assert!(auto_reply.body_text.contains("We will get back to you soon"));
+        assert!(auto_reply
+            .body_text
+            .contains("We will get back to you soon"));
     }
 
     #[test]

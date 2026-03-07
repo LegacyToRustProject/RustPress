@@ -12,7 +12,9 @@ use sea_orm::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use rustpress_db::entities::{wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_users};
+use rustpress_db::entities::{
+    wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_users,
+};
 use rustpress_db::revisions::RevisionManager;
 
 use crate::common::{
@@ -139,9 +141,7 @@ pub async fn build_post(
         id: p.id,
         date: p.post_date.format("%Y-%m-%dT%H:%M:%S").to_string(),
         date_gmt: p.post_date_gmt.format("%Y-%m-%dT%H:%M:%S").to_string(),
-        guid: WpRendered {
-            rendered: guid_str,
-        },
+        guid: WpRendered { rendered: guid_str },
         modified: p.post_modified.format("%Y-%m-%dT%H:%M:%S").to_string(),
         modified_gmt: p.post_modified_gmt.format("%Y-%m-%dT%H:%M:%S").to_string(),
         slug: p.post_name,
@@ -173,23 +173,17 @@ pub async fn build_post(
 
 /// Build the `_embedded` object for a post when `?_embed` is requested.
 /// Resolves: author (user), wp:term (categories + tags).
-async fn build_embedded(
-    db: &sea_orm::DatabaseConnection,
-    site_url: &str,
-    post: &WpPost,
-) -> Value {
+async fn build_embedded(db: &sea_orm::DatabaseConnection, site_url: &str, post: &WpPost) -> Value {
     use serde_json::json;
 
     // 1. Embed author
-    let author_embed = if let Ok(Some(user)) = wp_users::Entity::find_by_id(post.author)
-        .one(db)
-        .await
-    {
-        let wp_user = crate::users::build_wp_user(db, &user, site_url, false).await;
-        serde_json::to_value(&wp_user).unwrap_or(json!({}))
-    } else {
-        json!({})
-    };
+    let author_embed =
+        if let Ok(Some(user)) = wp_users::Entity::find_by_id(post.author).one(db).await {
+            let wp_user = crate::users::build_wp_user(db, &user, site_url, false).await;
+            serde_json::to_value(&wp_user).unwrap_or(json!({}))
+        } else {
+            json!({})
+        };
 
     // 2. Embed wp:term (categories and tags)
     let mut term_groups: Vec<Value> = Vec::new();
@@ -391,7 +385,9 @@ pub fn write_routes() -> Router<ApiState> {
         .route("/wp-json/wp/v2/posts", axum::routing::post(create_post))
         .route(
             "/wp-json/wp/v2/posts/{id}",
-            axum::routing::put(update_post).patch(update_post).delete(delete_post),
+            axum::routing::put(update_post)
+                .patch(update_post)
+                .delete(delete_post),
         )
 }
 
@@ -402,8 +398,7 @@ async fn list_posts(
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10).min(100);
 
-    let mut query = wp_posts::Entity::find()
-        .filter(wp_posts::Column::PostType.eq("post"));
+    let mut query = wp_posts::Entity::find().filter(wp_posts::Column::PostType.eq("post"));
 
     // Status filter (default: "publish")
     let status = params.status.as_deref().unwrap_or("publish");
@@ -411,7 +406,7 @@ async fn list_posts(
 
     // Search filter
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(&format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
     }
 
     // Author filter
@@ -448,17 +443,15 @@ async fn list_posts(
 
     // Before/after date filters
     if let Some(ref before) = params.before {
-        if let Ok(dt) =
-            chrono::NaiveDateTime::parse_from_str(before, "%Y-%m-%dT%H:%M:%S")
-                .or_else(|_| chrono::NaiveDateTime::parse_from_str(before, "%Y-%m-%dT%H:%M"))
+        if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(before, "%Y-%m-%dT%H:%M:%S")
+            .or_else(|_| chrono::NaiveDateTime::parse_from_str(before, "%Y-%m-%dT%H:%M"))
         {
             query = query.filter(wp_posts::Column::PostDate.lt(dt));
         }
     }
     if let Some(ref after) = params.after {
-        if let Ok(dt) =
-            chrono::NaiveDateTime::parse_from_str(after, "%Y-%m-%dT%H:%M:%S")
-                .or_else(|_| chrono::NaiveDateTime::parse_from_str(after, "%Y-%m-%dT%H:%M"))
+        if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(after, "%Y-%m-%dT%H:%M:%S")
+            .or_else(|_| chrono::NaiveDateTime::parse_from_str(after, "%Y-%m-%dT%H:%M"))
         {
             query = query.filter(wp_posts::Column::PostDate.gt(dt));
         }
@@ -467,7 +460,14 @@ async fn list_posts(
     // Category/tag filters — resolved to post IDs at the SQL level for correct pagination
     query = apply_term_filter(query, &state.db, &params.categories, "category", false).await;
     query = apply_term_filter(query, &state.db, &params.tags, "post_tag", false).await;
-    query = apply_term_filter(query, &state.db, &params.categories_exclude, "category", true).await;
+    query = apply_term_filter(
+        query,
+        &state.db,
+        &params.categories_exclude,
+        "category",
+        true,
+    )
+    .await;
     query = apply_term_filter(query, &state.db, &params.tags_exclude, "post_tag", true).await;
 
     // Get total count for pagination
@@ -477,7 +477,7 @@ async fn list_posts(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
     let total_pages = if per_page > 0 {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     } else {
         1
     };
@@ -544,7 +544,8 @@ async fn list_posts(
         for post in &items {
             let mut val = serde_json::to_value(post).unwrap_or_default();
             let embedded = build_embedded(&state.db, &state.site_url, post).await;
-            val.as_object_mut().map(|o| o.insert("_embedded".to_string(), embedded));
+            val.as_object_mut()
+                .map(|o| o.insert("_embedded".to_string(), embedded));
             filter_post_context(&mut val, context);
             embedded_items.push(val);
         }
@@ -588,7 +589,8 @@ async fn get_post(
     let mut val = serde_json::to_value(&wp_post).unwrap_or_default();
     if params._embed.is_some() {
         let embedded = build_embedded(&state.db, &state.site_url, &wp_post).await;
-        val.as_object_mut().map(|o| o.insert("_embedded".to_string(), embedded));
+        val.as_object_mut()
+            .map(|o| o.insert("_embedded".to_string(), embedded));
     }
     filter_post_context(&mut val, context);
     Ok(Json(val))
@@ -620,9 +622,13 @@ async fn create_post(
         post_author: Set(input.author.unwrap_or(1)),
         post_date: Set(post_date),
         post_date_gmt: Set(post_date),
-        post_content: Set(rustpress_core::wp_kses_post(&input.content.unwrap_or_default())),
+        post_content: Set(rustpress_core::wp_kses_post(
+            &input.content.unwrap_or_default(),
+        )),
         post_title: Set(title),
-        post_excerpt: Set(rustpress_core::wp_kses_post(&input.excerpt.unwrap_or_default())),
+        post_excerpt: Set(rustpress_core::wp_kses_post(
+            &input.excerpt.unwrap_or_default(),
+        )),
         post_status: Set(status),
         comment_status: Set(input.comment_status.unwrap_or_else(|| "open".to_string())),
         ping_status: Set(input.ping_status.unwrap_or_else(|| "open".to_string())),
@@ -861,11 +867,7 @@ async fn save_term_relationships(
 }
 
 /// Clear term relationships of a specific taxonomy for a post.
-async fn clear_term_relationships(
-    db: &sea_orm::DatabaseConnection,
-    post_id: u64,
-    taxonomy: &str,
-) {
+async fn clear_term_relationships(db: &sea_orm::DatabaseConnection, post_id: u64, taxonomy: &str) {
     // Get all term_taxonomy_ids for this taxonomy
     let tts = wp_term_taxonomy::Entity::find()
         .filter(wp_term_taxonomy::Column::Taxonomy.eq(taxonomy))

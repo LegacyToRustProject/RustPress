@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 use thiserror::Error;
-#[cfg(not(feature = "wasm-runtime"))]
-use tracing::{info, warn};
 #[cfg(feature = "wasm-runtime")]
 use tracing::info;
+#[cfg(not(feature = "wasm-runtime"))]
+use tracing::{info, warn};
 
 #[cfg(feature = "wasm-runtime")]
 use wasmtime::{Engine, Module};
@@ -113,7 +113,11 @@ impl WasmHost {
 
     /// Load a WASM plugin from raw bytes (useful for testing).
     pub fn load_plugin_bytes(&mut self, name: &str, wasm_bytes: Vec<u8>) -> Result<(), WasmError> {
-        info!(name, bytes = wasm_bytes.len(), "WASM plugin loaded from bytes");
+        info!(
+            name,
+            bytes = wasm_bytes.len(),
+            "WASM plugin loaded from bytes"
+        );
 
         self.loaded_plugins.insert(
             name.to_string(),
@@ -207,10 +211,9 @@ impl WasmHost {
     ) -> Result<serde_json::Value, WasmError> {
         use wasmtime::{Caller, Linker, Store};
 
-        let module = self
-            .compiled_modules
-            .get(plugin_name)
-            .ok_or_else(|| WasmError::Runtime(format!("No compiled module for '{}'", plugin_name)))?;
+        let module = self.compiled_modules.get(plugin_name).ok_or_else(|| {
+            WasmError::Runtime(format!("No compiled module for '{}'", plugin_name))
+        })?;
 
         let mut store = Store::new(
             &self.engine,
@@ -235,7 +238,9 @@ impl WasmHost {
                         let msg = {
                             let data = memory.data(&caller);
                             if end <= data.len() {
-                                std::str::from_utf8(&data[start..end]).ok().map(|s| s.to_string())
+                                std::str::from_utf8(&data[start..end])
+                                    .ok()
+                                    .map(|s| s.to_string())
                             } else {
                                 None
                             }
@@ -299,9 +304,9 @@ impl WasmHost {
             )
             .map_err(|e| WasmError::Runtime(format!("Failed to define 'set_option': {}", e)))?;
 
-        let instance = linker.instantiate(&mut store, module).map_err(|e| {
-            WasmError::CallFailed(format!("Failed to instantiate module: {}", e))
-        })?;
+        let instance = linker
+            .instantiate(&mut store, module)
+            .map_err(|e| WasmError::CallFailed(format!("Failed to instantiate module: {}", e)))?;
 
         // Capture the module's exported memory so host functions can read it.
         if let Some(memory) = instance.get_memory(&mut store, "memory") {
@@ -333,7 +338,8 @@ impl WasmHost {
             let args_json = serde_json::to_string(args)
                 .map_err(|e| WasmError::CallFailed(format!("Failed to serialize args: {}", e)))?;
 
-            let (ptr, len) = self.write_to_wasm_memory(&instance, &mut store, args_json.as_bytes())?;
+            let (ptr, len) =
+                self.write_to_wasm_memory(&instance, &mut store, args_json.as_bytes())?;
 
             let result = func.call(&mut store, (ptr, len)).map_err(|e| {
                 WasmError::CallFailed(format!("Function '{}' trapped: {}", function_name, e))
@@ -384,15 +390,17 @@ impl WasmHost {
 
         // Try using an exported alloc function
         if let Ok(alloc) = instance.get_typed_func::<i32, i32>(&mut *store, "alloc") {
-            let ptr = alloc.call(&mut *store, len).map_err(|e| {
-                WasmError::CallFailed(format!("alloc failed: {}", e))
-            })?;
+            let ptr = alloc
+                .call(&mut *store, len)
+                .map_err(|e| WasmError::CallFailed(format!("alloc failed: {}", e)))?;
 
             let mem_data = memory.data_mut(&mut *store);
             let start = ptr as usize;
             let end = start + bytes.len();
             if end > mem_data.len() {
-                return Err(WasmError::CallFailed("alloc returned out-of-bounds pointer".to_string()));
+                return Err(WasmError::CallFailed(
+                    "alloc returned out-of-bounds pointer".to_string(),
+                ));
             }
             mem_data[start..end].copy_from_slice(bytes);
             return Ok((ptr, len));

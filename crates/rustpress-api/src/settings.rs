@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    routing::get,
-    Json, Router,
-};
+use axum::{extract::State, routing::get, Json, Router};
 use serde::{Deserialize, Serialize};
 
 use rustpress_db::options::OptionsManager;
@@ -58,9 +54,7 @@ pub fn write_routes() -> Router<ApiState> {
     )
 }
 
-async fn get_settings(
-    State(state): State<ApiState>,
-) -> Result<Json<WpSettings>, WpError> {
+async fn get_settings(State(state): State<ApiState>) -> Result<Json<WpSettings>, WpError> {
     let options = OptionsManager::new(state.db.clone());
     let settings = load_settings(&options, &state.site_url).await?;
     Ok(Json(settings))
@@ -158,21 +152,33 @@ async fn update_settings(
     Ok(Json(settings))
 }
 
-async fn load_settings(
-    options: &OptionsManager,
-    site_url: &str,
-) -> Result<WpSettings, WpError> {
+async fn load_settings(options: &OptionsManager, site_url: &str) -> Result<WpSettings, WpError> {
     let err = |e: sea_orm::DbErr| WpError::internal(e.to_string());
 
-    let title = options.get_option_or("blogname", "RustPress Site").await.map_err(err)?;
+    let title = options
+        .get_option_or("blogname", "RustPress Site")
+        .await
+        .map_err(err)?;
     let description = options
         .get_option_or("blogdescription", "Just another RustPress site")
         .await
         .map_err(err)?;
-    let email = options.get_option_or("admin_email", "admin@example.com").await.map_err(err)?;
-    let timezone = options.get_option_or("timezone_string", "UTC").await.map_err(err)?;
-    let date_format = options.get_option_or("date_format", "F j, Y").await.map_err(err)?;
-    let time_format = options.get_option_or("time_format", "g:i a").await.map_err(err)?;
+    let email = options
+        .get_option_or("admin_email", "admin@example.com")
+        .await
+        .map_err(err)?;
+    let timezone = options
+        .get_option_or("timezone_string", "UTC")
+        .await
+        .map_err(err)?;
+    let date_format = options
+        .get_option_or("date_format", "F j, Y")
+        .await
+        .map_err(err)?;
+    let time_format = options
+        .get_option_or("time_format", "g:i a")
+        .await
+        .map_err(err)?;
     let posts_per_page = options.get_posts_per_page().await.map_err(err)?;
     let comment_status = options
         .get_option_or("default_comment_status", "open")

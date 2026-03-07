@@ -43,12 +43,12 @@ enum BinOpKind {
     // Arithmetic
     Mod, // %
     // Comparison
-    Eq,  // ==
-    Ne,  // !=
-    Lt,  // <
-    Gt,  // >
-    Le,  // <=
-    Ge,  // >=
+    Eq, // ==
+    Ne, // !=
+    Lt, // <
+    Gt, // >
+    Le, // <=
+    Ge, // >=
     // Logical
     And, // &&
     Or,  // ||
@@ -65,13 +65,13 @@ enum TokenKind {
     N,
     Number(u64),
     Percent,   // %
-    EqEq,     // ==
-    BangEq,   // !=
+    EqEq,      // ==
+    BangEq,    // !=
     Lt,        // <
     Gt,        // >
-    LtEq,     // <=
-    GtEq,     // >=
-    AmpAmp,   // &&
+    LtEq,      // <=
+    GtEq,      // >=
+    AmpAmp,    // &&
     PipePipe,  // ||
     Bang,      // !
     Question,  // ?
@@ -95,7 +95,8 @@ fn tokenize(input: &str) -> Vec<Token> {
                 // Could be 'n' variable or 'nplurals' etc. - we only care about standalone 'n'
                 if i + 1 < bytes.len() && bytes[i + 1].is_ascii_alphanumeric() {
                     // Skip non-'n' identifiers
-                    while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+                    while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_')
+                    {
                         i += 1;
                     }
                 } else {
@@ -114,12 +115,16 @@ fn tokenize(input: &str) -> Vec<Token> {
                 });
             }
             b'%' => {
-                tokens.push(Token { kind: TokenKind::Percent });
+                tokens.push(Token {
+                    kind: TokenKind::Percent,
+                });
                 i += 1;
             }
             b'=' => {
                 if i + 1 < bytes.len() && bytes[i + 1] == b'=' {
-                    tokens.push(Token { kind: TokenKind::EqEq });
+                    tokens.push(Token {
+                        kind: TokenKind::EqEq,
+                    });
                     i += 2;
                 } else {
                     // Skip lone '=' (assignment in nplurals=N)
@@ -128,34 +133,48 @@ fn tokenize(input: &str) -> Vec<Token> {
             }
             b'!' => {
                 if i + 1 < bytes.len() && bytes[i + 1] == b'=' {
-                    tokens.push(Token { kind: TokenKind::BangEq });
+                    tokens.push(Token {
+                        kind: TokenKind::BangEq,
+                    });
                     i += 2;
                 } else {
-                    tokens.push(Token { kind: TokenKind::Bang });
+                    tokens.push(Token {
+                        kind: TokenKind::Bang,
+                    });
                     i += 1;
                 }
             }
             b'<' => {
                 if i + 1 < bytes.len() && bytes[i + 1] == b'=' {
-                    tokens.push(Token { kind: TokenKind::LtEq });
+                    tokens.push(Token {
+                        kind: TokenKind::LtEq,
+                    });
                     i += 2;
                 } else {
-                    tokens.push(Token { kind: TokenKind::Lt });
+                    tokens.push(Token {
+                        kind: TokenKind::Lt,
+                    });
                     i += 1;
                 }
             }
             b'>' => {
                 if i + 1 < bytes.len() && bytes[i + 1] == b'=' {
-                    tokens.push(Token { kind: TokenKind::GtEq });
+                    tokens.push(Token {
+                        kind: TokenKind::GtEq,
+                    });
                     i += 2;
                 } else {
-                    tokens.push(Token { kind: TokenKind::Gt });
+                    tokens.push(Token {
+                        kind: TokenKind::Gt,
+                    });
                     i += 1;
                 }
             }
             b'&' => {
                 if i + 1 < bytes.len() && bytes[i + 1] == b'&' {
-                    tokens.push(Token { kind: TokenKind::AmpAmp });
+                    tokens.push(Token {
+                        kind: TokenKind::AmpAmp,
+                    });
                     i += 2;
                 } else {
                     i += 1;
@@ -163,30 +182,42 @@ fn tokenize(input: &str) -> Vec<Token> {
             }
             b'|' => {
                 if i + 1 < bytes.len() && bytes[i + 1] == b'|' {
-                    tokens.push(Token { kind: TokenKind::PipePipe });
+                    tokens.push(Token {
+                        kind: TokenKind::PipePipe,
+                    });
                     i += 2;
                 } else {
                     i += 1;
                 }
             }
             b'?' => {
-                tokens.push(Token { kind: TokenKind::Question });
+                tokens.push(Token {
+                    kind: TokenKind::Question,
+                });
                 i += 1;
             }
             b':' => {
-                tokens.push(Token { kind: TokenKind::Colon });
+                tokens.push(Token {
+                    kind: TokenKind::Colon,
+                });
                 i += 1;
             }
             b'(' => {
-                tokens.push(Token { kind: TokenKind::LParen });
+                tokens.push(Token {
+                    kind: TokenKind::LParen,
+                });
                 i += 1;
             }
             b')' => {
-                tokens.push(Token { kind: TokenKind::RParen });
+                tokens.push(Token {
+                    kind: TokenKind::RParen,
+                });
                 i += 1;
             }
             b';' => {
-                tokens.push(Token { kind: TokenKind::Semicolon });
+                tokens.push(Token {
+                    kind: TokenKind::Semicolon,
+                });
                 i += 1;
             }
             _ => {
@@ -485,9 +516,15 @@ pub fn parse_plural_expression(header: &str) -> PluralExpression {
 
     for part in header.split(';') {
         let part = part.trim();
-        if let Some(val) = part.strip_prefix("nplurals=").or_else(|| part.strip_prefix("nplurals =")) {
+        if let Some(val) = part
+            .strip_prefix("nplurals=")
+            .or_else(|| part.strip_prefix("nplurals ="))
+        {
             nplurals = val.trim().parse().unwrap_or(2);
-        } else if let Some(val) = part.strip_prefix("plural=").or_else(|| part.strip_prefix("plural =")) {
+        } else if let Some(val) = part
+            .strip_prefix("plural=")
+            .or_else(|| part.strip_prefix("plural ="))
+        {
             plural_expr_str = val.trim();
         }
     }
@@ -566,13 +603,13 @@ mod tests {
             "nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);",
         );
         assert_eq!(expr.nplurals, 3);
-        assert_eq!(expr.evaluate(1), 0);   // 1 яблоко
-        assert_eq!(expr.evaluate(2), 1);   // 2 яблока
-        assert_eq!(expr.evaluate(5), 2);   // 5 яблок
-        assert_eq!(expr.evaluate(11), 2);  // 11 яблок
-        assert_eq!(expr.evaluate(21), 0);  // 21 яблоко
-        assert_eq!(expr.evaluate(22), 1);  // 22 яблока
-        assert_eq!(expr.evaluate(25), 2);  // 25 яблок
+        assert_eq!(expr.evaluate(1), 0); // 1 яблоко
+        assert_eq!(expr.evaluate(2), 1); // 2 яблока
+        assert_eq!(expr.evaluate(5), 2); // 5 яблок
+        assert_eq!(expr.evaluate(11), 2); // 11 яблок
+        assert_eq!(expr.evaluate(21), 0); // 21 яблоко
+        assert_eq!(expr.evaluate(22), 1); // 22 яблока
+        assert_eq!(expr.evaluate(25), 2); // 25 яблок
         assert_eq!(expr.evaluate(111), 2); // 111 яблок
         assert_eq!(expr.evaluate(112), 2); // 112 яблок
     }

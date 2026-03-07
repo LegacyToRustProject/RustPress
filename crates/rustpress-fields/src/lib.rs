@@ -44,6 +44,7 @@ pub mod field_types;
 pub mod storage;
 
 // Re-export primary types at crate root for convenience.
+pub use acf_compat::{AcfFieldGroupPost, AcfFieldPost, AcfMetaEntry, AcfPostData};
 pub use api::{
     delete_field, get_field, get_field_bool, get_field_number, get_field_string, get_rows,
     get_sub_field, have_rows, update_field,
@@ -54,7 +55,6 @@ pub use field_group::{
 pub use field_types::{
     ConditionalOperator, ConditionalRule, FieldDefinition, FieldType, FieldValue,
 };
-pub use acf_compat::{AcfFieldGroupPost, AcfFieldPost, AcfMetaEntry, AcfPostData};
 pub use storage::FieldStorage;
 
 /// Prelude module for convenient glob imports.

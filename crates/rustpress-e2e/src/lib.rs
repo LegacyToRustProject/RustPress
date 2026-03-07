@@ -47,8 +47,7 @@ impl TestConfig {
                 .unwrap_or_else(|_| "http://localhost:8081".to_string()),
             rustpress_url: std::env::var("RUSTPRESS_URL")
                 .unwrap_or_else(|_| "http://localhost:8080".to_string()),
-            admin_user: std::env::var("ADMIN_USER")
-                .unwrap_or_else(|_| "admin".to_string()),
+            admin_user: std::env::var("ADMIN_USER").unwrap_or_else(|_| "admin".to_string()),
             admin_password: std::env::var("ADMIN_PASSWORD")
                 .unwrap_or_else(|_| "password".to_string()),
             webdriver_url: std::env::var("WEBDRIVER_URL")
@@ -244,12 +243,22 @@ pub fn assert_similar_html(wp_html: &str, rp_html: &str, threshold: f64) {
         let rp_norm = normalize_whitespace(rp_html);
         let diff = TextDiff::from_lines(&wp_norm, &rp_norm);
 
-        eprintln!("--- HTML Structural Similarity: {:.2}% (threshold: {:.0}%) ---", similarity * 100.0, threshold * 100.0);
+        eprintln!(
+            "--- HTML Structural Similarity: {:.2}% (threshold: {:.0}%) ---",
+            similarity * 100.0,
+            threshold * 100.0
+        );
         eprintln!("WordPress tags: {:?}", wp_tags);
         eprintln!("RustPress tags: {:?}", rp_tags);
         eprintln!();
-        eprintln!("Tags only in WordPress: {:?}", wp_tags.difference(&rp_tags).collect::<Vec<_>>());
-        eprintln!("Tags only in RustPress: {:?}", rp_tags.difference(&wp_tags).collect::<Vec<_>>());
+        eprintln!(
+            "Tags only in WordPress: {:?}",
+            wp_tags.difference(&rp_tags).collect::<Vec<_>>()
+        );
+        eprintln!(
+            "Tags only in RustPress: {:?}",
+            rp_tags.difference(&wp_tags).collect::<Vec<_>>()
+        );
         eprintln!();
         eprintln!("--- Diff (first 80 lines) ---");
         for (idx, change) in diff.iter_all_changes().enumerate() {
@@ -363,7 +372,10 @@ pub fn assert_json_structure_match(wp_json: &Value, rp_json: &Value) {
     }
 
     eprintln!("--- JSON Structure Comparison ---");
-    eprintln!("Paths in both: {}", wp_shape.intersection(&rp_shape).count());
+    eprintln!(
+        "Paths in both: {}",
+        wp_shape.intersection(&rp_shape).count()
+    );
 
     if !only_in_wp.is_empty() {
         eprintln!("Paths only in WordPress ({}):", only_in_wp.len());
@@ -420,7 +432,11 @@ pub fn assert_json_keys_match(wp_json: &Value, rp_json: &Value) {
     let total_wp = wp_keys.len();
     eprintln!(
         "[{}] Top-level keys: {}/{} match",
-        if missing_in_rp.is_empty() { "PASS" } else { "PARTIAL" },
+        if missing_in_rp.is_empty() {
+            "PASS"
+        } else {
+            "PARTIAL"
+        },
         match_count,
         total_wp,
     );
@@ -518,7 +534,7 @@ pub async fn is_webdriver_available(webdriver_url: &str) -> bool {
         .unwrap();
     // ChromeDriver responds to GET /status
     client
-        .get(&format!("{}/status", webdriver_url))
+        .get(format!("{}/status", webdriver_url))
         .send()
         .await
         .map(|r| r.status().is_success())
@@ -685,7 +701,8 @@ pub fn compare_images_pixel_perfect(
                 diff_image.put_pixel(x, y, Rgba([255, 0, 0, 200]));
             } else {
                 // Dimmed grayscale for matching pixels
-                let gray = ((wp_pixel[0] as u16 + wp_pixel[1] as u16 + wp_pixel[2] as u16) / 3) as u8;
+                let gray =
+                    ((wp_pixel[0] as u16 + wp_pixel[1] as u16 + wp_pixel[2] as u16) / 3) as u8;
                 diff_image.put_pixel(x, y, Rgba([gray / 3, gray / 3, gray / 3, 255]));
             }
         }
@@ -889,7 +906,10 @@ pub async fn visual_regression_test(
 
     for (width, height, vp_label) in &viewports {
         let full_label = format!("{}_{}", label, vp_label);
-        eprintln!("\n--- Visual test: {} ({}x{}) ---", full_label, width, height);
+        eprintln!(
+            "\n--- Visual test: {} ({}x{}) ---",
+            full_label, width, height
+        );
 
         let result = visual_compare(
             wp_driver,

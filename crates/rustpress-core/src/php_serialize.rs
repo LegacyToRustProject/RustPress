@@ -178,7 +178,11 @@ pub struct PhpSerializeError {
 
 impl std::fmt::Display for PhpSerializeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "PHP unserialize error at {}: {}", self.position, self.message)
+        write!(
+            f,
+            "PHP unserialize error at {}: {}",
+            self.position, self.message
+        )
     }
 }
 
@@ -279,12 +283,11 @@ fn parse_string(bytes: &[u8], pos: usize) -> Result<(PhpValue, usize), PhpSerial
         });
     }
 
-    let content = std::str::from_utf8(&bytes[str_start..str_end]).map_err(|_| {
-        PhpSerializeError {
+    let content =
+        std::str::from_utf8(&bytes[str_start..str_end]).map_err(|_| PhpSerializeError {
             message: "invalid UTF-8 in string".into(),
             position: str_start,
-        }
-    })?;
+        })?;
 
     // Expect ";
     expect_byte(bytes, str_end, b'"')?;
@@ -318,11 +321,7 @@ fn parse_array(bytes: &[u8], pos: usize) -> Result<(PhpValue, usize), PhpSeriali
     Ok((PhpValue::Array(pairs), cursor + 1))
 }
 
-fn expect_byte(
-    bytes: &[u8],
-    pos: usize,
-    expected: u8,
-) -> Result<(), PhpSerializeError> {
+fn expect_byte(bytes: &[u8], pos: usize, expected: u8) -> Result<(), PhpSerializeError> {
     match bytes.get(pos) {
         Some(&b) if b == expected => Ok(()),
         Some(&b) => Err(PhpSerializeError {
@@ -444,10 +443,7 @@ mod tests {
             mail.get("to").and_then(|v| v.as_str()),
             Some("admin@example.com")
         );
-        assert_eq!(
-            mail.get("subject").and_then(|v| v.as_str()),
-            Some("Hello")
-        );
+        assert_eq!(mail.get("subject").and_then(|v| v.as_str()), Some("Hello"));
     }
 
     #[test]

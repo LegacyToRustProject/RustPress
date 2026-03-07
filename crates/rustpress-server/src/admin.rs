@@ -16,9 +16,8 @@ pub fn create_admin_routes(state: &Arc<AppState>) -> Router {
         plugin_registry: state.plugin_registry.clone(),
     };
 
-    rustpress_admin::routes(admin_state)
-        .layer(axum::middleware::from_fn_with_state(
-            state.clone(),
-            require_auth_jwt_or_session,
-        ))
+    rustpress_admin::routes(admin_state).layer(axum::middleware::from_fn_with_state(
+        state.clone(),
+        require_auth_jwt_or_session,
+    ))
 }

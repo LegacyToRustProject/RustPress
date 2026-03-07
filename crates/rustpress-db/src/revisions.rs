@@ -47,7 +47,7 @@ impl RevisionManager {
             post_modified: ActiveValue::Set(now),
             post_modified_gmt: ActiveValue::Set(now),
             post_content_filtered: ActiveValue::Set(String::new()),
-            post_parent: ActiveValue::Set(post.id as u64),
+            post_parent: ActiveValue::Set(post.id),
             guid: ActiveValue::Set(String::new()),
             menu_order: ActiveValue::Set(0),
             post_type: ActiveValue::Set("revision".to_string()),
@@ -86,10 +86,7 @@ impl RevisionManager {
         db: &DatabaseConnection,
         revision_id: u64,
     ) -> Result<Option<wp_posts::Model>, sea_orm::DbErr> {
-        let Some(revision) = wp_posts::Entity::find_by_id(revision_id)
-            .one(db)
-            .await?
-        else {
+        let Some(revision) = wp_posts::Entity::find_by_id(revision_id).one(db).await? else {
             return Ok(None);
         };
 
@@ -98,7 +95,7 @@ impl RevisionManager {
         }
 
         let now = Utc::now().naive_utc();
-        let parent_id = revision.post_parent as u64;
+        let parent_id = revision.post_parent;
 
         let Some(parent) = wp_posts::Entity::find_by_id(parent_id).one(db).await? else {
             return Ok(None);

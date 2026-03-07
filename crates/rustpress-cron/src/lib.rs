@@ -297,7 +297,9 @@ mod tests {
         let manager = CronManager::new();
         manager.add_schedule("every_5_minutes", 300, "Every 5 Minutes");
         let schedules = manager.get_schedules();
-        assert!(schedules.iter().any(|s| s.name == "every_5_minutes" && s.interval == 300));
+        assert!(schedules
+            .iter()
+            .any(|s| s.name == "every_5_minutes" && s.interval == 300));
     }
 
     #[test]
@@ -321,11 +323,17 @@ mod tests {
         // The recurring event should have been rescheduled
         let next = manager.next_scheduled("recurring_hook");
         assert!(next.is_some(), "recurring event should be rescheduled");
-        assert!(next.unwrap() > 0, "rescheduled timestamp should be in the future");
+        assert!(
+            next.unwrap() > 0,
+            "rescheduled timestamp should be in the future"
+        );
 
         // Verify there is still exactly one event
         let events = manager.get_events();
-        let recurring_events: Vec<_> = events.iter().filter(|e| e.hook == "recurring_hook").collect();
+        let recurring_events: Vec<_> = events
+            .iter()
+            .filter(|e| e.hook == "recurring_hook")
+            .collect();
         assert_eq!(recurring_events.len(), 1);
         assert_eq!(recurring_events[0].interval, Some(3600));
     }
@@ -461,7 +469,9 @@ mod tests {
 
         for s in &schedules_new {
             assert!(
-                schedules_default.iter().any(|d| d.name == s.name && d.interval == s.interval),
+                schedules_default
+                    .iter()
+                    .any(|d| d.name == s.name && d.interval == s.interval),
                 "default() should have the same schedules as new()"
             );
         }

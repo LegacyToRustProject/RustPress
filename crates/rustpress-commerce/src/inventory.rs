@@ -124,12 +124,7 @@ impl InventoryManager {
     }
 
     /// Check if a product can be purchased in the given quantity.
-    pub fn can_purchase(
-        &self,
-        product_id: u64,
-        variation_id: Option<u64>,
-        quantity: u32,
-    ) -> bool {
+    pub fn can_purchase(&self, product_id: u64, variation_id: Option<u64>, quantity: u32) -> bool {
         let key = Self::make_key(product_id, variation_id);
         match self.stock.get(&key) {
             Some(entry) => {
@@ -358,9 +353,7 @@ impl InventoryManager {
                     && entry.quantity <= 0
                     && !entry.allow_backorder
                 {
-                    key.split(':')
-                        .next()
-                        .and_then(|s| s.parse().ok())
+                    key.split(':').next().and_then(|s| s.parse().ok())
                 } else {
                     None
                 }

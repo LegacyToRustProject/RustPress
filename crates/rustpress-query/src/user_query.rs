@@ -180,23 +180,17 @@ impl UserQuery {
                 super::post_query::Order::Asc => query.order_by_asc(wp_users::Column::Id),
             },
             UserOrderBy::Login => match self.order {
-                super::post_query::Order::Desc => {
-                    query.order_by_desc(wp_users::Column::UserLogin)
-                }
+                super::post_query::Order::Desc => query.order_by_desc(wp_users::Column::UserLogin),
                 super::post_query::Order::Asc => query.order_by_asc(wp_users::Column::UserLogin),
             },
             UserOrderBy::Nicename => match self.order {
                 super::post_query::Order::Desc => {
                     query.order_by_desc(wp_users::Column::UserNicename)
                 }
-                super::post_query::Order::Asc => {
-                    query.order_by_asc(wp_users::Column::UserNicename)
-                }
+                super::post_query::Order::Asc => query.order_by_asc(wp_users::Column::UserNicename),
             },
             UserOrderBy::Email => match self.order {
-                super::post_query::Order::Desc => {
-                    query.order_by_desc(wp_users::Column::UserEmail)
-                }
+                super::post_query::Order::Desc => query.order_by_desc(wp_users::Column::UserEmail),
                 super::post_query::Order::Asc => query.order_by_asc(wp_users::Column::UserEmail),
             },
             UserOrderBy::Registered => match self.order {
@@ -211,16 +205,14 @@ impl UserQuery {
                 super::post_query::Order::Desc => {
                     query.order_by_desc(wp_users::Column::DisplayName)
                 }
-                super::post_query::Order::Asc => {
-                    query.order_by_asc(wp_users::Column::DisplayName)
-                }
+                super::post_query::Order::Asc => query.order_by_asc(wp_users::Column::DisplayName),
             },
         };
 
         // Count total
         let total_users = query.clone().count(db).await?;
         let max_num_pages = if self.number > 0 {
-            (total_users + self.number - 1) / self.number
+            total_users.div_ceil(self.number)
         } else {
             1
         };

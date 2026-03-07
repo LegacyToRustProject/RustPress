@@ -113,8 +113,14 @@ mod tests {
         cache.set("key1", "value_a", "group_a").await;
         cache.set("key1", "value_b", "group_b").await;
 
-        assert_eq!(cache.get("key1", "group_a").await, Some("value_a".to_string()));
-        assert_eq!(cache.get("key1", "group_b").await, Some("value_b".to_string()));
+        assert_eq!(
+            cache.get("key1", "group_a").await,
+            Some("value_a".to_string())
+        );
+        assert_eq!(
+            cache.get("key1", "group_b").await,
+            Some("value_b".to_string())
+        );
     }
 
     #[tokio::test]

@@ -103,8 +103,7 @@ mod tests {
 
     #[test]
     fn test_with_type_cast() {
-        let mq = MetaQuery::new("price", MetaCompare::Gt, "50")
-            .with_type(MetaType::Numeric);
+        let mq = MetaQuery::new("price", MetaCompare::Gt, "50").with_type(MetaType::Numeric);
         assert!(matches!(mq.type_cast, MetaType::Numeric));
     }
 }

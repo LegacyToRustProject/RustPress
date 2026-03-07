@@ -94,22 +94,20 @@ mod tests {
 
     #[test]
     fn test_multiple_terms() {
-        let tq = TaxQuery::new("post_tag", "rust")
-            .terms(vec!["rust".to_string(), "wasm".to_string()]);
+        let tq =
+            TaxQuery::new("post_tag", "rust").terms(vec!["rust".to_string(), "wasm".to_string()]);
         assert_eq!(tq.terms.len(), 2);
     }
 
     #[test]
     fn test_not_in_operator() {
-        let tq = TaxQuery::new("category", "draft")
-            .operator(TaxOperator::NotIn);
+        let tq = TaxQuery::new("category", "draft").operator(TaxOperator::NotIn);
         assert!(matches!(tq.operator, TaxOperator::NotIn));
     }
 
     #[test]
     fn test_exclude_children() {
-        let tq = TaxQuery::new("category", "news")
-            .include_children(false);
+        let tq = TaxQuery::new("category", "news").include_children(false);
         assert!(!tq.include_children);
     }
 }

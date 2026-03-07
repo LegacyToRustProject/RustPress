@@ -51,8 +51,16 @@ pub fn filter_post_context(val: &mut Value, context: RestContext) {
     match context {
         RestContext::Embed => {
             let embed_fields = [
-                "id", "date", "slug", "link", "title", "excerpt",
-                "author", "featured_media", "_links", "_embedded",
+                "id",
+                "date",
+                "slug",
+                "link",
+                "title",
+                "excerpt",
+                "author",
+                "featured_media",
+                "_links",
+                "_embedded",
             ];
             if let Some(obj) = val.as_object_mut() {
                 obj.retain(|k, _| embed_fields.contains(&k.as_str()));
@@ -89,8 +97,14 @@ pub fn filter_user_context(val: &mut Value, context: RestContext) {
     match context {
         RestContext::Embed => {
             let embed_fields = [
-                "id", "name", "url", "description", "link",
-                "slug", "avatar_urls", "_links",
+                "id",
+                "name",
+                "url",
+                "description",
+                "link",
+                "slug",
+                "avatar_urls",
+                "_links",
             ];
             if let Some(obj) = val.as_object_mut() {
                 obj.retain(|k, _| embed_fields.contains(&k.as_str()));
@@ -114,14 +128,11 @@ pub fn filter_user_context(val: &mut Value, context: RestContext) {
 /// - `Embed`: id, link, name, slug, taxonomy, _links.
 /// - `View` / `Edit`: no filtering.
 pub fn filter_term_context(val: &mut Value, context: RestContext) {
-    match context {
-        RestContext::Embed => {
-            let embed_fields = ["id", "link", "name", "slug", "taxonomy", "_links"];
-            if let Some(obj) = val.as_object_mut() {
-                obj.retain(|k, _| embed_fields.contains(&k.as_str()));
-            }
+    if context == RestContext::Embed {
+        let embed_fields = ["id", "link", "name", "slug", "taxonomy", "_links"];
+        if let Some(obj) = val.as_object_mut() {
+            obj.retain(|k, _| embed_fields.contains(&k.as_str()));
         }
-        _ => {}
     }
 }
 
@@ -130,17 +141,21 @@ pub fn filter_term_context(val: &mut Value, context: RestContext) {
 /// - `Embed`: id, author, author_name, author_url, date, content, link, type, _links.
 /// - `View` / `Edit`: no filtering.
 pub fn filter_comment_context(val: &mut Value, context: RestContext) {
-    match context {
-        RestContext::Embed => {
-            let embed_fields = [
-                "id", "author", "author_name", "author_url",
-                "date", "content", "link", "type", "_links",
-            ];
-            if let Some(obj) = val.as_object_mut() {
-                obj.retain(|k, _| embed_fields.contains(&k.as_str()));
-            }
+    if context == RestContext::Embed {
+        let embed_fields = [
+            "id",
+            "author",
+            "author_name",
+            "author_url",
+            "date",
+            "content",
+            "link",
+            "type",
+            "_links",
+        ];
+        if let Some(obj) = val.as_object_mut() {
+            obj.retain(|k, _| embed_fields.contains(&k.as_str()));
         }
-        _ => {}
     }
 }
 
@@ -153,8 +168,14 @@ pub fn filter_media_context(val: &mut Value, context: RestContext) {
     match context {
         RestContext::Embed => {
             let embed_fields = [
-                "id", "date", "slug", "title", "author",
-                "source_url", "_links", "_embedded",
+                "id",
+                "date",
+                "slug",
+                "title",
+                "author",
+                "source_url",
+                "_links",
+                "_embedded",
             ];
             if let Some(obj) = val.as_object_mut() {
                 obj.retain(|k, _| embed_fields.contains(&k.as_str()));
@@ -294,11 +315,9 @@ pub fn filter_fields(value: Value, fields: Option<&str>) -> Value {
                                         _ => serde_json::Map::new(),
                                     };
                                     if let Some(inner_val) = inner.get(parts[1]) {
-                                        nested
-                                            .insert(parts[1].to_string(), inner_val.clone());
+                                        nested.insert(parts[1].to_string(), inner_val.clone());
                                     }
-                                    result
-                                        .insert(top_key.to_string(), Value::Object(nested));
+                                    result.insert(top_key.to_string(), Value::Object(nested));
                                 } else {
                                     result.insert(top_key.to_string(), val.clone());
                                 }
@@ -316,10 +335,8 @@ pub fn filter_fields(value: Value, fields: Option<&str>) -> Value {
                     Value::Object(result)
                 }
                 Value::Array(arr) => {
-                    let filtered: Vec<Value> = arr
-                        .into_iter()
-                        .map(|v| filter_fields(v, Some(f)))
-                        .collect();
+                    let filtered: Vec<Value> =
+                        arr.into_iter().map(|v| filter_fields(v, Some(f))).collect();
                     Value::Array(filtered)
                 }
                 other => other,

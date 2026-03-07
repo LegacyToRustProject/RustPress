@@ -69,9 +69,11 @@ async fn list_users(
 
     let query = wp_users::Entity::find().order_by_asc(wp_users::Column::UserLogin);
 
-    let total = query.clone().count(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let total = query
+        .clone()
+        .count(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let users = query
         .offset((page - 1) * per_page)
@@ -140,9 +142,10 @@ async fn create_user(
         ..Default::default()
     };
 
-    let result = new_user.insert(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let result = new_user
+        .insert(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok((StatusCode::CREATED, Json(UserResponse::from(result))))
 }

@@ -47,7 +47,7 @@ pub async fn get_posts(
         .order_by_desc(wp_posts::Column::PostDate);
 
     let total = query.clone().count(db).await?;
-    let total_pages = (total + pagination.per_page - 1) / pagination.per_page;
+    let total_pages = total.div_ceil(pagination.per_page);
 
     let items = query
         .offset((pagination.page - 1) * pagination.per_page)
@@ -148,7 +148,7 @@ pub async fn get_users(
     let query = wp_users::Entity::find().order_by_asc(wp_users::Column::UserLogin);
 
     let total = query.clone().count(db).await?;
-    let total_pages = (total + pagination.per_page - 1) / pagination.per_page;
+    let total_pages = total.div_ceil(pagination.per_page);
 
     let items = query
         .offset((pagination.page - 1) * pagination.per_page)
@@ -291,7 +291,7 @@ pub async fn get_posts_by_type(
 
     let total = query.clone().count(db).await?;
     let total_pages = if pagination.per_page > 0 {
-        (total + pagination.per_page - 1) / pagination.per_page
+        total.div_ceil(pagination.per_page)
     } else {
         1
     };

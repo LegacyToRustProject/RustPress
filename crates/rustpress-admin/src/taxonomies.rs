@@ -90,19 +90,15 @@ async fn list_terms(
         let tt_map: std::collections::HashMap<u64, &wp_term_taxonomy::Model> =
             tt_records.iter().map(|tt| (tt.term_id, tt)).collect();
 
-        let mut term_query = wp_terms::Entity::find()
-            .filter(wp_terms::Column::TermId.is_in(term_ids));
+        let mut term_query =
+            wp_terms::Entity::find().filter(wp_terms::Column::TermId.is_in(term_ids));
 
         if let Some(ref search) = params.search {
             let pattern = format!("%{}%", search);
             term_query = term_query.filter(wp_terms::Column::Name.like(&pattern));
         }
 
-        let total = term_query
-            .clone()
-            .count(&state.db)
-            .await
-            .unwrap_or(0);
+        let total = term_query.clone().count(&state.db).await.unwrap_or(0);
 
         let terms = term_query
             .order_by_asc(wp_terms::Column::Name)
@@ -117,7 +113,7 @@ async fn list_terms(
             .map(|t| {
                 let tt = tt_map.get(&t.term_id);
                 AdminTerm {
-                    term_id: t.term_id as u64,
+                    term_id: t.term_id,
                     name: t.name,
                     slug: t.slug,
                     taxonomy: Some(taxonomy.clone()),
@@ -157,7 +153,7 @@ async fn list_terms(
     let items: Vec<AdminTerm> = terms
         .into_iter()
         .map(|t| AdminTerm {
-            term_id: t.term_id as u64,
+            term_id: t.term_id,
             name: t.name,
             slug: t.slug,
             taxonomy: None,
@@ -186,7 +182,7 @@ async fn get_term(
         .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(AdminTerm {
-        term_id: term.term_id as u64,
+        term_id: term.term_id,
         name: term.name,
         slug: term.slug,
         taxonomy: None,
@@ -200,9 +196,7 @@ async fn create_term(
     State(state): State<AdminState>,
     Json(body): Json<CreateTermRequest>,
 ) -> Result<(StatusCode, Json<AdminTerm>), StatusCode> {
-    let slug = body
-        .slug
-        .unwrap_or_else(|| slugify(&body.name));
+    let slug = body.slug.unwrap_or_else(|| slugify(&body.name));
 
     let term = wp_terms::ActiveModel {
         term_id: sea_orm::ActiveValue::NotSet,
@@ -219,7 +213,7 @@ async fn create_term(
     // Create term_taxonomy entry
     let tt = wp_term_taxonomy::ActiveModel {
         term_taxonomy_id: sea_orm::ActiveValue::NotSet,
-        term_id: Set(result.term_id as u64),
+        term_id: Set(result.term_id),
         taxonomy: Set(body.taxonomy.clone()),
         description: Set(body.description.unwrap_or_default()),
         parent: Set(body.parent.unwrap_or(0)),
@@ -232,7 +226,7 @@ async fn create_term(
     Ok((
         StatusCode::CREATED,
         Json(AdminTerm {
-            term_id: result.term_id as u64,
+            term_id: result.term_id,
             name: result.name,
             slug: result.slug,
             taxonomy: Some(body.taxonomy),
@@ -270,7 +264,7 @@ async fn update_term(
 
     info!(id, "term updated");
     Ok(Json(AdminTerm {
-        term_id: updated.term_id as u64,
+        term_id: updated.term_id,
         name: updated.name,
         slug: updated.slug,
         taxonomy: None,

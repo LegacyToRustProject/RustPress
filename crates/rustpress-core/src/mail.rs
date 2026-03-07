@@ -1,7 +1,6 @@
 use lettre::{
-    message::header::ContentType,
-    transport::smtp::authentication::Credentials,
-    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+    message::header::ContentType, transport::smtp::authentication::Credentials, AsyncSmtpTransport,
+    AsyncTransport, Message, Tokio1Executor,
 };
 
 /// Configuration for the mail system.
@@ -49,14 +48,8 @@ impl WpMail {
                 .get("smtp_port")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(25),
-            smtp_username: options
-                .get("smtp_username")
-                .cloned()
-                .unwrap_or_default(),
-            smtp_password: options
-                .get("smtp_password")
-                .cloned()
-                .unwrap_or_default(),
+            smtp_username: options.get("smtp_username").cloned().unwrap_or_default(),
+            smtp_password: options.get("smtp_password").cloned().unwrap_or_default(),
             from_name: options
                 .get("blogname")
                 .cloned()
@@ -77,7 +70,7 @@ impl WpMail {
         message: &str,
         headers: Option<&str>,
     ) -> Result<(), MailError> {
-        let content_type = if headers.map_or(false, |h| h.contains("Content-Type: text/html")) {
+        let content_type = if headers.is_some_and(|h| h.contains("Content-Type: text/html")) {
             ContentType::TEXT_HTML
         } else {
             ContentType::TEXT_PLAIN
@@ -212,10 +205,7 @@ mod tests {
         options.insert("smtp_host".to_string(), "mail.example.com".to_string());
         options.insert("smtp_port".to_string(), "587".to_string());
         options.insert("blogname".to_string(), "My Blog".to_string());
-        options.insert(
-            "admin_email".to_string(),
-            "admin@example.com".to_string(),
-        );
+        options.insert("admin_email".to_string(), "admin@example.com".to_string());
 
         let mailer = WpMail::from_options(&options);
         assert_eq!(mailer.config.smtp_host, "mail.example.com");

@@ -19,10 +19,7 @@ use thirtyfour::prelude::*;
 /// Create a WebDriver instance. Returns `None` if WebDriver is not available.
 async fn create_driver(config: &TestConfig) -> Option<WebDriver> {
     if !is_webdriver_available(&config.webdriver_url).await {
-        eprintln!(
-            "[SKIP] WebDriver not available at {}",
-            config.webdriver_url
-        );
+        eprintln!("[SKIP] WebDriver not available at {}", config.webdriver_url);
         return None;
     }
 
@@ -176,9 +173,18 @@ async fn test_login_page_renders() {
     driver.goto(&wp_url).await.unwrap();
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    let wp_has_user = driver_has_element(&driver, "#user_login, input[name=log], input[name=username]").await;
-    let wp_has_pass = driver_has_element(&driver, "#user_pass, input[name=pwd], input[name=password]").await;
-    let wp_has_submit = driver_has_element(&driver, "#wp-submit, input[type=submit], button[type=submit]").await;
+    let wp_has_user = driver_has_element(
+        &driver,
+        "#user_login, input[name=log], input[name=username]",
+    )
+    .await;
+    let wp_has_pass =
+        driver_has_element(&driver, "#user_pass, input[name=pwd], input[name=password]").await;
+    let wp_has_submit = driver_has_element(
+        &driver,
+        "#wp-submit, input[type=submit], button[type=submit]",
+    )
+    .await;
 
     eprintln!("WordPress login:");
     eprintln!("  Username field: {}", wp_has_user);
@@ -190,9 +196,18 @@ async fn test_login_page_renders() {
     driver.goto(&rp_url).await.unwrap();
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    let rp_has_user = driver_has_element(&driver, "#user_login, input[name=log], input[name=username]").await;
-    let rp_has_pass = driver_has_element(&driver, "#user_pass, input[name=pwd], input[name=password]").await;
-    let rp_has_submit = driver_has_element(&driver, "#wp-submit, input[type=submit], button[type=submit]").await;
+    let rp_has_user = driver_has_element(
+        &driver,
+        "#user_login, input[name=log], input[name=username]",
+    )
+    .await;
+    let rp_has_pass =
+        driver_has_element(&driver, "#user_pass, input[name=pwd], input[name=password]").await;
+    let rp_has_submit = driver_has_element(
+        &driver,
+        "#wp-submit, input[type=submit], button[type=submit]",
+    )
+    .await;
 
     eprintln!("RustPress login:");
     eprintln!("  Username field: {}", rp_has_user);
@@ -233,7 +248,11 @@ async fn test_login_redirects_to_dashboard() {
     .await;
 
     if wp_ok {
-        let wp_current = driver.current_url().await.map(|u| u.to_string()).unwrap_or_default();
+        let wp_current = driver
+            .current_url()
+            .await
+            .map(|u| u.to_string())
+            .unwrap_or_default();
         let wp_is_admin = wp_current.contains("wp-admin");
         eprintln!(
             "WordPress after login: {} (is admin: {})",
@@ -253,7 +272,11 @@ async fn test_login_redirects_to_dashboard() {
     .await;
 
     if rp_ok {
-        let rp_current = driver.current_url().await.map(|u| u.to_string()).unwrap_or_default();
+        let rp_current = driver
+            .current_url()
+            .await
+            .map(|u| u.to_string())
+            .unwrap_or_default();
         let rp_is_admin = rp_current.contains("wp-admin");
         eprintln!(
             "RustPress after login: {} (is admin: {})",
@@ -322,9 +345,18 @@ async fn test_dashboard_has_widgets() {
 
     // Check for dashboard widgets
     let widget_selectors = [
-        ("#dashboard_right_now, .at-a-glance, .glance-items", "At a Glance widget"),
-        ("#dashboard_quick_press, .quick-draft, #quick-press", "Quick Draft widget"),
-        ("#dashboard_activity, .recent-activity, .activity-block", "Recent Activity widget"),
+        (
+            "#dashboard_right_now, .at-a-glance, .glance-items",
+            "At a Glance widget",
+        ),
+        (
+            "#dashboard_quick_press, .quick-draft, #quick-press",
+            "Quick Draft widget",
+        ),
+        (
+            "#dashboard_activity, .recent-activity, .activity-block",
+            "Recent Activity widget",
+        ),
     ];
 
     for (selector, label) in &widget_selectors {
@@ -367,18 +399,39 @@ async fn test_posts_list_page() {
 
     eprintln!("\n=== test_posts_list_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/edit.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/edit.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/edit.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/edit.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("table, .wp-list-table, .posts-table", "Posts table"),
         (".subsubsub, .status-filters", "Status filter links"),
-        (".page-title-action, .add-new, a[href*='post-new']", "Add New button"),
+        (
+            ".page-title-action, .add-new, a[href*='post-new']",
+            "Add New button",
+        ),
         ("thead, th", "Table header"),
     ];
 
@@ -448,15 +501,10 @@ async fn test_create_post_flow() {
     if has_title && has_content {
         // Fill in title
         let title_field = driver
-            .find(By::Css(
-                "#title, input[name=post_title], input[name=title]",
-            ))
+            .find(By::Css("#title, input[name=post_title], input[name=title]"))
             .await;
         if let Ok(field) = title_field {
-            field
-                .send_keys("Selenium E2E Test Post")
-                .await
-                .ok();
+            field.send_keys("Selenium E2E Test Post").await.ok();
         }
 
         // Fill in content
@@ -502,17 +550,38 @@ async fn test_media_library_page() {
 
     eprintln!("\n=== test_media_library_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/upload.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/upload.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/upload.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/upload.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         (".wrap, #wpcontent, #wpbody-content", "Content wrapper"),
-        (".page-title-action, .add-new, a[href*='media-new']", "Add New button"),
+        (
+            ".page-title-action, .add-new, a[href*='media-new']",
+            "Add New button",
+        ),
         (".media-frame, .upload-ui, table, .media-list", "Media area"),
     ];
 
@@ -547,11 +616,29 @@ async fn test_users_page() {
 
     eprintln!("\n=== test_users_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/users.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/users.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/users.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/users.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
@@ -606,28 +693,46 @@ async fn test_settings_page() {
 
     eprintln!("\n=== test_settings_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/options-general.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/options-general.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-general.php",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-general.php",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("form", "Settings form"),
-        (
-            "input[name=blogname], input#blogname",
-            "Site Title field",
-        ),
+        ("input[name=blogname], input#blogname", "Site Title field"),
         (
             "input[name=blogdescription], input#blogdescription",
             "Tagline field",
         ),
-        (
-            "input[type=submit], button[type=submit]",
-            "Save button",
-        ),
+        ("input[type=submit], button[type=submit]", "Save button"),
     ];
 
     for (selector, label) in &checks {
@@ -661,11 +766,29 @@ async fn test_comments_page() {
 
     eprintln!("\n=== test_comments_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/edit-comments.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/edit-comments.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/edit-comments.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/edit-comments.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
@@ -706,18 +829,45 @@ async fn test_categories_page() {
 
     eprintln!("\n=== test_categories_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/edit-tags.php?taxonomy=category", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/edit-tags.php?taxonomy=category", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/edit-tags.php?taxonomy=category",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/edit-tags.php?taxonomy=category",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("table, .wp-list-table, .taxonomy-table", "Categories table"),
         ("form, #addtag, .add-category-form", "Add category form"),
-        ("input[name=tag-name], input[name=name]", "Category name input"),
+        (
+            "input[name=tag-name], input[name=name]",
+            "Category name input",
+        ),
     ];
 
     for (selector, label) in &checks {
@@ -751,11 +901,29 @@ async fn test_admin_sidebar_links() {
 
     eprintln!("\n=== test_admin_sidebar_links ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
@@ -764,10 +932,19 @@ async fn test_admin_sidebar_links() {
         ("Dashboard", "a[href*='index.php'], .menu-top .wp-menu-name"),
         ("Posts", "a[href*='edit.php'], .menu-icon-post"),
         ("Media", "a[href*='upload.php'], .menu-icon-media"),
-        ("Pages", "a[href*='edit.php?post_type=page'], .menu-icon-page"),
-        ("Comments", "a[href*='edit-comments.php'], .menu-icon-comments"),
+        (
+            "Pages",
+            "a[href*='edit.php?post_type=page'], .menu-icon-page",
+        ),
+        (
+            "Comments",
+            "a[href*='edit-comments.php'], .menu-icon-comments",
+        ),
         ("Users", "a[href*='users.php'], .menu-icon-users"),
-        ("Settings", "a[href*='options-general.php'], .menu-icon-settings"),
+        (
+            "Settings",
+            "a[href*='options-general.php'], .menu-icon-settings",
+        ),
     ];
 
     for (label, selector) in &expected_menu_items {
@@ -785,10 +962,7 @@ async fn test_admin_sidebar_links() {
     // Count total sidebar links
     let wp_links = driver_count_elements(&wp_driver, "#adminmenu a, .admin-sidebar a, nav a").await;
     let rp_links = driver_count_elements(&rp_driver, "#adminmenu a, .admin-sidebar a, nav a").await;
-    eprintln!(
-        "  Total sidebar links - WP: {}, RP: {}",
-        wp_links, rp_links
-    );
+    eprintln!("  Total sidebar links - WP: {}, RP: {}", wp_links, rp_links);
 
     eprintln!("[PASS] Admin sidebar links compared");
     wp_driver.quit().await.ok();
@@ -817,11 +991,29 @@ async fn test_plugins_page() {
 
     eprintln!("\n=== test_plugins_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/plugins.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/plugins.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/plugins.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/plugins.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
@@ -862,11 +1054,29 @@ async fn test_themes_page() {
 
     eprintln!("\n=== test_themes_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/themes.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/themes.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/themes.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/themes.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
@@ -882,10 +1092,7 @@ async fn test_themes_page() {
     // Count available themes
     let wp_themes = driver_count_elements(&wp_driver, ".theme, .theme-card").await;
     let rp_themes = driver_count_elements(&rp_driver, ".theme, .theme-card").await;
-    eprintln!(
-        "  Theme count - WP: {}, RP: {}",
-        wp_themes, rp_themes
-    );
+    eprintln!("  Theme count - WP: {}, RP: {}", wp_themes, rp_themes);
 
     eprintln!("[PASS] Themes page compared");
     wp_driver.quit().await.ok();
@@ -914,19 +1121,43 @@ async fn test_admin_toolbar() {
 
     eprintln!("\n=== test_admin_toolbar ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // WordPress admin bar / toolbar at the top
     let toolbar_selectors = [
         ("#wpadminbar, .admin-bar, .admin-toolbar", "Admin toolbar"),
-        ("#wp-admin-bar-site-name, .site-name, a[href*='index.php']", "Site name in toolbar"),
-        ("#wp-admin-bar-my-account, .user-info, .admin-user", "User account in toolbar"),
+        (
+            "#wp-admin-bar-site-name, .site-name, a[href*='index.php']",
+            "Site name in toolbar",
+        ),
+        (
+            "#wp-admin-bar-my-account, .user-info, .admin-user",
+            "User account in toolbar",
+        ),
     ];
 
     for (selector, label) in &toolbar_selectors {
@@ -969,7 +1200,11 @@ async fn test_logout_flow() {
     }
 
     // Verify we are in admin area
-    let current = driver.current_url().await.map(|u| u.to_string()).unwrap_or_default();
+    let current = driver
+        .current_url()
+        .await
+        .map(|u| u.to_string())
+        .unwrap_or_default();
     eprintln!("After login, URL: {}", current);
 
     // Navigate to logout
@@ -985,7 +1220,11 @@ async fn test_logout_flow() {
         driver.goto(url).await.ok();
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-        let after_logout = driver.current_url().await.map(|u| u.to_string()).unwrap_or_default();
+        let after_logout = driver
+            .current_url()
+            .await
+            .map(|u| u.to_string())
+            .unwrap_or_default();
         eprintln!("After logout attempt, URL: {}", after_logout);
 
         // After logout, we should be redirected to login page or homepage
@@ -1003,9 +1242,12 @@ async fn test_logout_flow() {
             .ok();
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-        let after_admin = driver.current_url().await.map(|u| u.to_string()).unwrap_or_default();
-        let redirected_to_login =
-            after_admin.contains("wp-login") || after_admin.contains("login");
+        let after_admin = driver
+            .current_url()
+            .await
+            .map(|u| u.to_string())
+            .unwrap_or_default();
+        let redirected_to_login = after_admin.contains("wp-login") || after_admin.contains("login");
         eprintln!(
             "After logout, accessing wp-admin redirects to login: {}",
             redirected_to_login
@@ -1045,18 +1287,45 @@ async fn test_pages_list_page() {
 
     eprintln!("\n=== test_pages_list_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/edit.php?post_type=page", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/edit.php?post_type=page", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/edit.php?post_type=page",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/edit.php?post_type=page",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("table, .wp-list-table, .pages-table", "Pages table"),
         ("thead, th", "Table headers"),
-        (".page-title-action, .add-new, a[href*='post-new.php?post_type=page']", "Add New button"),
+        (
+            ".page-title-action, .add-new, a[href*='post-new.php?post_type=page']",
+            "Add New button",
+        ),
         (".subsubsub, .status-filters", "Status filter links"),
         ("tbody tr, .page-row", "Page rows"),
     ];
@@ -1106,11 +1375,35 @@ async fn test_tags_page() {
 
     eprintln!("\n=== test_tags_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/edit-tags.php?taxonomy=post_tag", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/edit-tags.php?taxonomy=post_tag", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/edit-tags.php?taxonomy=post_tag",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/edit-tags.php?taxonomy=post_tag",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
@@ -1118,7 +1411,10 @@ async fn test_tags_page() {
         ("table, .wp-list-table, .taxonomy-table", "Tags table"),
         ("form, #addtag, .add-tag-form", "Add tag form"),
         ("input[name=tag-name], input[name=name]", "Tag name input"),
-        ("textarea[name=description], input[name=description]", "Tag description field"),
+        (
+            "textarea[name=description], input[name=description]",
+            "Tag description field",
+        ),
         ("input[type=submit], button[type=submit]", "Submit button"),
     ];
 
@@ -1153,22 +1449,52 @@ async fn test_user_profile_page() {
 
     eprintln!("\n=== test_user_profile_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/profile.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/profile.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/profile.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/profile.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("form, #your-profile", "Profile form"),
-        ("input[name=display_name], #display_name, select[name=display_name]", "Display name field"),
-        ("input[name=email], #email, input[type=email]", "Email field"),
-        ("textarea[name=description], #description", "Biographical info (description)"),
+        (
+            "input[name=display_name], #display_name, select[name=display_name]",
+            "Display name field",
+        ),
+        (
+            "input[name=email], #email, input[type=email]",
+            "Email field",
+        ),
+        (
+            "textarea[name=description], #description",
+            "Biographical info (description)",
+        ),
         ("input[name=first_name], #first_name", "First name field"),
         ("input[name=last_name], #last_name", "Last name field"),
-        ("input[type=submit], button[type=submit]", "Update Profile button"),
+        (
+            "input[type=submit], button[type=submit]",
+            "Update Profile button",
+        ),
     ];
 
     for (selector, label) in &checks {
@@ -1243,7 +1569,10 @@ async fn test_post_editor_sidebar() {
     .await;
     eprintln!("  Post status selector: {}", has_status);
 
-    assert!(has_publish, "Post editor should have publish button or meta box");
+    assert!(
+        has_publish,
+        "Post editor should have publish button or meta box"
+    );
 
     eprintln!("[PASS] Post editor sidebar elements checked");
     driver.quit().await.ok();
@@ -1271,17 +1600,38 @@ async fn test_admin_footer() {
 
     eprintln!("\n=== test_admin_footer ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("#wpfooter, .admin-footer, footer", "Admin footer container"),
-        ("#footer-left, .footer-text, .admin-footer-text", "Footer text area"),
+        (
+            "#footer-left, .footer-text, .admin-footer-text",
+            "Footer text area",
+        ),
     ];
 
     for (selector, label) in &checks {
@@ -1290,7 +1640,10 @@ async fn test_admin_footer() {
 
     // Check that footer is present on RustPress
     let rp_has_footer = driver_has_element(&rp_driver, "#wpfooter, .admin-footer, footer").await;
-    assert!(rp_has_footer, "RustPress admin should have a footer element");
+    assert!(
+        rp_has_footer,
+        "RustPress admin should have a footer element"
+    );
 
     eprintln!("[PASS] Admin footer compared");
     wp_driver.quit().await.ok();
@@ -1319,20 +1672,50 @@ async fn test_dashboard_quick_draft() {
 
     eprintln!("\n=== test_dashboard_quick_draft ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // Check Quick Draft widget elements
     let checks = [
-        ("#dashboard_quick_press, .quick-draft, #quick-press", "Quick Draft widget"),
-        ("input[name=post_title], #title, .quick-draft input[type=text]", "Quick Draft title input"),
-        ("textarea[name=content], #content, .quick-draft textarea", "Quick Draft content textarea"),
-        ("#save-post, input[value='Save Draft'], button[type=submit]", "Save Draft button"),
+        (
+            "#dashboard_quick_press, .quick-draft, #quick-press",
+            "Quick Draft widget",
+        ),
+        (
+            "input[name=post_title], #title, .quick-draft input[type=text]",
+            "Quick Draft title input",
+        ),
+        (
+            "textarea[name=content], #content, .quick-draft textarea",
+            "Quick Draft content textarea",
+        ),
+        (
+            "#save-post, input[value='Save Draft'], button[type=submit]",
+            "Save Draft button",
+        ),
     ];
 
     for (selector, label) in &checks {
@@ -1366,19 +1749,49 @@ async fn test_settings_writing() {
 
     eprintln!("\n=== test_settings_writing ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/options-writing.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/options-writing.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-writing.php",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-writing.php",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("form", "Settings form"),
         (".wrap, #wpcontent, #wpbody-content", "Content wrapper"),
-        ("select[name=default_category], #default_category", "Default category selector"),
-        ("select[name=default_post_format], #default_post_format", "Default post format"),
+        (
+            "select[name=default_category], #default_category",
+            "Default category selector",
+        ),
+        (
+            "select[name=default_post_format], #default_post_format",
+            "Default post format",
+        ),
         ("input[type=submit], button[type=submit]", "Save button"),
     ];
 
@@ -1413,19 +1826,49 @@ async fn test_settings_reading() {
 
     eprintln!("\n=== test_settings_reading ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/options-reading.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/options-reading.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-reading.php",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-reading.php",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("form", "Settings form"),
         (".wrap, #wpcontent, #wpbody-content", "Content wrapper"),
-        ("input[name=posts_per_page], #posts_per_page", "Posts per page"),
-        ("input[name=posts_per_rss], #posts_per_rss", "Syndication feeds items"),
+        (
+            "input[name=posts_per_page], #posts_per_page",
+            "Posts per page",
+        ),
+        (
+            "input[name=posts_per_rss], #posts_per_rss",
+            "Syndication feeds items",
+        ),
         ("input[type=submit], button[type=submit]", "Save button"),
     ];
 
@@ -1460,19 +1903,49 @@ async fn test_settings_discussion() {
 
     eprintln!("\n=== test_settings_discussion ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/options-discussion.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/options-discussion.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-discussion.php",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-discussion.php",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("form", "Settings form"),
         (".wrap, #wpcontent, #wpbody-content", "Content wrapper"),
-        ("input[name=default_comment_status], #default_comment_status", "Default comment status"),
-        ("input[name=require_name_email], #require_name_email", "Require name and email"),
+        (
+            "input[name=default_comment_status], #default_comment_status",
+            "Default comment status",
+        ),
+        (
+            "input[name=require_name_email], #require_name_email",
+            "Require name and email",
+        ),
         ("input[type=submit], button[type=submit]", "Save button"),
     ];
 
@@ -1507,19 +1980,49 @@ async fn test_settings_permalink() {
 
     eprintln!("\n=== test_settings_permalink ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/options-permalink.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/options-permalink.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-permalink.php",
+            cfg.wordpress_url
+        ))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!(
+            "{}/wp-admin/options-permalink.php",
+            cfg.rustpress_url
+        ))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let checks = [
         ("form", "Settings form"),
         (".wrap, #wpcontent, #wpbody-content", "Content wrapper"),
-        ("input[type=radio], .permalink-structure", "Permalink structure options"),
-        ("input[name=permalink_structure], #permalink_structure", "Custom permalink input"),
+        (
+            "input[type=radio], .permalink-structure",
+            "Permalink structure options",
+        ),
+        (
+            "input[name=permalink_structure], #permalink_structure",
+            "Custom permalink input",
+        ),
         ("input[type=submit], button[type=submit]", "Save button"),
     ];
 
@@ -1554,19 +2057,40 @@ async fn test_admin_search_posts() {
 
     eprintln!("\n=== test_admin_search_posts ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
     // Navigate to posts list with a search query
-    wp_driver.goto(&format!("{}/wp-admin/edit.php?s=hello", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/edit.php?s=hello", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/edit.php?s=hello", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/edit.php?s=hello", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     // Verify search results page structure
     let checks = [
         ("table, .wp-list-table, .posts-table", "Posts table present"),
-        ("input[name=s], #post-search-input, .search-box input", "Search input field"),
+        (
+            "input[name=s], #post-search-input, .search-box input",
+            "Search input field",
+        ),
         (".wrap, #wpcontent, #wpbody-content", "Content wrapper"),
     ];
 
@@ -1575,16 +2099,17 @@ async fn test_admin_search_posts() {
     }
 
     // Check that the search term is reflected in the search box
-    let rp_has_search = driver_has_element(&rp_driver, "input[name=s], #post-search-input, .search-box input").await;
+    let rp_has_search = driver_has_element(
+        &rp_driver,
+        "input[name=s], #post-search-input, .search-box input",
+    )
+    .await;
     eprintln!("  RustPress has search input: {}", rp_has_search);
 
     // Count result rows (may be 0 if no posts match)
     let wp_rows = driver_count_elements(&wp_driver, "tbody tr, .post-row").await;
     let rp_rows = driver_count_elements(&rp_driver, "tbody tr, .post-row").await;
-    eprintln!(
-        "  Search result rows - WP: {}, RP: {}",
-        wp_rows, rp_rows
-    );
+    eprintln!("  Search result rows - WP: {}, RP: {}", wp_rows, rp_rows);
 
     eprintln!("[PASS] Admin search posts compared");
     wp_driver.quit().await.ok();
@@ -1613,11 +2138,29 @@ async fn test_admin_menus_page() {
 
     eprintln!("\n=== test_admin_menus_page ===");
 
-    wp_login(&wp_driver, &cfg.wordpress_url, &cfg.admin_user, &cfg.admin_password).await;
-    wp_login(&rp_driver, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await;
+    wp_login(
+        &wp_driver,
+        &cfg.wordpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
+    wp_login(
+        &rp_driver,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await;
 
-    wp_driver.goto(&format!("{}/wp-admin/nav-menus.php", cfg.wordpress_url)).await.ok();
-    rp_driver.goto(&format!("{}/wp-admin/nav-menus.php", cfg.rustpress_url)).await.ok();
+    wp_driver
+        .goto(&format!("{}/wp-admin/nav-menus.php", cfg.wordpress_url))
+        .await
+        .ok();
+    rp_driver
+        .goto(&format!("{}/wp-admin/nav-menus.php", cfg.rustpress_url))
+        .await
+        .ok();
 
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
@@ -1625,8 +2168,14 @@ async fn test_admin_menus_page() {
         (".wrap, #wpcontent, #wpbody-content", "Content wrapper"),
         ("#menu-management, .menu-editor, form", "Menu editor area"),
         ("#menu-name, input[name=menu-name]", "Menu name input"),
-        ("#nav-menu-meta, .menu-item-settings, #add-custom-links", "Menu item add panels"),
-        ("input[type=submit], button[type=submit]", "Save / Create Menu button"),
+        (
+            "#nav-menu-meta, .menu-item-settings, #add-custom-links",
+            "Menu item add panels",
+        ),
+        (
+            "input[type=submit], button[type=submit]",
+            "Save / Create Menu button",
+        ),
     ];
 
     for (selector, label) in &checks {

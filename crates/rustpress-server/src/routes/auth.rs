@@ -1,9 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    routing::post,
-    Json, Router,
-};
+use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -28,8 +23,7 @@ pub struct LoginResponse {
 }
 
 pub fn routes() -> Router<Arc<AppState>> {
-    Router::new()
-        .route("/api/auth/login", post(login))
+    Router::new().route("/api/auth/login", post(login))
 }
 
 async fn login(

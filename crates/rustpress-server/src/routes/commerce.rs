@@ -94,9 +94,17 @@ async fn cart_add(
             quantity,
             variation_id: None,
         });
-        (StatusCode::OK, Json(serde_json::json!({"status": "added", "product_id": req.product_id, "quantity": quantity})))
+        (
+            StatusCode::OK,
+            Json(
+                serde_json::json!({"status": "added", "product_id": req.product_id, "quantity": quantity}),
+            ),
+        )
     } else {
-        (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Product not found"})))
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Product not found"})),
+        )
     }
 }
 
@@ -405,7 +413,10 @@ th {{ background: #f5f5f5; }}
         date = order.created_at.format("%B %e, %Y %H:%M"),
         items_html = items_html,
         total = order.total,
-        billing_name = format!("{} {}", order.billing_address.first_name, order.billing_address.last_name),
+        billing_name = format!(
+            "{} {}",
+            order.billing_address.first_name, order.billing_address.last_name
+        ),
         billing_address = order.billing_address.address_1,
         billing_city = order.billing_address.city,
         billing_state = order.billing_address.state,

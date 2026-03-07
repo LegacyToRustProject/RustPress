@@ -205,10 +205,7 @@ fn analyze_keyword(
         recs.push(SeoRecommendation {
             category: "Keyword Density".into(),
             score: SeoScore::NeedsImprovement,
-            message: format!(
-                "Keyword density is low ({:.1}%). Aim for 1-3%.",
-                density
-            ),
+            message: format!("Keyword density is low ({:.1}%). Aim for 1-3%.", density),
         });
     } else if density > 3.0 {
         recs.push(SeoRecommendation {
@@ -313,10 +310,7 @@ fn analyze_slug(input: &AnalysisInput, recs: &mut Vec<SeoRecommendation>) {
     }
 
     if !input.focus_keyword.is_empty() {
-        let keyword_slug = input
-            .focus_keyword
-            .to_lowercase()
-            .replace(' ', "-");
+        let keyword_slug = input.focus_keyword.to_lowercase().replace(' ', "-");
         if input.slug.contains(&keyword_slug) {
             recs.push(SeoRecommendation {
                 category: "URL".into(),
@@ -341,11 +335,7 @@ fn analyze_slug(input: &AnalysisInput, recs: &mut Vec<SeoRecommendation>) {
     }
 }
 
-fn analyze_headings(
-    html_content: &str,
-    focus_keyword: &str,
-    recs: &mut Vec<SeoRecommendation>,
-) {
+fn analyze_headings(html_content: &str, focus_keyword: &str, recs: &mut Vec<SeoRecommendation>) {
     let h_re = Regex::new(r"(?i)<h[2-6][^>]*>(.*?)</h[2-6]>").unwrap();
     let headings: Vec<String> = h_re
         .captures_iter(html_content)
@@ -362,12 +352,17 @@ fn analyze_headings(
         recs.push(SeoRecommendation {
             category: "Headings".into(),
             score: SeoScore::Good,
-            message: format!("Found {} subheading(s). Good content structure.", headings.len()),
+            message: format!(
+                "Found {} subheading(s). Good content structure.",
+                headings.len()
+            ),
         });
 
         if !focus_keyword.is_empty() {
             let kw_lower = focus_keyword.to_lowercase();
-            let has_keyword = headings.iter().any(|h| h.to_lowercase().contains(&kw_lower));
+            let has_keyword = headings
+                .iter()
+                .any(|h| h.to_lowercase().contains(&kw_lower));
             if has_keyword {
                 recs.push(SeoRecommendation {
                     category: "Headings".into(),
@@ -395,10 +390,7 @@ fn calculate_overall_score(recs: &[SeoRecommendation]) -> SeoScore {
         .filter(|r| r.score == SeoScore::NeedsImprovement)
         .count();
 
-    let good = recs
-        .iter()
-        .filter(|r| r.score == SeoScore::Good)
-        .count();
+    let good = recs.iter().filter(|r| r.score == SeoScore::Good).count();
 
     if needs_improvement >= 3 {
         SeoScore::NeedsImprovement
@@ -484,12 +476,16 @@ fn count_sentences(text: &str) -> usize {
     let re = Regex::new(r"[.!?]+\s").unwrap();
     let count = re.find_iter(text).count();
     // At least 1 sentence if there's content
-    if count == 0 && !text.trim().is_empty() { 1 } else { count }
+    if count == 0 && !text.trim().is_empty() {
+        1
+    } else {
+        count
+    }
 }
 
 fn count_syllables(text: &str) -> usize {
     text.split_whitespace()
-        .map(|word| count_word_syllables(word))
+        .map(count_word_syllables)
         .sum()
 }
 
@@ -595,7 +591,11 @@ mod tests {
     fn test_readability_simple_text() {
         let text = "This is a short sentence. This is another one. Simple words are good.";
         let score = calculate_readability(text);
-        assert!(score > 50.0, "Simple text should have high readability: {}", score);
+        assert!(
+            score > 50.0,
+            "Simple text should have high readability: {}",
+            score
+        );
     }
 
     #[test]
@@ -633,7 +633,9 @@ mod tests {
             .iter()
             .filter(|r| r.category == "Meta Description")
             .collect();
-        assert!(desc_recs.iter().any(|r| r.score == SeoScore::NeedsImprovement));
+        assert!(desc_recs
+            .iter()
+            .any(|r| r.score == SeoScore::NeedsImprovement));
     }
 
     #[test]
@@ -653,7 +655,9 @@ mod tests {
             .iter()
             .filter(|r| r.category == "Content Length")
             .collect();
-        assert!(content_recs.iter().any(|r| r.score == SeoScore::NeedsImprovement));
+        assert!(content_recs
+            .iter()
+            .any(|r| r.score == SeoScore::NeedsImprovement));
     }
 
     #[test]
@@ -662,7 +666,9 @@ mod tests {
         let mut recs = Vec::new();
         analyze_headings(content, "rust", &mut recs);
 
-        assert!(recs.iter().any(|r| r.category == "Headings" && r.score == SeoScore::Good));
+        assert!(recs
+            .iter()
+            .any(|r| r.category == "Headings" && r.score == SeoScore::Good));
     }
 
     #[test]
@@ -687,9 +693,21 @@ mod tests {
     #[test]
     fn test_overall_score_good() {
         let recs = vec![
-            SeoRecommendation { category: "A".into(), score: SeoScore::Good, message: String::new() },
-            SeoRecommendation { category: "B".into(), score: SeoScore::Good, message: String::new() },
-            SeoRecommendation { category: "C".into(), score: SeoScore::Ok, message: String::new() },
+            SeoRecommendation {
+                category: "A".into(),
+                score: SeoScore::Good,
+                message: String::new(),
+            },
+            SeoRecommendation {
+                category: "B".into(),
+                score: SeoScore::Good,
+                message: String::new(),
+            },
+            SeoRecommendation {
+                category: "C".into(),
+                score: SeoScore::Ok,
+                message: String::new(),
+            },
         ];
         assert_eq!(calculate_overall_score(&recs), SeoScore::Good);
     }
@@ -697,9 +715,21 @@ mod tests {
     #[test]
     fn test_overall_score_needs_improvement() {
         let recs = vec![
-            SeoRecommendation { category: "A".into(), score: SeoScore::NeedsImprovement, message: String::new() },
-            SeoRecommendation { category: "B".into(), score: SeoScore::NeedsImprovement, message: String::new() },
-            SeoRecommendation { category: "C".into(), score: SeoScore::NeedsImprovement, message: String::new() },
+            SeoRecommendation {
+                category: "A".into(),
+                score: SeoScore::NeedsImprovement,
+                message: String::new(),
+            },
+            SeoRecommendation {
+                category: "B".into(),
+                score: SeoScore::NeedsImprovement,
+                message: String::new(),
+            },
+            SeoRecommendation {
+                category: "C".into(),
+                score: SeoScore::NeedsImprovement,
+                message: String::new(),
+            },
         ];
         assert_eq!(calculate_overall_score(&recs), SeoScore::NeedsImprovement);
     }

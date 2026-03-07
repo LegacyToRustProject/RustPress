@@ -107,7 +107,9 @@ mod tests {
     #[test]
     fn test_jwt_generate_and_validate() {
         let manager = JwtManager::new("test-secret-key-12345", 24);
-        let token = manager.generate_token(1, "admin", "admin@example.com", "administrator").unwrap();
+        let token = manager
+            .generate_token(1, "admin", "admin@example.com", "administrator")
+            .unwrap();
         let claims = manager.validate_token(&token).unwrap();
         assert_eq!(claims.sub, 1);
         assert_eq!(claims.login, "admin");

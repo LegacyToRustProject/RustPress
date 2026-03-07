@@ -22,13 +22,11 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter,
-};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use rustpress_db::entities::{wp_terms, wp_term_taxonomy};
+use rustpress_db::entities::{wp_term_taxonomy, wp_terms};
 
 use crate::common::WpError;
 use crate::ApiState;
@@ -99,7 +97,9 @@ pub fn write_routes() -> Router<ApiState> {
         .route("/wp-json/wp/v2/menu-items", post(create_menu_item))
         .route(
             "/wp-json/wp/v2/menu-items/{id}",
-            put(update_menu_item).patch(update_menu_item).delete(delete_menu_item),
+            put(update_menu_item)
+                .patch(update_menu_item)
+                .delete(delete_menu_item),
         )
 }
 
@@ -118,7 +118,10 @@ async fn list_menus(
 
     let mut result = Vec::new();
     for tt in &taxonomies {
-        if let Ok(Some(term)) = wp_terms::Entity::find_by_id(tt.term_id).one(&state.db).await {
+        if let Ok(Some(term)) = wp_terms::Entity::find_by_id(tt.term_id)
+            .one(&state.db)
+            .await
+        {
             result.push(menu_to_json(&term, tt, &state.site_url));
         }
     }
@@ -140,7 +143,9 @@ async fn create_menu(
     State(state): State<ApiState>,
     Json(body): Json<CreateMenu>,
 ) -> Result<Json<Value>, WpError> {
-    let slug = body.slug.unwrap_or_else(|| crate::common::slugify(&body.name));
+    let slug = body
+        .slug
+        .unwrap_or_else(|| crate::common::slugify(&body.name));
 
     // Create term
     let term = wp_terms::ActiveModel {
@@ -149,7 +154,9 @@ async fn create_menu(
         slug: Set(slug),
         term_group: Set(0),
     };
-    let term = term.insert(&state.db).await
+    let term = term
+        .insert(&state.db)
+        .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
     // Create term_taxonomy
@@ -161,7 +168,9 @@ async fn create_menu(
         parent: Set(0),
         count: Set(0),
     };
-    let tt = tt.insert(&state.db).await
+    let tt = tt
+        .insert(&state.db)
+        .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
     Ok(Json(menu_to_json(&term, &tt, &state.site_url)))
@@ -182,14 +191,18 @@ async fn update_menu(
     if let Some(slug) = &body.slug {
         active_term.slug = Set(slug.clone());
     }
-    let term = active_term.update(&state.db).await
+    let term = active_term
+        .update(&state.db)
+        .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
     let mut active_tt: wp_term_taxonomy::ActiveModel = tt.into();
     if let Some(desc) = &body.description {
         active_tt.description = Set(desc.clone());
     }
-    let tt = active_tt.update(&state.db).await
+    let tt = active_tt
+        .update(&state.db)
+        .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
     Ok(Json(menu_to_json(&term, &tt, &state.site_url)))
@@ -204,7 +217,7 @@ async fn delete_menu(
     let response = menu_to_json(&term, &tt, &state.site_url);
 
     // Delete menu items (posts with nav_menu_item type linked to this menu)
-    use rustpress_db::entities::{wp_term_relationships, wp_posts};
+    use rustpress_db::entities::{wp_posts, wp_term_relationships};
     let relationships = wp_term_relationships::Entity::find()
         .filter(wp_term_relationships::Column::TermTaxonomyId.eq(tt.term_taxonomy_id))
         .all(&state.db)
@@ -236,7 +249,7 @@ async fn list_menu_items(
     State(state): State<ApiState>,
     Query(query): Query<MenuItemQuery>,
 ) -> Result<Json<Vec<Value>>, WpError> {
-    use rustpress_db::entities::{wp_posts, wp_postmeta, wp_term_relationships};
+    use rustpress_db::entities::{wp_postmeta, wp_posts, wp_term_relationships};
 
     let mut items_query = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq("nav_menu_item"))
@@ -291,7 +304,7 @@ async fn get_menu_item(
     State(state): State<ApiState>,
     Path(id): Path<u64>,
 ) -> Result<Json<Value>, WpError> {
-    use rustpress_db::entities::{wp_posts, wp_postmeta};
+    use rustpress_db::entities::{wp_postmeta, wp_posts};
 
     let item = wp_posts::Entity::find_by_id(id)
         .filter(wp_posts::Column::PostType.eq("nav_menu_item"))
@@ -314,7 +327,7 @@ async fn create_menu_item(
     State(state): State<ApiState>,
     Json(body): Json<CreateMenuItem>,
 ) -> Result<Json<Value>, WpError> {
-    use rustpress_db::entities::{wp_posts, wp_postmeta, wp_term_relationships};
+    use rustpress_db::entities::{wp_postmeta, wp_posts, wp_term_relationships};
 
     let now = chrono::Utc::now().naive_utc();
     let item = wp_posts::ActiveModel {
@@ -343,12 +356,17 @@ async fn create_menu_item(
         comment_count: Set(0),
     };
 
-    let item = item.insert(&state.db).await
+    let item = item
+        .insert(&state.db)
+        .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
     // Save menu item metadata
     let meta_entries = vec![
-        ("_menu_item_type", body.item_type.as_deref().unwrap_or("custom")),
+        (
+            "_menu_item_type",
+            body.item_type.as_deref().unwrap_or("custom"),
+        ),
         ("_menu_item_url", &body.url),
     ];
     for (key, val) in meta_entries {
@@ -413,7 +431,7 @@ async fn update_menu_item(
     Path(id): Path<u64>,
     Json(body): Json<UpdateMenuItem>,
 ) -> Result<Json<Value>, WpError> {
-    use rustpress_db::entities::{wp_posts, wp_postmeta};
+    use rustpress_db::entities::{wp_postmeta, wp_posts};
 
     let item = wp_posts::Entity::find_by_id(id)
         .filter(wp_posts::Column::PostType.eq("nav_menu_item"))
@@ -435,7 +453,9 @@ async fn update_menu_item(
     let now = chrono::Utc::now().naive_utc();
     active.post_modified = Set(now);
     active.post_modified_gmt = Set(now);
-    let item = active.update(&state.db).await
+    let item = active
+        .update(&state.db)
+        .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
     // Update URL meta if provided
@@ -457,7 +477,7 @@ async fn delete_menu_item(
     State(state): State<ApiState>,
     Path(id): Path<u64>,
 ) -> Result<Json<Value>, WpError> {
-    use rustpress_db::entities::{wp_posts, wp_postmeta, wp_term_relationships};
+    use rustpress_db::entities::{wp_postmeta, wp_posts, wp_term_relationships};
 
     let item = wp_posts::Entity::find_by_id(id)
         .filter(wp_posts::Column::PostType.eq("nav_menu_item"))
@@ -477,7 +497,9 @@ async fn delete_menu_item(
         .await;
     let _ = wp_posts::Entity::delete_by_id(id).exec(&state.db).await;
 
-    Ok(Json(json!({"deleted": true, "previous": {"id": id, "title": item.post_title}})))
+    Ok(Json(
+        json!({"deleted": true, "previous": {"id": id, "title": item.post_title}}),
+    ))
 }
 
 // ---- Helpers ----
@@ -503,11 +525,7 @@ async fn find_menu_by_id(
     Ok((tt, term))
 }
 
-fn menu_to_json(
-    term: &wp_terms::Model,
-    tt: &wp_term_taxonomy::Model,
-    site_url: &str,
-) -> Value {
+fn menu_to_json(term: &wp_terms::Model, tt: &wp_term_taxonomy::Model, site_url: &str) -> Value {
     let base = site_url.trim_end_matches('/');
     json!({
         "id": term.term_id,

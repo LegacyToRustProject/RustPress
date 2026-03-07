@@ -204,8 +204,7 @@ mod tests {
         let generated = headers.generate_headers();
         assert_eq!(generated.len(), 3);
 
-        let map: std::collections::HashMap<String, String> =
-            generated.into_iter().collect();
+        let map: std::collections::HashMap<String, String> = generated.into_iter().collect();
         assert_eq!(map.get("X-Frame-Options").unwrap(), "DENY");
         assert_eq!(map.get("X-Content-Type-Options").unwrap(), "nosniff");
         assert_eq!(map.get("Referrer-Policy").unwrap(), "no-referrer");
@@ -213,8 +212,7 @@ mod tests {
 
     #[test]
     fn test_custom_csp() {
-        let headers = SecurityHeaders::new()
-            .content_security_policy("default-src 'none'");
+        let headers = SecurityHeaders::new().content_security_policy("default-src 'none'");
         let generated = headers.generate_headers();
         assert_eq!(generated.len(), 1);
         assert_eq!(generated[0].0, "Content-Security-Policy");
@@ -223,8 +221,7 @@ mod tests {
 
     #[test]
     fn test_override_default() {
-        let headers = SecurityHeaders::secure_defaults()
-            .x_frame_options("DENY");
+        let headers = SecurityHeaders::secure_defaults().x_frame_options("DENY");
         let generated = headers.generate_headers();
 
         let frame_opt: Vec<_> = generated

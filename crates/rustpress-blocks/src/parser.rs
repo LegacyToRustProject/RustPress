@@ -46,9 +46,9 @@ pub fn parse_blocks(content: &str) -> Vec<Block> {
 
     // Regex for block opener: <!-- wp:namespace/name {"json":"attrs"} -->
     // or self-closing: <!-- wp:namespace/name {"json":"attrs"} /-->
-    let opener_re = Regex::new(
-        r#"<!--\s+wp:([a-z][a-z0-9-]*/)?([a-z][a-z0-9-]*)\s*(\{[^}]*\})?\s*(/)?-->"#
-    ).expect("Invalid opener regex");
+    let opener_re =
+        Regex::new(r#"<!--\s+wp:([a-z][a-z0-9-]*/)?([a-z][a-z0-9-]*)\s*(\{[^}]*\})?\s*(/)?-->"#)
+            .expect("Invalid opener regex");
 
     while pos < input.len() {
         // Find next block comment
@@ -101,22 +101,22 @@ pub fn parse_blocks(content: &str) -> Vec<Block> {
                 pos = match_end;
             } else {
                 // Find the matching closing tag
-                if let Some(close_result) = find_matching_close(
-                    &input[match_end..],
-                    namespace,
-                    block_name_short,
-                ) {
+                if let Some(close_result) =
+                    find_matching_close(&input[match_end..], namespace, block_name_short)
+                {
                     let inner_content = &input[match_end..match_end + close_result.inner_end];
                     let inner_blocks_parsed = parse_blocks(inner_content);
 
                     // If the inner content only produced freeform blocks (no actual
                     // Gutenberg blocks), treat as raw inner_html with no inner_blocks.
-                    let (inner_html, inner_blocks) =
-                        if inner_blocks_parsed.iter().all(|b| b.name == "core/freeform") {
-                            (inner_content.to_string(), Vec::new())
-                        } else {
-                            (inner_content.to_string(), inner_blocks_parsed)
-                        };
+                    let (inner_html, inner_blocks) = if inner_blocks_parsed
+                        .iter()
+                        .all(|b| b.name == "core/freeform")
+                    {
+                        (inner_content.to_string(), Vec::new())
+                    } else {
+                        (inner_content.to_string(), inner_blocks_parsed)
+                    };
 
                     blocks.push(Block {
                         name: full_name,
@@ -246,8 +246,7 @@ mod tests {
 
     #[test]
     fn test_parse_block_with_attributes() {
-        let content =
-            r#"<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Centered</p><!-- /wp:paragraph -->"#;
+        let content = r#"<!-- wp:paragraph {"align":"center"} --><p class="has-text-align-center">Centered</p><!-- /wp:paragraph -->"#;
         let blocks = parse_blocks(content);
         assert_eq!(blocks.len(), 1);
         assert_eq!(blocks[0].name, "core/paragraph");

@@ -30,15 +30,25 @@ pub fn widget_routes() -> Router<ApiState> {
 
 /// Registered sidebar definitions.
 const SIDEBARS: &[(&str, &str, &str)] = &[
-    ("sidebar-1", "Main Sidebar", "Add widgets here to appear in your sidebar."),
-    ("footer-1", "Footer 1", "Add widgets here to appear in footer column 1."),
-    ("footer-2", "Footer 2", "Add widgets here to appear in footer column 2."),
+    (
+        "sidebar-1",
+        "Main Sidebar",
+        "Add widgets here to appear in your sidebar.",
+    ),
+    (
+        "footer-1",
+        "Footer 1",
+        "Add widgets here to appear in footer column 1.",
+    ),
+    (
+        "footer-2",
+        "Footer 2",
+        "Add widgets here to appear in footer column 2.",
+    ),
 ];
 
 /// List all registered widget areas (sidebars).
-async fn list_sidebars(
-    State(state): State<ApiState>,
-) -> Json<Vec<Value>> {
+async fn list_sidebars(State(state): State<ApiState>) -> Json<Vec<Value>> {
     let config = load_widget_config(&state).await;
     let sidebars: Vec<Value> = SIDEBARS
         .iter()
@@ -61,9 +71,7 @@ async fn get_sidebar(
 }
 
 /// List all widgets across all sidebars.
-async fn list_widgets(
-    State(state): State<ApiState>,
-) -> Json<Vec<Value>> {
+async fn list_widgets(State(state): State<ApiState>) -> Json<Vec<Value>> {
     let config = load_widget_config(&state).await;
     let widgets = parse_widgets_from_config(&config, &state.site_url);
     Json(widgets)

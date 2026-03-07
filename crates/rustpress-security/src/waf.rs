@@ -22,20 +22,11 @@ pub enum WafResult {
     /// Request is allowed through.
     Allow,
     /// Request is blocked by a rule.
-    Block {
-        rule_id: String,
-        reason: String,
-    },
+    Block { rule_id: String, reason: String },
     /// Request matched a logging rule.
-    Log {
-        rule_id: String,
-        reason: String,
-    },
+    Log { rule_id: String, reason: String },
     /// Request requires a challenge.
-    Challenge {
-        rule_id: String,
-        reason: String,
-    },
+    Challenge { rule_id: String, reason: String },
 }
 
 /// A single WAF rule definition.
@@ -350,13 +341,7 @@ mod tests {
     #[test]
     fn test_block_directory_traversal() {
         let engine = WafEngine::with_default_rules();
-        let result = engine.check_request(
-            "GET",
-            "/../../etc/passwd",
-            "",
-            "",
-            &empty_headers(),
-        );
+        let result = engine.check_request("GET", "/../../etc/passwd", "", "", &empty_headers());
         match result {
             WafResult::Block { rule_id, .. } => assert_eq!(rule_id, "lfi-001"),
             other => panic!("Expected Block, got {:?}", other),

@@ -74,7 +74,12 @@ async fn main() -> Result<()> {
         {
             use sea_orm::{ConnectionTrait, Statement};
             let sample_post = "INSERT IGNORE INTO wp_posts (ID, post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_content_filtered, post_parent, guid, menu_order, post_type, post_mime_type, comment_count) VALUES (1, 1, NOW(), NOW(), '<h2>Welcome to RustPress!</h2>\n<p>This is your first post, powered by <strong>Rust</strong>. RustPress is a WordPress-compatible CMS built entirely in Rust for blazing-fast performance.</p>\n<h3>Features</h3>\n<ul>\n<li>WordPress 6.9 database compatible</li>\n<li>WP REST API compatible (/wp-json/wp/v2/)</li>\n<li>Plugin system with WASM support</li>\n<li>Built with Axum, SeaORM, and Tera</li>\n</ul>\n<p>Edit or delete this post, then start writing!</p>', 'Hello RustPress!', 'Welcome to RustPress - a WordPress-compatible CMS built in Rust.', 'publish', 'open', 'open', '', 'hello-rustpress', '', '', NOW(), NOW(), '', 0, '', 0, 'post', '', 0)";
-            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sample_post.to_string())).await.ok();
+            db.execute(Statement::from_string(
+                sea_orm::DatabaseBackend::MySql,
+                sample_post.to_string(),
+            ))
+            .await
+            .ok();
         }
     }
 
@@ -343,8 +348,8 @@ async fn main() -> Result<()> {
     // Equivalent to WordPress's wp_publish_post() called via missed schedule check
     cron.add_schedule("minutely", 60, "Once Every Minute");
     {
-        use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
         use rustpress_db::entities::wp_posts;
+        use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 
         let db_clone = state.db.clone();
         cron.register_callback(
@@ -444,10 +449,7 @@ async fn main() -> Result<()> {
 
     // Static file serving
     if std::path::Path::new(&static_dir).exists() {
-        app = app.nest_service(
-            "/static",
-            tower_http::services::ServeDir::new(&static_dir),
-        );
+        app = app.nest_service("/static", tower_http::services::ServeDir::new(&static_dir));
     }
 
     // Uploads serving — always create directory and mount
@@ -468,12 +470,8 @@ async fn main() -> Result<()> {
             state.clone(),
             middleware::rate_limit,
         ))
-        .layer(axum::middleware::from_fn(
-            middleware::security_headers,
-        ))
-        .layer(axum::middleware::from_fn(
-            middleware::etag_headers,
-        ))
+        .layer(axum::middleware::from_fn(middleware::security_headers))
+        .layer(axum::middleware::from_fn(middleware::etag_headers))
         .layer(tower_http::compression::CompressionLayer::new());
 
     // Apply multisite middleware (only if multisite is enabled)

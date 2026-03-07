@@ -15,9 +15,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter,
-};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -110,19 +108,19 @@ fn post_to_template(post: &wp_posts::Model, site_url: &str) -> Value {
 }
 
 fn urlenc(s: &str) -> String {
-    s.chars().map(|c| {
-        if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '/' {
-            c.to_string()
-        } else {
-            format!("%{:02X}", c as u32)
-        }
-    }).collect()
+    s.chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' || c == '.' || c == '/' {
+                c.to_string()
+            } else {
+                format!("%{:02X}", c as u32)
+            }
+        })
+        .collect()
 }
 
 /// GET /wp-json/wp/v2/templates
-async fn list_templates(
-    State(state): State<ApiState>,
-) -> Result<Json<Vec<Value>>, WpError> {
+async fn list_templates(State(state): State<ApiState>) -> Result<Json<Vec<Value>>, WpError> {
     let posts = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq("wp_template"))
         .filter(wp_posts::Column::PostStatus.eq("publish"))
@@ -130,7 +128,10 @@ async fn list_templates(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
-    let items: Vec<Value> = posts.iter().map(|p| post_to_template(p, &state.site_url)).collect();
+    let items: Vec<Value> = posts
+        .iter()
+        .map(|p| post_to_template(p, &state.site_url))
+        .collect();
 
     // If no templates in DB, return built-in theme file templates
     if items.is_empty() {
@@ -178,9 +179,7 @@ async fn get_template(
 }
 
 /// GET /wp-json/wp/v2/template-parts
-async fn list_template_parts(
-    State(state): State<ApiState>,
-) -> Result<Json<Vec<Value>>, WpError> {
+async fn list_template_parts(State(state): State<ApiState>) -> Result<Json<Vec<Value>>, WpError> {
     let posts = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq("wp_template_part"))
         .filter(wp_posts::Column::PostStatus.eq("publish"))
@@ -188,13 +187,16 @@ async fn list_template_parts(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
-    let mut items: Vec<Value> = posts.iter().map(|p| {
-        let mut t = post_to_template(p, &state.site_url);
-        if let Some(obj) = t.as_object_mut() {
-            obj.insert("area".to_string(), json!("uncategorized"));
-        }
-        t
-    }).collect();
+    let mut items: Vec<Value> = posts
+        .iter()
+        .map(|p| {
+            let mut t = post_to_template(p, &state.site_url);
+            if let Some(obj) = t.as_object_mut() {
+                obj.insert("area".to_string(), json!("uncategorized"));
+            }
+            t
+        })
+        .collect();
 
     if items.is_empty() {
         items = builtin_template_parts(&state.site_url);
@@ -245,12 +247,24 @@ fn builtin_templates(site_url: &str) -> Vec<Value> {
         ("index", "Index", "Main template for all content."),
         ("single", "Single Post", "Template for individual posts."),
         ("page", "Page", "Template for static pages."),
-        ("archive", "Archive", "Template for date, category, and tag archives."),
+        (
+            "archive",
+            "Archive",
+            "Template for date, category, and tag archives.",
+        ),
         ("search", "Search", "Template for search results."),
         ("404", "404", "Template for 404 not found pages."),
         ("home", "Blog Home", "Template for the blog homepage."),
-        ("front-page", "Front Page", "Template for the site front page."),
-        ("category", "Category Archive", "Template for category archives."),
+        (
+            "front-page",
+            "Front Page",
+            "Template for the site front page.",
+        ),
+        (
+            "category",
+            "Category Archive",
+            "Template for category archives.",
+        ),
         ("tag", "Tag Archive", "Template for tag archives."),
         ("author", "Author Archive", "Template for author pages."),
     ];
@@ -348,11 +362,15 @@ async fn create_template(
         post_modified_gmt: Set(now),
         ..Default::default()
     };
-    let inserted = new_post.insert(&state.db)
+    let inserted = new_post
+        .insert(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
-    Ok((StatusCode::CREATED, Json(post_to_template(&inserted, &state.site_url))))
+    Ok((
+        StatusCode::CREATED,
+        Json(post_to_template(&inserted, &state.site_url)),
+    ))
 }
 
 /// PUT/PATCH /wp-json/wp/v2/templates/{id}
@@ -370,19 +388,34 @@ async fn update_template(
         .one(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?
-        .ok_or(WpError::new(StatusCode::NOT_FOUND, "rest_post_invalid_id", "No template exists with that id."))?;
+        .ok_or(WpError::new(
+            StatusCode::NOT_FOUND,
+            "rest_post_invalid_id",
+            "No template exists with that id.",
+        ))?;
 
     let now = chrono::Utc::now().naive_utc();
     let mut active: wp_posts::ActiveModel = post.into();
-    if let Some(ref t) = input.title { active.post_title = Set(extract_raw(&Some(t.clone()))); }
-    if let Some(ref c) = input.content { active.post_content = Set(extract_raw(&Some(c.clone()))); }
-    if let Some(ref d) = input.description { active.post_excerpt = Set(d.clone()); }
-    if let Some(ref s) = input.status { active.post_status = Set(s.clone()); }
-    if let Some(ref slug_new) = input.slug { active.post_name = Set(slug_new.clone()); }
+    if let Some(ref t) = input.title {
+        active.post_title = Set(extract_raw(&Some(t.clone())));
+    }
+    if let Some(ref c) = input.content {
+        active.post_content = Set(extract_raw(&Some(c.clone())));
+    }
+    if let Some(ref d) = input.description {
+        active.post_excerpt = Set(d.clone());
+    }
+    if let Some(ref s) = input.status {
+        active.post_status = Set(s.clone());
+    }
+    if let Some(ref slug_new) = input.slug {
+        active.post_name = Set(slug_new.clone());
+    }
     active.post_modified = Set(now);
     active.post_modified_gmt = Set(now);
 
-    let updated = active.update(&state.db)
+    let updated = active
+        .update(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
@@ -403,11 +436,18 @@ async fn delete_template(
         .one(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?
-        .ok_or(WpError::new(StatusCode::NOT_FOUND, "rest_post_invalid_id", "No template exists with that id."))?;
+        .ok_or(WpError::new(
+            StatusCode::NOT_FOUND,
+            "rest_post_invalid_id",
+            "No template exists with that id.",
+        ))?;
 
     let response = post_to_template(&post, &state.site_url);
     let active: wp_posts::ActiveModel = post.into();
-    active.delete(&state.db).await.map_err(|e| WpError::internal(e.to_string()))?;
+    active
+        .delete(&state.db)
+        .await
+        .map_err(|e| WpError::internal(e.to_string()))?;
 
     Ok(Json(response))
 }
@@ -440,7 +480,8 @@ async fn create_template_part(
         post_modified_gmt: Set(now),
         ..Default::default()
     };
-    let inserted = new_post.insert(&state.db)
+    let inserted = new_post
+        .insert(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
@@ -467,18 +508,31 @@ async fn update_template_part(
         .one(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?
-        .ok_or(WpError::new(StatusCode::NOT_FOUND, "rest_post_invalid_id", "No template part exists with that id."))?;
+        .ok_or(WpError::new(
+            StatusCode::NOT_FOUND,
+            "rest_post_invalid_id",
+            "No template part exists with that id.",
+        ))?;
 
     let now = chrono::Utc::now().naive_utc();
     let mut active: wp_posts::ActiveModel = post.into();
-    if let Some(ref t) = input.title { active.post_title = Set(extract_raw(&Some(t.clone()))); }
-    if let Some(ref c) = input.content { active.post_content = Set(extract_raw(&Some(c.clone()))); }
-    if let Some(ref d) = input.description { active.post_excerpt = Set(d.clone()); }
-    if let Some(ref s) = input.status { active.post_status = Set(s.clone()); }
+    if let Some(ref t) = input.title {
+        active.post_title = Set(extract_raw(&Some(t.clone())));
+    }
+    if let Some(ref c) = input.content {
+        active.post_content = Set(extract_raw(&Some(c.clone())));
+    }
+    if let Some(ref d) = input.description {
+        active.post_excerpt = Set(d.clone());
+    }
+    if let Some(ref s) = input.status {
+        active.post_status = Set(s.clone());
+    }
     active.post_modified = Set(now);
     active.post_modified_gmt = Set(now);
 
-    let updated = active.update(&state.db)
+    let updated = active
+        .update(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
 
@@ -504,14 +558,21 @@ async fn delete_template_part(
         .one(&state.db)
         .await
         .map_err(|e| WpError::internal(e.to_string()))?
-        .ok_or(WpError::new(StatusCode::NOT_FOUND, "rest_post_invalid_id", "No template part exists with that id."))?;
+        .ok_or(WpError::new(
+            StatusCode::NOT_FOUND,
+            "rest_post_invalid_id",
+            "No template part exists with that id.",
+        ))?;
 
     let mut response = post_to_template(&post, &state.site_url);
     if let Some(obj) = response.as_object_mut() {
         obj.insert("area".to_string(), json!("uncategorized"));
     }
     let active: wp_posts::ActiveModel = post.into();
-    active.delete(&state.db).await.map_err(|e| WpError::internal(e.to_string()))?;
+    active
+        .delete(&state.db)
+        .await
+        .map_err(|e| WpError::internal(e.to_string()))?;
 
     Ok(Json(response))
 }

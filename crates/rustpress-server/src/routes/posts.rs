@@ -4,7 +4,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, PaginatorTrait};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -73,9 +73,11 @@ async fn list_posts(
         .filter(wp_posts::Column::PostStatus.eq(status))
         .order_by_desc(wp_posts::Column::PostDate);
 
-    let total = query.clone().count(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let total = query
+        .clone()
+        .count(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let posts = query
         .offset((page - 1) * per_page)

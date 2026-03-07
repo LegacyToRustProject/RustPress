@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use serde::{Deserialize, Serialize};
 use tera::{Context, Tera};
 use thiserror::Error;
 use tracing::{debug, info, warn};
@@ -98,12 +98,7 @@ impl ThemeEngine {
     }
 
     /// Create a base context with common site-wide variables.
-    pub fn base_context(
-        &self,
-        site_name: &str,
-        site_description: &str,
-        site_url: &str,
-    ) -> Context {
+    pub fn base_context(&self, site_name: &str, site_description: &str, site_url: &str) -> Context {
         let mut context = Context::new();
         context.insert("site_name", site_name);
         context.insert("site_description", site_description);
@@ -238,9 +233,7 @@ impl ThemeEngine {
         }
 
         // Sort so the active theme comes first, then alphabetically.
-        themes.sort_by(|a, b| {
-            b.active.cmp(&a.active).then_with(|| a.name.cmp(&b.name))
-        });
+        themes.sort_by(|a, b| b.active.cmp(&a.active).then_with(|| a.name.cmp(&b.name)));
 
         themes
     }

@@ -39,9 +39,11 @@ impl Cart {
     /// Add an item to the cart. If an item with the same product_id and variation_id
     /// already exists, its quantity is increased instead.
     pub fn add_item(&mut self, item: CartItem) {
-        if let Some(existing) = self.items.iter_mut().find(|i| {
-            i.product_id == item.product_id && i.variation_id == item.variation_id
-        }) {
+        if let Some(existing) = self
+            .items
+            .iter_mut()
+            .find(|i| i.product_id == item.product_id && i.variation_id == item.variation_id)
+        {
             existing.quantity += item.quantity;
             // Update price to the latest value
             existing.price = item.price;
@@ -54,9 +56,8 @@ impl Cart {
     /// Remove an item by product_id (and optional variation_id). Returns true if removed.
     pub fn remove_item(&mut self, product_id: u64, variation_id: Option<u64>) -> bool {
         let before = self.items.len();
-        self.items.retain(|i| {
-            !(i.product_id == product_id && i.variation_id == variation_id)
-        });
+        self.items
+            .retain(|i| !(i.product_id == product_id && i.variation_id == variation_id));
         let removed = self.items.len() < before;
         if removed {
             self.updated_at = Utc::now();
@@ -75,9 +76,11 @@ impl Cart {
         if quantity == 0 {
             return self.remove_item(product_id, variation_id);
         }
-        if let Some(item) = self.items.iter_mut().find(|i| {
-            i.product_id == product_id && i.variation_id == variation_id
-        }) {
+        if let Some(item) = self
+            .items
+            .iter_mut()
+            .find(|i| i.product_id == product_id && i.variation_id == variation_id)
+        {
             item.quantity = quantity;
             self.updated_at = Utc::now();
             true

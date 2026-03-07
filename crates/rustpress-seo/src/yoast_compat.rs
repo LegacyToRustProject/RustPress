@@ -48,11 +48,20 @@ pub mod keys {
 
     /// All known meta keys for bulk queries.
     pub const ALL: &[&str] = &[
-        TITLE, META_DESC, FOCUS_KW, CANONICAL,
-        NOINDEX, NOFOLLOW,
-        OG_TITLE, OG_DESC, OG_IMAGE,
-        TWITTER_TITLE, TWITTER_DESC, TWITTER_IMAGE,
-        SCHEMA_PAGE_TYPE, SCHEMA_ARTICLE_TYPE,
+        TITLE,
+        META_DESC,
+        FOCUS_KW,
+        CANONICAL,
+        NOINDEX,
+        NOFOLLOW,
+        OG_TITLE,
+        OG_DESC,
+        OG_IMAGE,
+        TWITTER_TITLE,
+        TWITTER_DESC,
+        TWITTER_IMAGE,
+        SCHEMA_PAGE_TYPE,
+        SCHEMA_ARTICLE_TYPE,
     ];
 }
 
@@ -92,8 +101,8 @@ impl YoastPostSeo {
             meta_description: non_empty(meta.get(keys::META_DESC)),
             focus_keyword: non_empty(meta.get(keys::FOCUS_KW)),
             canonical: non_empty(meta.get(keys::CANONICAL)),
-            noindex: meta.get(keys::NOINDEX).map_or(false, |v| v == "1"),
-            nofollow: meta.get(keys::NOFOLLOW).map_or(false, |v| v == "1"),
+            noindex: meta.get(keys::NOINDEX).is_some_and(|v| v == "1"),
+            nofollow: meta.get(keys::NOFOLLOW).is_some_and(|v| v == "1"),
             og_title: non_empty(meta.get(keys::OG_TITLE)),
             og_description: non_empty(meta.get(keys::OG_DESC)),
             og_image: non_empty(meta.get(keys::OG_IMAGE)),
@@ -170,17 +179,32 @@ impl YoastPostSeo {
         SeoMeta {
             title,
             description: self.meta_description.clone(),
-            canonical: self.canonical.clone().or_else(|| Some(post_url.to_string())),
+            canonical: self
+                .canonical
+                .clone()
+                .or_else(|| Some(post_url.to_string())),
             robots,
-            og_title: self.og_title.clone().or_else(|| Some(post_title.to_string())),
-            og_description: self.og_description.clone().or(self.meta_description.clone()),
+            og_title: self
+                .og_title
+                .clone()
+                .or_else(|| Some(post_title.to_string())),
+            og_description: self
+                .og_description
+                .clone()
+                .or(self.meta_description.clone()),
             og_image: self.og_image.clone(),
             og_url: Some(post_url.to_string()),
             og_type: Some("article".to_string()),
             og_site_name: Some(site_name.to_string()),
             twitter_card: Some("summary_large_image".to_string()),
-            twitter_title: self.twitter_title.clone().or_else(|| Some(post_title.to_string())),
-            twitter_description: self.twitter_description.clone().or(self.meta_description.clone()),
+            twitter_title: self
+                .twitter_title
+                .clone()
+                .or_else(|| Some(post_title.to_string())),
+            twitter_description: self
+                .twitter_description
+                .clone()
+                .or(self.meta_description.clone()),
             twitter_image: self.twitter_image.clone().or(self.og_image.clone()),
         }
     }
@@ -233,7 +257,10 @@ mod tests {
         m.insert(keys::TITLE.into(), "%%title%% %%sep%% %%sitename%%".into());
         m.insert(keys::META_DESC.into(), "A great article about Rust.".into());
         m.insert(keys::FOCUS_KW.into(), "rust programming".into());
-        m.insert(keys::CANONICAL.into(), "https://example.com/rust-article".into());
+        m.insert(
+            keys::CANONICAL.into(),
+            "https://example.com/rust-article".into(),
+        );
         m.insert(keys::NOINDEX.into(), "0".into());
         m.insert(keys::OG_TITLE.into(), "Rust Article - OG".into());
         m.insert(keys::OG_IMAGE.into(), "https://example.com/og.jpg".into());
@@ -246,14 +273,26 @@ mod tests {
         let yoast = YoastPostSeo::from_meta(42, &sample_meta());
 
         assert_eq!(yoast.post_id, 42);
-        assert_eq!(yoast.title.as_deref(), Some("%%title%% %%sep%% %%sitename%%"));
-        assert_eq!(yoast.meta_description.as_deref(), Some("A great article about Rust."));
+        assert_eq!(
+            yoast.title.as_deref(),
+            Some("%%title%% %%sep%% %%sitename%%")
+        );
+        assert_eq!(
+            yoast.meta_description.as_deref(),
+            Some("A great article about Rust.")
+        );
         assert_eq!(yoast.focus_keyword.as_deref(), Some("rust programming"));
-        assert_eq!(yoast.canonical.as_deref(), Some("https://example.com/rust-article"));
+        assert_eq!(
+            yoast.canonical.as_deref(),
+            Some("https://example.com/rust-article")
+        );
         assert!(!yoast.noindex);
         assert!(!yoast.nofollow);
         assert_eq!(yoast.og_title.as_deref(), Some("Rust Article - OG"));
-        assert_eq!(yoast.og_image.as_deref(), Some("https://example.com/og.jpg"));
+        assert_eq!(
+            yoast.og_image.as_deref(),
+            Some("https://example.com/og.jpg")
+        );
         assert!(yoast.twitter_title.is_none()); // empty string → None
     }
 
@@ -277,10 +316,16 @@ mod tests {
         assert_eq!(seo.title.as_deref(), Some("My Post - My Site"));
 
         // Meta description direct
-        assert_eq!(seo.description.as_deref(), Some("A great article about Rust."));
+        assert_eq!(
+            seo.description.as_deref(),
+            Some("A great article about Rust.")
+        );
 
         // Canonical from Yoast data
-        assert_eq!(seo.canonical.as_deref(), Some("https://example.com/rust-article"));
+        assert_eq!(
+            seo.canonical.as_deref(),
+            Some("https://example.com/rust-article")
+        );
 
         // OG from Yoast override
         assert_eq!(seo.og_title.as_deref(), Some("Rust Article - OG"));
@@ -363,7 +408,10 @@ mod tests {
         assert_eq!(build_robots_directive(false, false), None);
         assert_eq!(build_robots_directive(true, false), Some("noindex".into()));
         assert_eq!(build_robots_directive(false, true), Some("nofollow".into()));
-        assert_eq!(build_robots_directive(true, true), Some("noindex,nofollow".into()));
+        assert_eq!(
+            build_robots_directive(true, true),
+            Some("noindex,nofollow".into())
+        );
     }
 
     #[test]

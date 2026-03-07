@@ -174,7 +174,11 @@ impl PostTypeRegistry {
                 },
                 public: true,
                 show_ui: true,
-                supports: vec![PostTypeSupport::Title, PostTypeSupport::Author, PostTypeSupport::Comments],
+                supports: vec![
+                    PostTypeSupport::Title,
+                    PostTypeSupport::Author,
+                    PostTypeSupport::Comments,
+                ],
                 ..Default::default()
             },
             true,

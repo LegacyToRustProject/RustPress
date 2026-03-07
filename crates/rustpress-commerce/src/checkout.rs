@@ -152,11 +152,7 @@ impl<'a> CheckoutProcessor<'a> {
     }
 
     /// Calculate the checkout summary without processing.
-    pub fn calculate_summary(
-        &mut self,
-        cart: &Cart,
-        request: &CheckoutRequest,
-    ) -> CheckoutSummary {
+    pub fn calculate_summary(&mut self, cart: &Cart, request: &CheckoutRequest) -> CheckoutSummary {
         let subtotal = cart.get_subtotal();
 
         // Apply coupons
@@ -181,7 +177,7 @@ impl<'a> CheckoutProcessor<'a> {
 
         // Tax calculation
         let taxable_amount = subtotal - discount_total;
-        let tax = if let Some(ref tax_calc) = self.tax_calculator {
+        let tax = if let Some(tax_calc) = self.tax_calculator {
             let location = TaxLocation {
                 country: request.shipping_address.country.clone(),
                 state: request.shipping_address.state.clone(),

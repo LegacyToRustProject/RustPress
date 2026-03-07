@@ -22,15 +22,20 @@ pub fn routes() -> Router<ApiState> {
 /// List installed themes.
 ///
 /// WordPress equivalent: `GET /wp-json/wp/v2/themes`
-async fn list_themes(
-    State(state): State<ApiState>,
-) -> Json<Vec<Value>> {
+async fn list_themes(State(state): State<ApiState>) -> Json<Vec<Value>> {
     // Read active theme from options
-    let active_theme = get_option(&state, "template").await.unwrap_or_else(|| "default".to_string());
+    let active_theme = get_option(&state, "template")
+        .await
+        .unwrap_or_else(|| "default".to_string());
 
-    let themes = vec![
-        theme_json("default", "RustPress Default", "1.0", true, &active_theme, &state.site_url),
-    ];
+    let themes = vec![theme_json(
+        "default",
+        "RustPress Default",
+        "1.0",
+        true,
+        &active_theme,
+        &state.site_url,
+    )];
 
     Json(themes)
 }
@@ -40,18 +45,38 @@ async fn get_theme(
     State(state): State<ApiState>,
     Path(slug): Path<String>,
 ) -> Result<Json<Value>, WpError> {
-    let active_theme = get_option(&state, "template").await.unwrap_or_else(|| "default".to_string());
+    let active_theme = get_option(&state, "template")
+        .await
+        .unwrap_or_else(|| "default".to_string());
 
     if slug == "default" {
-        Ok(Json(theme_json("default", "RustPress Default", "1.0", true, &active_theme, &state.site_url)))
+        Ok(Json(theme_json(
+            "default",
+            "RustPress Default",
+            "1.0",
+            true,
+            &active_theme,
+            &state.site_url,
+        )))
     } else {
         Err(WpError::not_found("Theme not found"))
     }
 }
 
-fn theme_json(slug: &str, name: &str, version: &str, _active: bool, active_theme: &str, site_url: &str) -> Value {
+fn theme_json(
+    slug: &str,
+    name: &str,
+    version: &str,
+    _active: bool,
+    active_theme: &str,
+    site_url: &str,
+) -> Value {
     let base = site_url.trim_end_matches('/');
-    let status = if slug == active_theme { "active" } else { "inactive" };
+    let status = if slug == active_theme {
+        "active"
+    } else {
+        "inactive"
+    };
     json!({
         "stylesheet": slug,
         "template": slug,
@@ -86,6 +111,10 @@ async fn get_option(state: &ApiState, key: &str) -> Option<String> {
         .flatten()
         .and_then(|o| {
             let val = o.option_value.trim().to_string();
-            if val.is_empty() { None } else { Some(val) }
+            if val.is_empty() {
+                None
+            } else {
+                Some(val)
+            }
         })
 }

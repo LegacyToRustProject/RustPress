@@ -87,7 +87,7 @@ impl Cf7FormData {
         let (mail_2_to, _mail_2_from, mail_2_subject, mail_2_body) =
             parse_cf7_mail_meta(meta.get(meta_keys::MAIL_2));
 
-        let mail_2_active = meta.get(meta_keys::MAIL_2).map_or(false, |v| !v.is_empty());
+        let mail_2_active = meta.get(meta_keys::MAIL_2).is_some_and(|v| !v.is_empty());
 
         let messages = parse_cf7_messages(meta.get(meta_keys::MESSAGES));
 
@@ -308,8 +308,7 @@ fn cf7_type_to_form_field(cf7_type: &str) -> FormField {
 
 /// Convert a CF7 field name like "your-name" to a human-readable label.
 fn humanize_field_name(name: &str) -> String {
-    name.replace('-', " ")
-        .replace('_', " ")
+    name.replace(['-', '_'], " ")
         .split_whitespace()
         .map(|word| {
             let mut chars = word.chars();
@@ -517,7 +516,10 @@ mod tests {
     fn test_extract_tag_name() {
         assert_eq!(extract_tag_name("[your-email]"), Some("your-email".into()));
         assert_eq!(extract_tag_name("plain text"), None);
-        assert_eq!(extract_tag_name("Send to [admin-email]"), Some("admin-email".into()));
+        assert_eq!(
+            extract_tag_name("Send to [admin-email]"),
+            Some("admin-email".into())
+        );
     }
 
     #[test]

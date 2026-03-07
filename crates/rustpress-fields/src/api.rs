@@ -31,12 +31,7 @@ pub fn get_field(field_name: &str, post_id: i64, storage: &FieldStorage) -> Opti
 /// * `value` - The value to store.
 /// * `post_id` - The ID of the post.
 /// * `storage` - The mutable field storage backend.
-pub fn update_field(
-    field_name: &str,
-    value: FieldValue,
-    post_id: i64,
-    storage: &mut FieldStorage,
-) {
+pub fn update_field(field_name: &str, value: FieldValue, post_id: i64, storage: &mut FieldStorage) {
     storage.update_field(post_id, field_name, value);
 }
 
@@ -202,14 +197,24 @@ mod tests {
     fn test_update_and_delete_field() {
         let mut storage = FieldStorage::new();
 
-        update_field("color", FieldValue::String("blue".to_string()), 1, &mut storage);
+        update_field(
+            "color",
+            FieldValue::String("blue".to_string()),
+            1,
+            &mut storage,
+        );
         assert_eq!(
             get_field("color", 1, &storage),
             Some(FieldValue::String("blue".to_string()))
         );
 
         // Update overwrites
-        update_field("color", FieldValue::String("red".to_string()), 1, &mut storage);
+        update_field(
+            "color",
+            FieldValue::String("red".to_string()),
+            1,
+            &mut storage,
+        );
         assert_eq!(
             get_field("color", 1, &storage),
             Some(FieldValue::String("red".to_string()))
@@ -245,16 +250,10 @@ mod tests {
 
         let first_row = &rows[0];
         let image = get_sub_field("image", first_row);
-        assert_eq!(
-            image,
-            Some(&FieldValue::String("/img/a.jpg".to_string()))
-        );
+        assert_eq!(image, Some(&FieldValue::String("/img/a.jpg".to_string())));
 
         let caption = get_sub_field("caption", first_row);
-        assert_eq!(
-            caption,
-            Some(&FieldValue::String("First".to_string()))
-        );
+        assert_eq!(caption, Some(&FieldValue::String("First".to_string())));
 
         // Non-existent sub-field
         assert!(get_sub_field("nope", first_row).is_none());
@@ -271,7 +270,10 @@ mod tests {
         let storage = setup_storage();
 
         assert_eq!(get_field_string("title", 1, &storage, ""), "Hello World");
-        assert_eq!(get_field_string("missing", 1, &storage, "default"), "default");
+        assert_eq!(
+            get_field_string("missing", 1, &storage, "default"),
+            "default"
+        );
 
         assert_eq!(get_field_number("count", 1, &storage, 0.0), 5.0);
         assert_eq!(get_field_number("missing", 1, &storage, 99.0), 99.0);

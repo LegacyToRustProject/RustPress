@@ -24,12 +24,7 @@ async fn submit_form(
     Path(form_id): Path<String>,
     axum::extract::Form(fields): axum::extract::Form<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    let submission = FormSubmission::new(
-        form_id.clone(),
-        fields,
-        None,
-        None,
-    );
+    let submission = FormSubmission::new(form_id.clone(), fields, None, None);
 
     state.form_submissions.save(submission);
 

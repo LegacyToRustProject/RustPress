@@ -13,9 +13,7 @@ pub struct TransientCache {
 impl TransientCache {
     /// Create a new transient cache with maximum capacity.
     pub fn new(max_capacity: u64) -> Self {
-        let cache = Cache::builder()
-            .max_capacity(max_capacity)
-            .build();
+        let cache = Cache::builder().max_capacity(max_capacity).build();
 
         Self { cache }
     }
@@ -83,7 +81,9 @@ mod tests {
     #[tokio::test]
     async fn test_set_and_get_transient() {
         let cache = TransientCache::new(100);
-        cache.set_transient("api_cache", "response_data", 3600).await;
+        cache
+            .set_transient("api_cache", "response_data", 3600)
+            .await;
 
         let result = cache.get_transient("api_cache").await;
         assert_eq!(result, Some("response_data".to_string()));

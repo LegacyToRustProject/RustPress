@@ -58,23 +58,79 @@ pub enum IssueSeverity {
 /// Known WordPress plugins and their RustPress equivalents.
 fn known_plugin_mappings() -> Vec<(&'static str, PluginCompatStatus, Option<&'static str>)> {
     vec![
-        ("yoast-seo", PluginCompatStatus::NativeAvailable, Some("rustpress-seo")),
-        ("wordpress-seo", PluginCompatStatus::NativeAvailable, Some("rustpress-seo")),
-        ("rank-math", PluginCompatStatus::NativeAvailable, Some("rustpress-seo")),
-        ("contact-form-7", PluginCompatStatus::NativeAvailable, Some("rustpress-forms")),
-        ("wpforms", PluginCompatStatus::NativeAvailable, Some("rustpress-forms")),
-        ("gravity-forms", PluginCompatStatus::NativeAvailable, Some("rustpress-forms")),
-        ("woocommerce", PluginCompatStatus::NativeAvailable, Some("rustpress-commerce")),
-        ("advanced-custom-fields", PluginCompatStatus::NativeAvailable, Some("rustpress-fields")),
-        ("acf", PluginCompatStatus::NativeAvailable, Some("rustpress-fields")),
-        ("wordfence", PluginCompatStatus::NativeAvailable, Some("rustpress-security")),
-        ("sucuri-scanner", PluginCompatStatus::NativeAvailable, Some("rustpress-security")),
+        (
+            "yoast-seo",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-seo"),
+        ),
+        (
+            "wordpress-seo",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-seo"),
+        ),
+        (
+            "rank-math",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-seo"),
+        ),
+        (
+            "contact-form-7",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-forms"),
+        ),
+        (
+            "wpforms",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-forms"),
+        ),
+        (
+            "gravity-forms",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-forms"),
+        ),
+        (
+            "woocommerce",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-commerce"),
+        ),
+        (
+            "advanced-custom-fields",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-fields"),
+        ),
+        (
+            "acf",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-fields"),
+        ),
+        (
+            "wordfence",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-security"),
+        ),
+        (
+            "sucuri-scanner",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-security"),
+        ),
         ("akismet", PluginCompatStatus::Convertible, None),
         ("jetpack", PluginCompatStatus::Incompatible, None),
         ("elementor", PluginCompatStatus::Incompatible, None),
-        ("wp-super-cache", PluginCompatStatus::NativeAvailable, Some("rustpress-cache (built-in)")),
-        ("w3-total-cache", PluginCompatStatus::NativeAvailable, Some("rustpress-cache (built-in)")),
-        ("wp-rocket", PluginCompatStatus::NativeAvailable, Some("rustpress-cache (built-in)")),
+        (
+            "wp-super-cache",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-cache (built-in)"),
+        ),
+        (
+            "w3-total-cache",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-cache (built-in)"),
+        ),
+        (
+            "wp-rocket",
+            PluginCompatStatus::NativeAvailable,
+            Some("rustpress-cache (built-in)"),
+        ),
     ]
 }
 
@@ -104,7 +160,10 @@ pub fn analyze_wp_version(version: &str) -> (u8, Vec<CompatIssue>) {
     let mut issues = Vec::new();
 
     let major_minor: Vec<&str> = version.split('.').collect();
-    let major: u32 = major_minor.first().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let major: u32 = major_minor
+        .first()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0);
     let minor: u32 = major_minor.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
 
     let score = match (major, minor) {
@@ -117,7 +176,8 @@ pub fn analyze_wp_version(version: &str) -> (u8, Vec<CompatIssue>) {
                 severity: IssueSeverity::Info,
                 area: "WordPress Version".to_string(),
                 description: format!("WordPress {} is Tier 2 (basic compatibility)", version),
-                resolution: "Most features will work. Some newer block editor features may differ.".to_string(),
+                resolution: "Most features will work. Some newer block editor features may differ."
+                    .to_string(),
             });
             80
         }
@@ -135,7 +195,8 @@ pub fn analyze_wp_version(version: &str) -> (u8, Vec<CompatIssue>) {
                 severity: IssueSeverity::Critical,
                 area: "WordPress Version".to_string(),
                 description: format!("WordPress {} is not supported", version),
-                resolution: "Please upgrade to WordPress 4.4 or later before migrating.".to_string(),
+                resolution: "Please upgrade to WordPress 4.4 or later before migrating."
+                    .to_string(),
             });
             20
         }
@@ -150,9 +211,15 @@ pub fn format_report(report: &CompatibilityReport) -> String {
     output.push_str("RustPress Compatibility Report\n");
     output.push_str(&"=".repeat(50));
     output.push('\n');
-    output.push_str(&format!("WordPress Version: {}\n", report.wordpress_version));
+    output.push_str(&format!(
+        "WordPress Version: {}\n",
+        report.wordpress_version
+    ));
     output.push_str(&format!("DB Version: {}\n", report.db_version));
-    output.push_str(&format!("Compatibility Score: {}%\n\n", report.compatibility_score));
+    output.push_str(&format!(
+        "Compatibility Score: {}%\n\n",
+        report.compatibility_score
+    ));
 
     output.push_str("Content Summary:\n");
     output.push_str(&format!("  Posts: {}\n", report.post_count));
@@ -190,7 +257,10 @@ pub fn format_report(report: &CompatibilityReport) -> String {
                 IssueSeverity::Warning => "WARNING",
                 IssueSeverity::Info => "INFO",
             };
-            output.push_str(&format!("  [{}] {}: {}\n", severity, issue.area, issue.description));
+            output.push_str(&format!(
+                "  [{}] {}: {}\n",
+                severity, issue.area, issue.description
+            ));
             output.push_str(&format!("    Resolution: {}\n", issue.resolution));
         }
         output.push('\n');

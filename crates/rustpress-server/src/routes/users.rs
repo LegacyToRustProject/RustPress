@@ -4,7 +4,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use sea_orm::{EntityTrait, QueryOrder, QuerySelect, PaginatorTrait};
+use sea_orm::{EntityTrait, PaginatorTrait, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -56,9 +56,11 @@ async fn list_users(
 
     let query = wp_users::Entity::find().order_by_asc(wp_users::Column::UserLogin);
 
-    let total = query.clone().count(&state.db).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let total = query
+        .clone()
+        .count(&state.db)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let users = query
         .offset((page - 1) * per_page)

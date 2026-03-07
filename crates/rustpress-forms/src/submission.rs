@@ -128,10 +128,7 @@ impl SubmissionStore {
         let store = self.submissions.lock().unwrap();
         store
             .iter()
-            .filter(|s| {
-                s.form_id == form_id
-                    && status.map_or(true, |st| &s.status == st)
-            })
+            .filter(|s| s.form_id == form_id && status.is_none_or(|st| &s.status == st))
             .count()
     }
 }

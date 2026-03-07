@@ -128,16 +128,13 @@ async fn list_orders(
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10).min(100);
 
-    let status_filter = params
-        .status
-        .as_deref()
-        .map(|s| {
-            if s.starts_with("wc-") {
-                s.to_string()
-            } else {
-                format!("wc-{}", s)
-            }
-        });
+    let status_filter = params.status.as_deref().map(|s| {
+        if s.starts_with("wc-") {
+            s.to_string()
+        } else {
+            format!("wc-{}", s)
+        }
+    });
 
     let mut query = wp_posts::Entity::find()
         .filter(wp_posts::Column::PostType.eq(woo_compat::post_types::ORDER));
@@ -289,10 +286,7 @@ fn product_to_json(woo: &WooProductData) -> serde_json::Value {
 
 /// Convert WooOrderData to WC API v3 JSON format.
 fn order_to_json(woo: &WooOrderData, post: &wp_posts::Model) -> serde_json::Value {
-    let status = woo
-        .status
-        .strip_prefix("wc-")
-        .unwrap_or(&woo.status);
+    let status = woo.status.strip_prefix("wc-").unwrap_or(&woo.status);
 
     serde_json::json!({
         "id": woo.post_id,

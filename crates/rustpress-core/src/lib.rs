@@ -13,8 +13,8 @@ pub mod types;
 
 pub use hooks::HookRegistry;
 pub use kses::{
-    esc_attr, esc_html, esc_url, wp_kses, wp_kses_comment, wp_kses_data, wp_kses_post,
-    AllowedHtml, KSES_ALLOWED_COMMENT, KSES_ALLOWED_POST,
+    esc_attr, esc_html, esc_url, wp_kses, wp_kses_comment, wp_kses_data, wp_kses_post, AllowedHtml,
+    KSES_ALLOWED_COMMENT, KSES_ALLOWED_POST,
 };
 pub use mail::{MailConfig, MailError, WpMail};
 pub use media_sizes::{

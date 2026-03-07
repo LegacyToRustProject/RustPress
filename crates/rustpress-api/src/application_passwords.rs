@@ -18,9 +18,7 @@ use axum::{
     routing::get,
     Json, Router,
 };
-use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter,
-};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -62,8 +60,7 @@ pub fn write_routes() -> Router<ApiState> {
     Router::new()
         .route(
             "/wp-json/wp/v2/users/{user_id}/application-passwords",
-            axum::routing::post(create_app_password)
-                .delete(delete_all_app_passwords),
+            axum::routing::post(create_app_password).delete(delete_all_app_passwords),
         )
         .route(
             "/wp-json/wp/v2/users/{user_id}/application-passwords/introspect",
@@ -129,7 +126,9 @@ async fn list_app_passwords(
 ) -> Result<Json<Vec<Value>>, WpError> {
     // Only the user themselves or admins can list application passwords
     if auth.user_id != user_id && !auth.can(&rustpress_auth::Capability::ManageOptions) {
-        return Err(WpError::forbidden("You cannot list application passwords for this user."));
+        return Err(WpError::forbidden(
+            "You cannot list application passwords for this user.",
+        ));
     }
 
     // Verify user exists
@@ -160,7 +159,9 @@ async fn get_app_password(
     Path((user_id, uuid)): Path<(u64, String)>,
 ) -> Result<Json<Value>, WpError> {
     if auth.user_id != user_id && !auth.can(&rustpress_auth::Capability::ManageOptions) {
-        return Err(WpError::forbidden("You cannot access application passwords for this user."));
+        return Err(WpError::forbidden(
+            "You cannot access application passwords for this user.",
+        ));
     }
 
     let passwords = load_app_passwords(&state.db, user_id).await;
@@ -187,7 +188,9 @@ async fn introspect_app_password(
     Path(user_id): Path<u64>,
 ) -> Result<Json<Value>, WpError> {
     if auth.user_id != user_id && !auth.can(&rustpress_auth::Capability::ManageOptions) {
-        return Err(WpError::forbidden("You cannot introspect application passwords for this user."));
+        return Err(WpError::forbidden(
+            "You cannot introspect application passwords for this user.",
+        ));
     }
 
     // Verify user exists
@@ -202,8 +205,14 @@ async fn introspect_app_password(
     // Return info about the first application password (the one most recently used, if any)
     // In a real implementation this would identify the specific password used in the request.
     // Here we return info about the most recently used password.
-    let pw = passwords.into_iter()
-        .filter(|p| p.get("last_used").and_then(|v| v.as_str()).map(|s| !s.is_empty()).unwrap_or(false))
+    let pw = passwords
+        .into_iter()
+        .filter(|p| {
+            p.get("last_used")
+                .and_then(|v| v.as_str())
+                .map(|s| !s.is_empty())
+                .unwrap_or(false)
+        })
         .next();
 
     match pw {
@@ -229,11 +238,15 @@ async fn create_app_password(
     Json(input): Json<CreateAppPasswordRequest>,
 ) -> Result<(StatusCode, Json<Value>), WpError> {
     if auth.user_id != user_id && !auth.can(&rustpress_auth::Capability::ManageOptions) {
-        return Err(WpError::forbidden("You cannot create application passwords for this user."));
+        return Err(WpError::forbidden(
+            "You cannot create application passwords for this user.",
+        ));
     }
 
     if input.name.trim().is_empty() {
-        return Err(WpError::bad_request("Application password name is required."));
+        return Err(WpError::bad_request(
+            "Application password name is required.",
+        ));
     }
 
     // Verify user exists
@@ -293,7 +306,9 @@ async fn delete_app_password(
     Path((user_id, uuid)): Path<(u64, String)>,
 ) -> Result<Json<Value>, WpError> {
     if auth.user_id != user_id && !auth.can(&rustpress_auth::Capability::ManageOptions) {
-        return Err(WpError::forbidden("You cannot delete application passwords for this user."));
+        return Err(WpError::forbidden(
+            "You cannot delete application passwords for this user.",
+        ));
     }
 
     let mut passwords = load_app_passwords(&state.db, user_id).await;
@@ -318,7 +333,9 @@ async fn delete_all_app_passwords(
     Path(user_id): Path<u64>,
 ) -> Result<Json<Value>, WpError> {
     if auth.user_id != user_id && !auth.can(&rustpress_auth::Capability::ManageOptions) {
-        return Err(WpError::forbidden("You cannot delete application passwords for this user."));
+        return Err(WpError::forbidden(
+            "You cannot delete application passwords for this user.",
+        ));
     }
 
     save_app_passwords(&state.db, user_id, &[])

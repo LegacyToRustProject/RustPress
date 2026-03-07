@@ -29,11 +29,8 @@ pub async fn create_wp_tables(db: &DatabaseConnection) -> Result<(), DbErr> {
 
     for (name, sql) in tables {
         info!(table = name, "creating table if not exists");
-        db.execute(Statement::from_string(
-            sea_orm::DatabaseBackend::MySql,
-            sql,
-        ))
-        .await?;
+        db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+            .await?;
     }
 
     info!("all WordPress tables created");
@@ -70,11 +67,8 @@ pub async fn insert_default_options(
             "INSERT IGNORE INTO wp_options (option_name, option_value, autoload) VALUES ('{}', '{}', 'yes')",
             name, value
         );
-        db.execute(Statement::from_string(
-            sea_orm::DatabaseBackend::MySql,
-            sql,
-        ))
-        .await?;
+        db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+            .await?;
     }
 
     info!("default options inserted");
@@ -91,18 +85,17 @@ pub async fn create_default_admin(
         password_hash
     );
 
-    db.execute(Statement::from_string(
-        sea_orm::DatabaseBackend::MySql,
-        sql,
-    ))
-    .await?;
+    db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+        .await?;
 
     info!("default admin user created");
     Ok(())
 }
 
 fn create_posts_table() -> (&'static str, String) {
-    ("wp_posts", "CREATE TABLE IF NOT EXISTS wp_posts (
+    (
+        "wp_posts",
+        "CREATE TABLE IF NOT EXISTS wp_posts (
         ID bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         post_author bigint(20) unsigned NOT NULL DEFAULT 0,
         post_date datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -131,11 +124,15 @@ fn create_posts_table() -> (&'static str, String) {
         KEY type_status_date (post_type, post_status, post_date, ID),
         KEY post_parent (post_parent),
         KEY post_author (post_author)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_postmeta_table() -> (&'static str, String) {
-    ("wp_postmeta", "CREATE TABLE IF NOT EXISTS wp_postmeta (
+    (
+        "wp_postmeta",
+        "CREATE TABLE IF NOT EXISTS wp_postmeta (
         meta_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         post_id bigint(20) unsigned NOT NULL DEFAULT 0,
         meta_key varchar(255) DEFAULT NULL,
@@ -143,11 +140,15 @@ fn create_postmeta_table() -> (&'static str, String) {
         PRIMARY KEY (meta_id),
         KEY post_id (post_id),
         KEY meta_key (meta_key(191))
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_users_table() -> (&'static str, String) {
-    ("wp_users", "CREATE TABLE IF NOT EXISTS wp_users (
+    (
+        "wp_users",
+        "CREATE TABLE IF NOT EXISTS wp_users (
         ID bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         user_login varchar(60) NOT NULL DEFAULT '',
         user_pass varchar(255) NOT NULL DEFAULT '',
@@ -162,11 +163,15 @@ fn create_users_table() -> (&'static str, String) {
         KEY user_login_key (user_login),
         KEY user_nicename (user_nicename),
         KEY user_email (user_email)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_usermeta_table() -> (&'static str, String) {
-    ("wp_usermeta", "CREATE TABLE IF NOT EXISTS wp_usermeta (
+    (
+        "wp_usermeta",
+        "CREATE TABLE IF NOT EXISTS wp_usermeta (
         umeta_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         user_id bigint(20) unsigned NOT NULL DEFAULT 0,
         meta_key varchar(255) DEFAULT NULL,
@@ -174,11 +179,15 @@ fn create_usermeta_table() -> (&'static str, String) {
         PRIMARY KEY (umeta_id),
         KEY user_id (user_id),
         KEY meta_key (meta_key(191))
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_options_table() -> (&'static str, String) {
-    ("wp_options", "CREATE TABLE IF NOT EXISTS wp_options (
+    (
+        "wp_options",
+        "CREATE TABLE IF NOT EXISTS wp_options (
         option_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         option_name varchar(191) NOT NULL DEFAULT '',
         option_value longtext NOT NULL,
@@ -186,11 +195,15 @@ fn create_options_table() -> (&'static str, String) {
         PRIMARY KEY (option_id),
         UNIQUE KEY option_name (option_name),
         KEY autoload (autoload)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_comments_table() -> (&'static str, String) {
-    ("wp_comments", "CREATE TABLE IF NOT EXISTS wp_comments (
+    (
+        "wp_comments",
+        "CREATE TABLE IF NOT EXISTS wp_comments (
         comment_ID bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         comment_post_ID bigint(20) unsigned NOT NULL DEFAULT 0,
         comment_author text NOT NULL,
@@ -212,11 +225,15 @@ fn create_comments_table() -> (&'static str, String) {
         KEY comment_date_gmt (comment_date_gmt),
         KEY comment_parent (comment_parent),
         KEY comment_author_email (comment_author_email(10))
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_commentmeta_table() -> (&'static str, String) {
-    ("wp_commentmeta", "CREATE TABLE IF NOT EXISTS wp_commentmeta (
+    (
+        "wp_commentmeta",
+        "CREATE TABLE IF NOT EXISTS wp_commentmeta (
         meta_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         comment_id bigint(20) unsigned NOT NULL DEFAULT 0,
         meta_key varchar(255) DEFAULT NULL,
@@ -224,11 +241,15 @@ fn create_commentmeta_table() -> (&'static str, String) {
         PRIMARY KEY (meta_id),
         KEY comment_id (comment_id),
         KEY meta_key (meta_key(191))
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_terms_table() -> (&'static str, String) {
-    ("wp_terms", "CREATE TABLE IF NOT EXISTS wp_terms (
+    (
+        "wp_terms",
+        "CREATE TABLE IF NOT EXISTS wp_terms (
         term_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         name varchar(200) NOT NULL DEFAULT '',
         slug varchar(200) NOT NULL DEFAULT '',
@@ -236,11 +257,15 @@ fn create_terms_table() -> (&'static str, String) {
         PRIMARY KEY (term_id),
         KEY slug (slug(191)),
         KEY name (name(191))
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_term_taxonomy_table() -> (&'static str, String) {
-    ("wp_term_taxonomy", "CREATE TABLE IF NOT EXISTS wp_term_taxonomy (
+    (
+        "wp_term_taxonomy",
+        "CREATE TABLE IF NOT EXISTS wp_term_taxonomy (
         term_taxonomy_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         term_id bigint(20) unsigned NOT NULL DEFAULT 0,
         taxonomy varchar(32) NOT NULL DEFAULT '',
@@ -250,21 +275,29 @@ fn create_term_taxonomy_table() -> (&'static str, String) {
         PRIMARY KEY (term_taxonomy_id),
         UNIQUE KEY term_id_taxonomy (term_id, taxonomy),
         KEY taxonomy (taxonomy)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_term_relationships_table() -> (&'static str, String) {
-    ("wp_term_relationships", "CREATE TABLE IF NOT EXISTS wp_term_relationships (
+    (
+        "wp_term_relationships",
+        "CREATE TABLE IF NOT EXISTS wp_term_relationships (
         object_id bigint(20) unsigned NOT NULL DEFAULT 0,
         term_taxonomy_id bigint(20) unsigned NOT NULL DEFAULT 0,
         term_order int(11) NOT NULL DEFAULT 0,
         PRIMARY KEY (object_id, term_taxonomy_id),
         KEY term_taxonomy_id (term_taxonomy_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_links_table() -> (&'static str, String) {
-    ("wp_links", "CREATE TABLE IF NOT EXISTS wp_links (
+    (
+        "wp_links",
+        "CREATE TABLE IF NOT EXISTS wp_links (
         link_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         link_url varchar(255) NOT NULL DEFAULT '',
         link_name varchar(255) NOT NULL DEFAULT '',
@@ -280,11 +313,15 @@ fn create_links_table() -> (&'static str, String) {
         link_rss varchar(255) NOT NULL DEFAULT '',
         PRIMARY KEY (link_id),
         KEY link_visible (link_visible)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }
 
 fn create_termmeta_table() -> (&'static str, String) {
-    ("wp_termmeta", "CREATE TABLE IF NOT EXISTS wp_termmeta (
+    (
+        "wp_termmeta",
+        "CREATE TABLE IF NOT EXISTS wp_termmeta (
         meta_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         term_id bigint(20) unsigned NOT NULL DEFAULT 0,
         meta_key varchar(255) DEFAULT NULL,
@@ -292,5 +329,7 @@ fn create_termmeta_table() -> (&'static str, String) {
         PRIMARY KEY (meta_id),
         KEY term_id (term_id),
         KEY meta_key (meta_key(191))
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci".to_string())
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci"
+            .to_string(),
+    )
 }

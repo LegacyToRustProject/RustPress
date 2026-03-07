@@ -14,10 +14,7 @@ use rustpress_e2e::*;
 
 /// Fetch only the headers from a URL (HEAD request, falling back to GET).
 #[allow(dead_code)]
-async fn fetch_headers(
-    client: &reqwest::Client,
-    url: &str,
-) -> Option<reqwest::header::HeaderMap> {
+async fn fetch_headers(client: &reqwest::Client, url: &str) -> Option<reqwest::header::HeaderMap> {
     // Try HEAD first, fall back to GET
     let resp = match client.head(url).send().await {
         Ok(r) => r,
@@ -180,10 +177,7 @@ async fn test_content_type_headers() {
 
                 eprintln!("    WP Content-Type:  {}", wp_ct);
                 eprintln!("    RP Content-Type:  {}", rp_ct);
-                eprintln!(
-                    "    Expected contains: {}",
-                    expected_contains
-                );
+                eprintln!("    Expected contains: {}", expected_contains);
 
                 let rp_matches = rp_ct
                     .to_lowercase()
@@ -251,10 +245,7 @@ async fn test_cache_headers() {
                         .unwrap_or("(absent)");
 
                     if wp_val != "(absent)" || rp_val != "(absent)" {
-                        eprintln!(
-                            "    {} - WP: {}, RP: {}",
-                            header, wp_val, rp_val
-                        );
+                        eprintln!("    {} - WP: {}, RP: {}", header, wp_val, rp_val);
                     }
                 }
             }
@@ -287,22 +278,11 @@ async fn test_rest_api_wp_headers() {
         "/wp-json/wp/v2/users",
     ];
 
-    let wp_specific_headers = [
-        "x-wp-total",
-        "x-wp-totalpages",
-    ];
+    let wp_specific_headers = ["x-wp-total", "x-wp-totalpages"];
 
     for path in &api_endpoints {
-        let wp = fetch_headers_get(
-            &client,
-            &format!("{}{}", cfg.wordpress_url, path),
-        )
-        .await;
-        let rp = fetch_headers_get(
-            &client,
-            &format!("{}{}", cfg.rustpress_url, path),
-        )
-        .await;
+        let wp = fetch_headers_get(&client, &format!("{}{}", cfg.wordpress_url, path)).await;
+        let rp = fetch_headers_get(&client, &format!("{}{}", cfg.rustpress_url, path)).await;
 
         eprintln!("\n  {}:", path);
 
@@ -324,7 +304,11 @@ async fn test_rest_api_wp_headers() {
                         header,
                         wp_val,
                         rp_val,
-                        if both_present { "BOTH PRESENT" } else { "MISSING IN ONE" }
+                        if both_present {
+                            "BOTH PRESENT"
+                        } else {
+                            "MISSING IN ONE"
+                        }
                     );
                 }
 
@@ -341,8 +325,16 @@ async fn test_rest_api_wp_headers() {
                 if wp_link != "(absent)" || rp_link != "(absent)" {
                     eprintln!(
                         "    link - WP: {}, RP: {}",
-                        if wp_link.len() > 80 { &wp_link[..80] } else { wp_link },
-                        if rp_link.len() > 80 { &rp_link[..80] } else { rp_link },
+                        if wp_link.len() > 80 {
+                            &wp_link[..80]
+                        } else {
+                            wp_link
+                        },
+                        if rp_link.len() > 80 {
+                            &rp_link[..80]
+                        } else {
+                            rp_link
+                        },
                     );
                 }
             }
@@ -401,7 +393,11 @@ async fn test_rest_api_expose_headers() {
                 "  Exposes X-WP-Total - WP: {}, RP: {} [{}]",
                 wp_exposes_total,
                 rp_exposes_total,
-                if wp_exposes_total == rp_exposes_total { "MATCH" } else { "DIFFER" }
+                if wp_exposes_total == rp_exposes_total {
+                    "MATCH"
+                } else {
+                    "DIFFER"
+                }
             );
 
             eprintln!("[PASS] Expose headers compared");
@@ -422,11 +418,7 @@ async fn test_cors_headers() {
     eprintln!("\n=== test_cors_headers ===");
 
     // CORS headers are most relevant on API endpoints
-    let api_paths = [
-        "/wp-json/",
-        "/wp-json/wp/v2/posts",
-        "/wp-json/wp/v2/users",
-    ];
+    let api_paths = ["/wp-json/", "/wp-json/wp/v2/posts", "/wp-json/wp/v2/users"];
 
     let cors_headers = [
         "access-control-allow-origin",
@@ -470,10 +462,7 @@ async fn test_cors_headers() {
                         .unwrap_or("(absent)");
 
                     if wp_val != "(absent)" || rp_val != "(absent)" {
-                        eprintln!(
-                            "    {} - WP: {}, RP: {}",
-                            header, wp_val, rp_val
-                        );
+                        eprintln!("    {} - WP: {}, RP: {}", header, wp_val, rp_val);
                     }
                 }
             }
@@ -507,12 +496,8 @@ async fn test_cors_headers() {
                 let rp_h = rp_resp.headers().clone();
 
                 for header in &cors_headers {
-                    let wp_val = wp_h
-                        .get(*header)
-                        .and_then(|v| v.to_str().ok());
-                    let rp_val = rp_h
-                        .get(*header)
-                        .and_then(|v| v.to_str().ok());
+                    let wp_val = wp_h.get(*header).and_then(|v| v.to_str().ok());
+                    let rp_val = rp_h.get(*header).and_then(|v| v.to_str().ok());
 
                     if wp_val.is_some() || rp_val.is_some() {
                         eprintln!(
@@ -653,16 +638,8 @@ async fn test_login_page_headers() {
 
     eprintln!("\n=== test_login_page_headers ===");
 
-    let wp = fetch_headers_get(
-        &client,
-        &format!("{}/wp-login.php", cfg.wordpress_url),
-    )
-    .await;
-    let rp = fetch_headers_get(
-        &client,
-        &format!("{}/wp-login.php", cfg.rustpress_url),
-    )
-    .await;
+    let wp = fetch_headers_get(&client, &format!("{}/wp-login.php", cfg.wordpress_url)).await;
+    let rp = fetch_headers_get(&client, &format!("{}/wp-login.php", cfg.rustpress_url)).await;
 
     match (wp, rp) {
         (Some((_wp_status, wp_h)), Some((_rp_status, rp_h))) => {
@@ -712,16 +689,8 @@ async fn test_rss_content_type() {
 
     eprintln!("\n=== test_rss_content_type ===");
 
-    let wp = fetch_headers_get(
-        &client,
-        &format!("{}/feed/", cfg.wordpress_url),
-    )
-    .await;
-    let rp = fetch_headers_get(
-        &client,
-        &format!("{}/feed/", cfg.rustpress_url),
-    )
-    .await;
+    let wp = fetch_headers_get(&client, &format!("{}/feed/", cfg.wordpress_url)).await;
+    let rp = fetch_headers_get(&client, &format!("{}/feed/", cfg.rustpress_url)).await;
 
     match (wp, rp) {
         (Some((wp_status, wp_h)), Some((rp_status, rp_h))) => {
@@ -733,8 +702,8 @@ async fn test_rss_content_type() {
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("(absent)");
 
-            let rp_is_rss = rp_ct.to_lowercase().contains("rss+xml")
-                || rp_ct.to_lowercase().contains("xml");
+            let rp_is_rss =
+                rp_ct.to_lowercase().contains("rss+xml") || rp_ct.to_lowercase().contains("xml");
             eprintln!(
                 "  RP content-type contains rss+xml or xml: {} [{}]",
                 rp_is_rss,
@@ -763,16 +732,8 @@ async fn test_robots_content_type() {
 
     eprintln!("\n=== test_robots_content_type ===");
 
-    let wp = fetch_headers_get(
-        &client,
-        &format!("{}/robots.txt", cfg.wordpress_url),
-    )
-    .await;
-    let rp = fetch_headers_get(
-        &client,
-        &format!("{}/robots.txt", cfg.rustpress_url),
-    )
-    .await;
+    let wp = fetch_headers_get(&client, &format!("{}/robots.txt", cfg.wordpress_url)).await;
+    let rp = fetch_headers_get(&client, &format!("{}/robots.txt", cfg.rustpress_url)).await;
 
     match (wp, rp) {
         (Some((wp_status, wp_h)), Some((rp_status, rp_h))) => {
@@ -823,11 +784,7 @@ async fn test_rest_api_json_content_type() {
     ];
 
     for path in &api_endpoints {
-        let rp = fetch_headers_get(
-            &client,
-            &format!("{}{}", cfg.rustpress_url, path),
-        )
-        .await;
+        let rp = fetch_headers_get(&client, &format!("{}{}", cfg.rustpress_url, path)).await;
 
         eprintln!("\n  {}:", path);
 
@@ -891,10 +848,7 @@ async fn test_powered_by_header() {
             // WordPress typically has "PHP/x.x.x", RustPress may omit or customize
             let wp_has = has_header(&wp_h, "x-powered-by");
             let rp_has = has_header(&rp_h, "x-powered-by");
-            eprintln!(
-                "  Header present - WP: {}, RP: {}",
-                wp_has, rp_has
-            );
+            eprintln!("  Header present - WP: {}, RP: {}", wp_has, rp_has);
         }
         _ => eprintln!("[SKIP] Could not fetch from one or both servers"),
     }
@@ -939,7 +893,11 @@ async fn test_link_header_api_discovery() {
                 "  Contains api.w.org discovery - WP: {}, RP: {} [{}]",
                 wp_has_api_discovery,
                 rp_has_api_discovery,
-                if wp_has_api_discovery == rp_has_api_discovery { "MATCH" } else { "DIFFER" }
+                if wp_has_api_discovery == rp_has_api_discovery {
+                    "MATCH"
+                } else {
+                    "DIFFER"
+                }
             );
 
             // Also check the link points to /wp-json/
@@ -1039,16 +997,8 @@ async fn test_sitemap_content_type() {
 
     eprintln!("\n=== test_sitemap_content_type ===");
 
-    let wp = fetch_headers_get(
-        &client,
-        &format!("{}/sitemap.xml", cfg.wordpress_url),
-    )
-    .await;
-    let rp = fetch_headers_get(
-        &client,
-        &format!("{}/sitemap.xml", cfg.rustpress_url),
-    )
-    .await;
+    let wp = fetch_headers_get(&client, &format!("{}/sitemap.xml", cfg.wordpress_url)).await;
+    let rp = fetch_headers_get(&client, &format!("{}/sitemap.xml", cfg.rustpress_url)).await;
 
     match (wp, rp) {
         (Some((wp_status, wp_h)), Some((rp_status, rp_h))) => {
@@ -1092,17 +1042,10 @@ async fn test_static_assets_cache_headers() {
     eprintln!("\n=== test_static_assets_cache_headers ===");
 
     // RustPress serves static assets from /static/ (CSS, JS)
-    let static_paths = [
-        "/static/style.css",
-        "/static/js/admin.js",
-    ];
+    let static_paths = ["/static/style.css", "/static/js/admin.js"];
 
     for path in &static_paths {
-        let rp = fetch_headers_get(
-            &client,
-            &format!("{}{}", cfg.rustpress_url, path),
-        )
-        .await;
+        let rp = fetch_headers_get(&client, &format!("{}{}", cfg.rustpress_url, path)).await;
 
         eprintln!("\n  {}:", path);
 

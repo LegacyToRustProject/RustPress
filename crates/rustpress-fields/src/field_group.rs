@@ -13,8 +13,10 @@ use crate::field_types::FieldDefinition;
 /// The position where a field group is rendered in the edit screen.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum Position {
     /// Below the content editor.
+    #[default]
     Normal,
     /// In the sidebar.
     Side,
@@ -22,27 +24,19 @@ pub enum Position {
     AcfAfterTitle,
 }
 
-impl Default for Position {
-    fn default() -> Self {
-        Position::Normal
-    }
-}
 
 /// Visual style of the field group metabox.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum Style {
     /// Standard metabox with a border.
+    #[default]
     Default,
     /// No border, blends into the page.
     Seamless,
 }
 
-impl Default for Style {
-    fn default() -> Self {
-        Style::Default
-    }
-}
 
 /// The parameter used to determine where a field group is displayed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

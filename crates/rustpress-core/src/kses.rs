@@ -16,7 +16,10 @@ pub type AllowedHtml = HashMap<&'static str, &'static [&'static str]>;
 /// `wp-includes/kses.php`.
 pub static KSES_ALLOWED_POST: LazyLock<AllowedHtml> = LazyLock::new(|| {
     let mut m = HashMap::new();
-    m.insert("a", ["href", "title", "rel", "target", "class", "id"].as_slice());
+    m.insert(
+        "a",
+        ["href", "title", "rel", "target", "class", "id"].as_slice(),
+    );
     m.insert("abbr", ["title"].as_slice());
     m.insert("b", ["class"].as_slice());
     m.insert("blockquote", ["cite", "class"].as_slice());
@@ -41,7 +44,10 @@ pub static KSES_ALLOWED_POST: LazyLock<AllowedHtml> = LazyLock::new(|| {
     m.insert("i", ["class"].as_slice());
     m.insert(
         "img",
-        ["src", "alt", "width", "height", "class", "id", "loading", "srcset", "sizes"].as_slice(),
+        [
+            "src", "alt", "width", "height", "class", "id", "loading", "srcset", "sizes",
+        ]
+        .as_slice(),
     );
     m.insert("li", ["class", "id"].as_slice());
     m.insert("ol", ["class", "type", "start", "reversed"].as_slice());
@@ -54,12 +60,30 @@ pub static KSES_ALLOWED_POST: LazyLock<AllowedHtml> = LazyLock::new(|| {
     m.insert("sub", ["class"].as_slice());
     m.insert("sup", ["class"].as_slice());
     m.insert("table", ["class", "id"].as_slice());
-    m.insert("thead", ["class", "id", "colspan", "rowspan", "scope"].as_slice());
-    m.insert("tbody", ["class", "id", "colspan", "rowspan", "scope"].as_slice());
-    m.insert("tfoot", ["class", "id", "colspan", "rowspan", "scope"].as_slice());
-    m.insert("tr", ["class", "id", "colspan", "rowspan", "scope"].as_slice());
-    m.insert("th", ["class", "id", "colspan", "rowspan", "scope"].as_slice());
-    m.insert("td", ["class", "id", "colspan", "rowspan", "scope"].as_slice());
+    m.insert(
+        "thead",
+        ["class", "id", "colspan", "rowspan", "scope"].as_slice(),
+    );
+    m.insert(
+        "tbody",
+        ["class", "id", "colspan", "rowspan", "scope"].as_slice(),
+    );
+    m.insert(
+        "tfoot",
+        ["class", "id", "colspan", "rowspan", "scope"].as_slice(),
+    );
+    m.insert(
+        "tr",
+        ["class", "id", "colspan", "rowspan", "scope"].as_slice(),
+    );
+    m.insert(
+        "th",
+        ["class", "id", "colspan", "rowspan", "scope"].as_slice(),
+    );
+    m.insert(
+        "td",
+        ["class", "id", "colspan", "rowspan", "scope"].as_slice(),
+    );
     m.insert("u", ["class"].as_slice());
     m.insert("ul", ["class"].as_slice());
     m
@@ -96,8 +120,8 @@ pub static KSES_ALLOWED_COMMENT: LazyLock<AllowedHtml> = LazyLock::new(|| {
 /// Tags unconditionally forbidden. Even if someone places them in an
 /// allow-list they will be removed.
 const ALWAYS_FORBIDDEN_TAGS: &[&str] = &[
-    "script", "style", "iframe", "object", "embed", "form", "input",
-    "textarea", "select", "button", "applet", "meta", "link", "base",
+    "script", "style", "iframe", "object", "embed", "form", "input", "textarea", "select",
+    "button", "applet", "meta", "link", "base",
 ];
 
 // ---------------------------------------------------------------------------
@@ -110,9 +134,8 @@ const ALWAYS_FORBIDDEN_TAGS: &[&str] = &[
 ///   1 – optional `/` (closing tag)
 ///   2 – tag name
 ///   3 – the rest of the tag (attributes etc.) up to the closing `>`
-static RE_TAG: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?si)<(/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>").unwrap()
-});
+static RE_TAG: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?si)<(/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>").unwrap());
 
 /// Matches a single HTML attribute inside a tag.
 ///
@@ -122,39 +145,41 @@ static RE_TAG: LazyLock<Regex> = LazyLock::new(|| {
 ///   3 – attribute value (if single-quoted)
 ///   4 – attribute value (if unquoted)
 static RE_ATTR: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(?si)([a-zA-Z_][\w\-.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+)))?"#).unwrap()
+});
+
+/// Matches event-handler attributes (`on*`).
+static RE_EVENT_HANDLER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^on[a-z]").unwrap());
+
+/// Matches dangerous protocols in URL values.
+static RE_BAD_PROTOCOL: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^\s*(javascript|vbscript)\s*:").unwrap());
+
+/// Matches any `data:` URI scheme.
+static RE_DATA_URI: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)^\s*data\s*:").unwrap());
+
+/// Matches `data:image/` URIs specifically (the only safe `data:` URIs).
+static RE_DATA_IMAGE_URI: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^\s*data\s*:\s*image/").unwrap());
+
+/// Matches dangerous CSS constructs inside style attributes.
+static RE_BAD_CSS: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r#"(?si)([a-zA-Z_][\w\-.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+)))?"#,
+        r"(?i)(expression\s*\(|url\s*\(\s*(javascript|vbscript)\s*:|behavior\s*:|-moz-binding\s*:)",
     )
     .unwrap()
 });
 
-/// Matches event-handler attributes (`on*`).
-static RE_EVENT_HANDLER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^on[a-z]").unwrap()
-});
-
-/// Matches dangerous protocols in URL values.
-static RE_BAD_PROTOCOL: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*(javascript|vbscript)\s*:").unwrap()
-});
-
-/// Matches any `data:` URI scheme.
-static RE_DATA_URI: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*data\s*:").unwrap()
-});
-
-/// Matches `data:image/` URIs specifically (the only safe `data:` URIs).
-static RE_DATA_IMAGE_URI: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^\s*data\s*:\s*image/").unwrap()
-});
-
-/// Matches dangerous CSS constructs inside style attributes.
-static RE_BAD_CSS: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)(expression\s*\(|url\s*\(\s*(javascript|vbscript)\s*:|behavior\s*:|-moz-binding\s*:)").unwrap()
-});
-
 /// URL-bearing attributes that need protocol validation.
-const URL_ATTRS: &[&str] = &["href", "src", "action", "srcset", "formaction", "cite", "poster"];
+const URL_ATTRS: &[&str] = &[
+    "href",
+    "src",
+    "action",
+    "srcset",
+    "formaction",
+    "cite",
+    "poster",
+];
 
 /// Check whether a value is a `data:` URI that is NOT `data:image/*`.
 /// Returns `true` for dangerous data URIs, `false` for safe ones (or non-data URIs).
@@ -378,7 +403,8 @@ fn filter_attributes(attrs_raw: &str, allowed_attrs: &[&str]) -> String {
         }
 
         // Extract the value (could be from group 2, 3, or 4).
-        let raw_value = cap.get(2)
+        let raw_value = cap
+            .get(2)
             .or_else(|| cap.get(3))
             .or_else(|| cap.get(4))
             .map(|m| m.as_str());
@@ -386,11 +412,10 @@ fn filter_attributes(attrs_raw: &str, allowed_attrs: &[&str]) -> String {
         match raw_value {
             Some(value) => {
                 // Validate URL attributes.
-                if URL_ATTRS.contains(&attr_name.as_str()) {
-                    if RE_BAD_PROTOCOL.is_match(value) || is_bad_data_uri(value) {
+                if URL_ATTRS.contains(&attr_name.as_str())
+                    && (RE_BAD_PROTOCOL.is_match(value) || is_bad_data_uri(value)) {
                         continue;
                     }
-                }
                 // Validate style attributes.
                 if attr_name == "style" && RE_BAD_CSS.is_match(value) {
                     continue;
@@ -495,7 +520,8 @@ mod tests {
 
     #[test]
     fn test_strip_object_embed_form_tags() {
-        let input = "<object data=\"x\"></object><embed src=\"y\"><form action=\"z\"><input></form>";
+        let input =
+            "<object data=\"x\"></object><embed src=\"y\"><form action=\"z\"><input></form>";
         let result = wp_kses_post(input);
         assert!(!result.contains("<object"));
         assert!(!result.contains("<embed"));
@@ -588,12 +614,16 @@ mod tests {
     fn test_allowed_tags_preserved() {
         let input = "<p class=\"intro\">Hello <strong>world</strong></p>";
         let result = wp_kses_post(input);
-        assert_eq!(result, "<p class=\"intro\">Hello <strong>world</strong></p>");
+        assert_eq!(
+            result,
+            "<p class=\"intro\">Hello <strong>world</strong></p>"
+        );
     }
 
     #[test]
     fn test_allowed_img_attributes() {
-        let input = "<img src=\"photo.jpg\" alt=\"photo\" width=\"100\" height=\"50\" loading=\"lazy\">";
+        let input =
+            "<img src=\"photo.jpg\" alt=\"photo\" width=\"100\" height=\"50\" loading=\"lazy\">";
         let result = wp_kses_post(input);
         assert!(result.contains("src=\"photo.jpg\""));
         assert!(result.contains("alt=\"photo\""));
@@ -749,7 +779,10 @@ mod tests {
 
     #[test]
     fn test_esc_html_basic() {
-        assert_eq!(esc_html("<p>Hello & \"World\"</p>"), "&lt;p&gt;Hello &amp; &quot;World&quot;&lt;/p&gt;");
+        assert_eq!(
+            esc_html("<p>Hello & \"World\"</p>"),
+            "&lt;p&gt;Hello &amp; &quot;World&quot;&lt;/p&gt;"
+        );
     }
 
     #[test]

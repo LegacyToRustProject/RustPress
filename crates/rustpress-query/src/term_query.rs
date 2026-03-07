@@ -189,9 +189,7 @@ impl TermQuery {
                 super::post_query::Order::Asc => query.order_by_asc(wp_terms::Column::TermId),
             },
             TermOrderBy::TermGroup => match self.order {
-                super::post_query::Order::Desc => {
-                    query.order_by_desc(wp_terms::Column::TermGroup)
-                }
+                super::post_query::Order::Desc => query.order_by_desc(wp_terms::Column::TermGroup),
                 super::post_query::Order::Asc => query.order_by_asc(wp_terms::Column::TermGroup),
             },
             TermOrderBy::Count => match self.order {

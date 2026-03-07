@@ -222,14 +222,14 @@ impl RewriteRules {
         let month = date.format("%m").to_string();
         let day = date.format("%d").to_string();
 
-        let result = structure_str
+        
+
+        structure_str
             .replace("%year%", &year)
             .replace("%monthnum%", &month)
             .replace("%day%", &day)
             .replace("%postname%", slug)
-            .replace("%post_id%", &post_id.to_string());
-
-        result
+            .replace("%post_id%", &post_id.to_string())
     }
 
     /// Resolve a URL path to a `RewriteMatch`.
@@ -270,9 +270,7 @@ impl RewriteRules {
             RuleBuilder::PostById { id_group } => RewriteMatch::Post {
                 slug: caps[*id_group].to_string(),
             },
-            RuleBuilder::PostByDateAndSlug {
-                slug_group, ..
-            } => RewriteMatch::Post {
+            RuleBuilder::PostByDateAndSlug { slug_group, .. } => RewriteMatch::Post {
                 slug: caps[*slug_group].to_string(),
             },
             RuleBuilder::DateArchive {
@@ -281,7 +279,8 @@ impl RewriteRules {
                 day_group,
             } => {
                 let year: u32 = caps[*year_group].parse().unwrap_or(0);
-                let month = month_group.and_then(|g| caps.get(g).and_then(|m| m.as_str().parse().ok()));
+                let month =
+                    month_group.and_then(|g| caps.get(g).and_then(|m| m.as_str().parse().ok()));
                 let day = day_group.and_then(|g| caps.get(g).and_then(|m| m.as_str().parse().ok()));
                 RewriteMatch::DateArchive { year, month, day }
             }
@@ -318,16 +317,10 @@ impl RewriteRules {
         // --- Global rules (always present, checked first) ---
 
         // Feed: /feed/ or /feed/rss/ or /feed/atom/
-        self.add_rule(
-            r"^/feed(?:/(?:rss2?|atom|rdf))?/?$",
-            RuleBuilder::Feed,
-        );
+        self.add_rule(r"^/feed(?:/(?:rss2?|atom|rdf))?/?$", RuleBuilder::Feed);
 
         // Search: /search/query-here/
-        self.add_rule(
-            r"^/search/(.+?)/?$",
-            RuleBuilder::Search { query_group: 1 },
-        );
+        self.add_rule(r"^/search/(.+?)/?$", RuleBuilder::Search { query_group: 1 });
 
         // Pagination: /page/2/
         self.add_rule(
@@ -585,7 +578,10 @@ mod tests {
     fn test_build_permalink_postname() {
         let rules = RewriteRules::new();
         let date = make_date("2024-03-15 10:30:00");
-        assert_eq!(rules.build_permalink("hello-world", 42, date), "/hello-world/");
+        assert_eq!(
+            rules.build_permalink("hello-world", 42, date),
+            "/hello-world/"
+        );
     }
 
     #[test]
@@ -615,7 +611,10 @@ mod tests {
         let mut rules = RewriteRules::new();
         rules.set_structure("/archives/%post_id%");
         let date = make_date("2024-01-01 00:00:00");
-        assert_eq!(rules.build_permalink("anything", 123, date), "/archives/123");
+        assert_eq!(
+            rules.build_permalink("anything", 123, date),
+            "/archives/123"
+        );
     }
 
     #[test]

@@ -113,7 +113,10 @@ impl OrderManager {
 
         let order = Order {
             id,
-            order_number: format!("RP-{}", Uuid::new_v4().as_simple().to_string()[..8].to_uppercase()),
+            order_number: format!(
+                "RP-{}",
+                Uuid::new_v4().as_simple().to_string()[..8].to_uppercase()
+            ),
             status: OrderStatus::Pending,
             items,
             billing_address,
@@ -237,10 +240,16 @@ mod tests {
         );
 
         assert!(manager.update_status(id, OrderStatus::Processing));
-        assert_eq!(manager.get_order(id).unwrap().status, OrderStatus::Processing);
+        assert_eq!(
+            manager.get_order(id).unwrap().status,
+            OrderStatus::Processing
+        );
 
         assert!(manager.update_status(id, OrderStatus::Completed));
-        assert_eq!(manager.get_order(id).unwrap().status, OrderStatus::Completed);
+        assert_eq!(
+            manager.get_order(id).unwrap().status,
+            OrderStatus::Completed
+        );
 
         assert!(!manager.update_status(9999, OrderStatus::Failed));
     }
@@ -249,10 +258,26 @@ mod tests {
     fn test_list_orders_with_filter() {
         let mut manager = OrderManager::new();
         let id1 = manager.create_order(
-            sample_items(), Address::default(), Address::default(), "mock", 0.0, 0.0, 0.0, None, "",
+            sample_items(),
+            Address::default(),
+            Address::default(),
+            "mock",
+            0.0,
+            0.0,
+            0.0,
+            None,
+            "",
         );
         let _id2 = manager.create_order(
-            sample_items(), Address::default(), Address::default(), "mock", 0.0, 0.0, 0.0, None, "",
+            sample_items(),
+            Address::default(),
+            Address::default(),
+            "mock",
+            0.0,
+            0.0,
+            0.0,
+            None,
+            "",
         );
 
         manager.update_status(id1, OrderStatus::Completed);

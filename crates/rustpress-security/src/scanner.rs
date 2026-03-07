@@ -80,12 +80,18 @@ impl SecurityScanner {
         checks.push(self.check_strong_db_prefix());
         checks.push(self.check_upload_directory());
 
-        let pass_count = checks.iter().filter(|c| c.status == CheckStatus::Pass).count();
+        let pass_count = checks
+            .iter()
+            .filter(|c| c.status == CheckStatus::Pass)
+            .count();
         let warn_count = checks
             .iter()
             .filter(|c| c.status == CheckStatus::Warning)
             .count();
-        let fail_count = checks.iter().filter(|c| c.status == CheckStatus::Fail).count();
+        let fail_count = checks
+            .iter()
+            .filter(|c| c.status == CheckStatus::Fail)
+            .count();
 
         info!(
             passed = pass_count,
@@ -102,7 +108,8 @@ impl SecurityScanner {
     fn check_debug_mode(&self) -> SecurityCheck {
         SecurityCheck {
             name: "Debug Mode".into(),
-            description: "Debug mode should be disabled in production to prevent information leakage.".into(),
+            description:
+                "Debug mode should be disabled in production to prevent information leakage.".into(),
             status: if self.context.debug_mode {
                 CheckStatus::Fail
             } else {
@@ -122,7 +129,9 @@ impl SecurityScanner {
     fn check_ssl(&self) -> SecurityCheck {
         SecurityCheck {
             name: "SSL/TLS".into(),
-            description: "SSL/TLS should be enabled to encrypt traffic between clients and the server.".into(),
+            description:
+                "SSL/TLS should be enabled to encrypt traffic between clients and the server."
+                    .into(),
             status: if self.context.ssl_enabled {
                 CheckStatus::Pass
             } else {
@@ -143,7 +152,8 @@ impl SecurityScanner {
         let is_default = self.context.db_prefix == "wp_";
         SecurityCheck {
             name: "Database Prefix".into(),
-            description: "Using the default 'wp_' prefix makes SQL injection attacks easier.".into(),
+            description: "Using the default 'wp_' prefix makes SQL injection attacks easier."
+                .into(),
             status: if is_default {
                 CheckStatus::Warning
             } else {
@@ -302,7 +312,7 @@ impl SecurityScanner {
 
         let all_suspicious: Vec<&str> = suspicious
             .into_iter()
-            .chain(double_ext.into_iter())
+            .chain(double_ext)
             .collect();
 
         SecurityCheck {

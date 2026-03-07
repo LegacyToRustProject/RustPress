@@ -69,12 +69,11 @@ impl OptionsManager {
     }
 
     /// Get an option with a default value if not found.
-    pub async fn get_option_or(
-        &self,
-        key: &str,
-        default: &str,
-    ) -> Result<String, sea_orm::DbErr> {
-        Ok(self.get_option(key).await?.unwrap_or_else(|| default.to_string()))
+    pub async fn get_option_or(&self, key: &str, default: &str) -> Result<String, sea_orm::DbErr> {
+        Ok(self
+            .get_option(key)
+            .await?
+            .unwrap_or_else(|| default.to_string()))
     }
 
     /// Check if an option exists.

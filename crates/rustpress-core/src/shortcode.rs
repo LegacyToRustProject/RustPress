@@ -185,10 +185,7 @@ mod tests {
     #[test]
     fn test_simple_shortcode() {
         let registry = ShortcodeRegistry::new();
-        registry.add_shortcode(
-            "hello",
-            Arc::new(|_, _| "Hello, World!".to_string()),
-        );
+        registry.add_shortcode("hello", Arc::new(|_, _| "Hello, World!".to_string()));
         let result = registry.do_shortcode("Before [hello] After");
         assert_eq!(result, "Before Hello, World! After");
     }
@@ -221,10 +218,7 @@ mod tests {
     #[test]
     fn test_self_closing_shortcode() {
         let registry = ShortcodeRegistry::new();
-        registry.add_shortcode(
-            "hr",
-            Arc::new(|_, _| "<hr>".to_string()),
-        );
+        registry.add_shortcode("hr", Arc::new(|_, _| "<hr>".to_string()));
         let result = registry.do_shortcode("Above [hr /] Below");
         assert_eq!(result, "Above <hr> Below");
     }

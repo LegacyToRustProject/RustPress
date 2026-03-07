@@ -28,10 +28,7 @@ pub fn routes() -> Router<ApiState> {
             "/wp-json/wp/v2/global-styles/themes/{stylesheet}",
             get(get_theme_global_styles),
         )
-        .route(
-            "/wp-json/wp/v2/global-styles/{id}",
-            get(get_global_styles),
-        )
+        .route("/wp-json/wp/v2/global-styles/{id}", get(get_global_styles))
         .route(
             "/wp-json/wp/v2/global-styles/{id}/revisions",
             get(list_global_styles_revisions),
@@ -43,11 +40,10 @@ pub fn routes() -> Router<ApiState> {
 }
 
 pub fn write_routes() -> Router<ApiState> {
-    Router::new()
-        .route(
-            "/wp-json/wp/v2/global-styles/{id}",
-            axum::routing::put(update_global_styles).patch(update_global_styles),
-        )
+    Router::new().route(
+        "/wp-json/wp/v2/global-styles/{id}",
+        axum::routing::put(update_global_styles).patch(update_global_styles),
+    )
 }
 
 fn default_global_styles(id: &str, stylesheet: &str) -> Value {
@@ -175,7 +171,10 @@ async fn update_global_styles(
     if let Some(opt) = existing {
         let mut active: wp_options::ActiveModel = opt.into();
         active.option_value = Set(serialized);
-        active.update(&state.db).await.map_err(|e| WpError::internal(e.to_string()))?;
+        active
+            .update(&state.db)
+            .await
+            .map_err(|e| WpError::internal(e.to_string()))?;
     } else {
         let new_opt = wp_options::ActiveModel {
             option_name: Set(option_key),
@@ -183,11 +182,17 @@ async fn update_global_styles(
             autoload: Set("no".to_string()),
             ..Default::default()
         };
-        new_opt.insert(&state.db).await.map_err(|e| WpError::internal(e.to_string()))?;
+        new_opt
+            .insert(&state.db)
+            .await
+            .map_err(|e| WpError::internal(e.to_string()))?;
     }
 
     // Return the updated global styles
-    let stylesheet = id.strip_prefix("wp-global-styles-").unwrap_or(&id).to_string();
+    let stylesheet = id
+        .strip_prefix("wp-global-styles-")
+        .unwrap_or(&id)
+        .to_string();
     let base = state.site_url.trim_end_matches('/').to_string();
     let mut gs = default_global_styles(&id, &stylesheet);
 

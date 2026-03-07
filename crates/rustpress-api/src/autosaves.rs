@@ -35,18 +35,12 @@ pub struct AutosaveBody {
 
 pub fn read_routes() -> Router<ApiState> {
     Router::new()
-        .route(
-            "/wp-json/wp/v2/posts/{id}/autosaves",
-            get(list_autosaves),
-        )
+        .route("/wp-json/wp/v2/posts/{id}/autosaves", get(list_autosaves))
         .route(
             "/wp-json/wp/v2/posts/{id}/autosaves/{rev_id}",
             get(get_autosave),
         )
-        .route(
-            "/wp-json/wp/v2/pages/{id}/autosaves",
-            get(list_autosaves),
-        )
+        .route("/wp-json/wp/v2/pages/{id}/autosaves", get(list_autosaves))
         .route(
             "/wp-json/wp/v2/pages/{id}/autosaves/{rev_id}",
             get(get_autosave),
@@ -55,14 +49,8 @@ pub fn read_routes() -> Router<ApiState> {
 
 pub fn write_routes() -> Router<ApiState> {
     Router::new()
-        .route(
-            "/wp-json/wp/v2/posts/{id}/autosaves",
-            post(create_autosave),
-        )
-        .route(
-            "/wp-json/wp/v2/pages/{id}/autosaves",
-            post(create_autosave),
-        )
+        .route("/wp-json/wp/v2/posts/{id}/autosaves", post(create_autosave))
+        .route("/wp-json/wp/v2/pages/{id}/autosaves", post(create_autosave))
 }
 
 /// List autosaves for a post/page.
@@ -162,7 +150,9 @@ async fn create_autosave(
         active.post_excerpt = Set(excerpt);
         active.post_modified = Set(now);
         active.post_modified_gmt = Set(now);
-        active.update(&state.db).await
+        active
+            .update(&state.db)
+            .await
             .map_err(|e| WpError::internal(e.to_string()))?
     } else {
         // Create new autosave revision
@@ -191,20 +181,22 @@ async fn create_autosave(
             post_mime_type: Set(String::new()),
             comment_count: Set(0),
         };
-        revision.insert(&state.db).await
+        revision
+            .insert(&state.db)
+            .await
             .map_err(|e| WpError::internal(e.to_string()))?
     };
 
     Ok(Json(autosave_to_json(&revision, &parent, &state.site_url)))
 }
 
-fn autosave_to_json(
-    revision: &wp_posts::Model,
-    parent: &wp_posts::Model,
-    site_url: &str,
-) -> Value {
+fn autosave_to_json(revision: &wp_posts::Model, parent: &wp_posts::Model, site_url: &str) -> Value {
     let base = site_url.trim_end_matches('/');
-    let parent_type = if parent.post_type == "page" { "pages" } else { "posts" };
+    let parent_type = if parent.post_type == "page" {
+        "pages"
+    } else {
+        "posts"
+    };
 
     json!({
         "author": revision.post_author,

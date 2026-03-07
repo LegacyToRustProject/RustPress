@@ -29,9 +29,7 @@ pub fn routes() -> Router<Arc<AppState>> {
         )
 }
 
-async fn list_plugins(
-    State(state): State<Arc<AppState>>,
-) -> Json<PluginListResponse> {
+async fn list_plugins(State(state): State<Arc<AppState>>) -> Json<PluginListResponse> {
     let host = state.wasm_host.read().await;
     let plugin_names = host.loaded_plugins();
     let plugins: Vec<PluginInfo> = plugin_names

@@ -28,11 +28,10 @@ pub struct BlockRendererQuery {
 }
 
 pub fn routes() -> Router<ApiState> {
-    Router::new()
-        .route(
-            "/wp-json/wp/v2/block-renderer/{namespace}/{name}",
-            get(render_block).post(render_block_post),
-        )
+    Router::new().route(
+        "/wp-json/wp/v2/block-renderer/{namespace}/{name}",
+        get(render_block).post(render_block_post),
+    )
 }
 
 /// GET /wp-json/wp/v2/block-renderer/{namespace}/{name}
@@ -78,9 +77,17 @@ async fn render_block_html(
             let base = state.site_url.trim_end_matches('/');
             let items: Vec<String> = posts
                 .iter()
-                .map(|p| format!(r#"<li><a href="{}/{}">{}</a></li>"#, base, p.post_name, p.post_title))
+                .map(|p| {
+                    format!(
+                        r#"<li><a href="{}/{}">{}</a></li>"#,
+                        base, p.post_name, p.post_title
+                    )
+                })
                 .collect();
-            format!("<ul class=\"wp-block-latest-posts\">{}</ul>", items.join(""))
+            format!(
+                "<ul class=\"wp-block-latest-posts\">{}</ul>",
+                items.join("")
+            )
         }
         "core/categories" => {
             use rustpress_db::entities::{wp_term_taxonomy, wp_terms};
@@ -168,7 +175,10 @@ async fn render_block_html(
                     c.comment_author
                 ))
                 .collect();
-            format!("<ul class=\"wp-block-latest-comments\">{}</ul>", items.join(""))
+            format!(
+                "<ul class=\"wp-block-latest-comments\">{}</ul>",
+                items.join("")
+            )
         }
         // Static blocks — return empty rendered output (content provided by editor)
         _ => String::new(),

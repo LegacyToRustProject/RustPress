@@ -16,15 +16,18 @@ use axum::{
     Router,
 };
 use sea_orm::{
-    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter,
-    QueryOrder, QuerySelect,
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter, QueryOrder,
+    QuerySelect,
 };
 use serde::Deserialize;
 use std::sync::Arc;
 use tracing::{debug, warn};
 
 use rustpress_auth::PasswordHasher;
-use rustpress_db::entities::{wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_usermeta, wp_users};
+use rustpress_db::entities::{
+    wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms,
+    wp_usermeta, wp_users,
+};
 
 use crate::state::AppState;
 
@@ -113,7 +116,11 @@ async fn xmlrpc_post_handler(State(state): State<Arc<AppState>>, body: Body) -> 
         Err(e) => return xml_response(xml_rpc_fault(400, &format!("Parse error: {}", e))),
     };
 
-    debug!("XML-RPC method: {} with {} params", method_name, params.len());
+    debug!(
+        "XML-RPC method: {} with {} params",
+        method_name,
+        params.len()
+    );
 
     // Dispatch to the appropriate handler
     let result = dispatch_method(&state, &method_name, &params).await;
@@ -220,7 +227,13 @@ impl XmlRpcValue {
         match self {
             XmlRpcValue::Int(i) => *i,
             XmlRpcValue::String(s) => s.parse().unwrap_or(0),
-            XmlRpcValue::Boolean(b) => if *b { 1 } else { 0 },
+            XmlRpcValue::Boolean(b) => {
+                if *b {
+                    1
+                } else {
+                    0
+                }
+            }
             _ => 0,
         }
     }
@@ -237,9 +250,7 @@ impl XmlRpcValue {
 
     fn get_member(&self, name: &str) -> Option<&XmlRpcValue> {
         match self {
-            XmlRpcValue::Struct(members) => {
-                members.iter().find(|(n, _)| n == name).map(|(_, v)| v)
-            }
+            XmlRpcValue::Struct(members) => members.iter().find(|(n, _)| n == name).map(|(_, v)| v),
             _ => None,
         }
     }
@@ -308,8 +319,9 @@ fn extract_tag_content<'a>(xml: &'a str, tag: &str) -> Option<&'a str> {
             }
             pos += close.len();
         } else if search_region[pos..].starts_with(&open)
-            && search_region.get(pos + open.len()..pos + open.len() + 1)
-                .map_or(false, |ch| ch == ">" || ch == " " || ch == "/")
+            && search_region
+                .get(pos + open.len()..pos + open.len() + 1)
+                .is_some_and(|ch| ch == ">" || ch == " " || ch == "/")
         {
             depth += 1;
             pos += open.len();
@@ -372,8 +384,7 @@ fn parse_value(value_xml: &str) -> Result<XmlRpcValue, String> {
         }
         Some("array") => {
             let array_content = extract_tag_content(trimmed, "array").unwrap_or("");
-            let data_content =
-                extract_tag_content(array_content, "data").unwrap_or(array_content);
+            let data_content = extract_tag_content(array_content, "data").unwrap_or(array_content);
             let mut items = Vec::new();
             let mut rest = data_content;
             while let Some(val_content) = extract_tag_content(rest, "value") {
@@ -396,12 +407,12 @@ fn parse_value(value_xml: &str) -> Result<XmlRpcValue, String> {
                 let name = extract_tag_content(member_content, "name")
                     .unwrap_or("")
                     .to_string();
-                let value =
-                    if let Some(val_content) = extract_tag_content(member_content, "value") {
-                        parse_value(val_content)?
-                    } else {
-                        XmlRpcValue::String(String::new())
-                    };
+                let value = if let Some(val_content) = extract_tag_content(member_content, "value")
+                {
+                    parse_value(val_content)?
+                } else {
+                    XmlRpcValue::String(String::new())
+                };
                 members.push((name, value));
                 // Advance past the matched </member> using nesting-aware skip
                 let skip = find_closing_tag_end(rest, "member");
@@ -431,7 +442,7 @@ fn detect_first_tag(xml: &str) -> Option<String> {
     let rest = &trimmed[1..];
     // Find the end of the tag name (space, >, or /)
     let end = rest
-        .find(|c: char| c == '>' || c == ' ' || c == '/' || c == '\n' || c == '\r')
+        .find(['>', ' ', '/', '\n', '\r'])
         .unwrap_or(rest.len());
     let tag_name = &rest[..end];
     if tag_name.is_empty() || tag_name.starts_with('/') {
@@ -470,7 +481,7 @@ fn find_closing_tag_end(xml: &str, tag: &str) -> usize {
         } else if search_region[pos..].starts_with(&open)
             && search_region
                 .get(pos + open.len()..pos + open.len() + 1)
-                .map_or(false, |ch| ch == ">" || ch == " " || ch == "/")
+                .is_some_and(|ch| ch == ">" || ch == " " || ch == "/")
         {
             depth += 1;
             pos += open.len();
@@ -549,7 +560,7 @@ fn value_datetime(dt: &chrono::NaiveDateTime) -> String {
     )
 }
 
-fn value_struct(members: &[(& str, String)]) -> String {
+fn value_struct(members: &[(&str, String)]) -> String {
     let mut s = String::from("<value><struct>");
     for (name, value) in members {
         s.push_str(&format!(
@@ -719,10 +730,7 @@ async fn handle_get_post(state: &AppState, params: &[XmlRpcValue]) -> String {
 
     let post_id = params.get(3).map(|v| v.as_i64()).unwrap_or(0) as u64;
 
-    let post = match wp_posts::Entity::find_by_id(post_id)
-        .one(&state.db)
-        .await
-    {
+    let post = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
@@ -764,12 +772,7 @@ async fn handle_get_posts(state: &AppState, params: &[XmlRpcValue]) -> String {
         query = query.filter(wp_posts::Column::PostStatus.eq(status.as_str()));
     }
 
-    let posts = match query
-        .offset(offset)
-        .limit(number)
-        .all(&state.db)
-        .await
-    {
+    let posts = match query.offset(offset).limit(number).all(&state.db).await {
         Ok(p) => p,
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
     };
@@ -798,11 +801,19 @@ async fn handle_new_post(state: &AppState, params: &[XmlRpcValue]) -> String {
     let body = content.get_member_str("post_content");
     let status = {
         let s = content.get_member_str("post_status");
-        if s.is_empty() { "draft".to_string() } else { s }
+        if s.is_empty() {
+            "draft".to_string()
+        } else {
+            s
+        }
     };
     let post_type = {
         let t = content.get_member_str("post_type");
-        if t.is_empty() { "post".to_string() } else { t }
+        if t.is_empty() {
+            "post".to_string()
+        } else {
+            t
+        }
     };
     let excerpt = content.get_member_str("post_excerpt");
 
@@ -859,10 +870,7 @@ async fn handle_edit_post(state: &AppState, params: &[XmlRpcValue]) -> String {
 
     let post_id = params.get(3).map(|v| v.as_i64()).unwrap_or(0) as u64;
 
-    let existing = match wp_posts::Entity::find_by_id(post_id)
-        .one(&state.db)
-        .await
-    {
+    let existing = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
@@ -909,10 +917,7 @@ async fn handle_delete_post(state: &AppState, params: &[XmlRpcValue]) -> String 
 
     let post_id = params.get(3).map(|v| v.as_i64()).unwrap_or(0) as u64;
 
-    let existing = match wp_posts::Entity::find_by_id(post_id)
-        .one(&state.db)
-        .await
-    {
+    let existing = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
@@ -931,11 +936,7 @@ async fn handle_delete_post(state: &AppState, params: &[XmlRpcValue]) -> String 
 }
 
 /// wp.getCategories / wp.getTags (blog_id, username, password) -> array of taxonomy structs
-async fn handle_get_taxonomies(
-    state: &AppState,
-    params: &[XmlRpcValue],
-    method: &str,
-) -> String {
+async fn handle_get_taxonomies(state: &AppState, params: &[XmlRpcValue], method: &str) -> String {
     let _user = match auth_from_params(state, params, 1, 2).await {
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(403, &e),
@@ -982,8 +983,14 @@ async fn handle_get_taxonomies(
                     ("categoryId", value_string(&tt.term_taxonomy_id.to_string())),
                     ("categoryName", value_string(&term.name)),
                     ("categoryDescription", value_string(&tt.description)),
-                    ("htmlUrl", value_string(&format!("{}/category/{}", state.site_url, term.slug))),
-                    ("rssUrl", value_string(&format!("{}/category/{}/feed", state.site_url, term.slug))),
+                    (
+                        "htmlUrl",
+                        value_string(&format!("{}/category/{}", state.site_url, term.slug)),
+                    ),
+                    (
+                        "rssUrl",
+                        value_string(&format!("{}/category/{}/feed", state.site_url, term.slug)),
+                    ),
                 ]))
             } else {
                 Some(value_struct(&[
@@ -1007,7 +1014,11 @@ async fn handle_get_options(state: &AppState, params: &[XmlRpcValue]) -> String 
     };
 
     let blogname = state.options.get_blogname().await.unwrap_or_default();
-    let blogdescription = state.options.get_blogdescription().await.unwrap_or_default();
+    let blogdescription = state
+        .options
+        .get_blogdescription()
+        .await
+        .unwrap_or_default();
     let siteurl = state.options.get_siteurl().await.unwrap_or_default();
     let software_version = env!("CARGO_PKG_VERSION");
 
@@ -1022,7 +1033,12 @@ async fn handle_get_options(state: &AppState, params: &[XmlRpcValue]) -> String 
 
     let options = vec![
         option_struct("software_name", "Software Name", "RustPress", true),
-        option_struct("software_version", "Software Version", software_version, true),
+        option_struct(
+            "software_version",
+            "Software Version",
+            software_version,
+            true,
+        ),
         option_struct("blog_url", "WordPress Address (URL)", &siteurl, true),
         option_struct("home_url", "Site Address (URL)", &siteurl, true),
         option_struct("blog_title", "Site Title", &blogname, false),
@@ -1064,7 +1080,10 @@ async fn handle_get_profile(state: &AppState, params: &[XmlRpcValue]) -> String 
         ("nicename", value_string(&user.user_nicename)),
         ("url", value_string(&user.user_url)),
         ("display_name", value_string(&user.display_name)),
-        ("registered", value_string(&user.user_registered.format("%Y-%m-%dT%H:%M:%S").to_string())),
+        (
+            "registered",
+            value_string(&user.user_registered.format("%Y-%m-%dT%H:%M:%S").to_string()),
+        ),
     ]);
 
     xml_rpc_response(&profile)
@@ -1092,11 +1111,7 @@ async fn handle_get_users(state: &AppState, params: &[XmlRpcValue]) -> String {
         })
         .unwrap_or(50);
 
-    let users = match wp_users::Entity::find()
-        .limit(limit)
-        .all(&state.db)
-        .await
-    {
+    let users = match wp_users::Entity::find().limit(limit).all(&state.db).await {
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
     };
@@ -1115,7 +1130,10 @@ async fn handle_get_users(state: &AppState, params: &[XmlRpcValue]) -> String {
                 ("nicename", value_string(&u.user_nicename)),
                 ("url", value_string(&u.user_url)),
                 ("display_name", value_string(&u.display_name)),
-                ("registered", value_string(&u.user_registered.format("%Y-%m-%dT%H:%M:%S").to_string())),
+                (
+                    "registered",
+                    value_string(&u.user_registered.format("%Y-%m-%dT%H:%M:%S").to_string()),
+                ),
                 ("roles", value_array(&[value_string("administrator")])),
             ])
         })
@@ -1155,12 +1173,9 @@ async fn handle_metaweblog_get_post(state: &AppState, params: &[XmlRpcValue]) ->
         Err(e) => return xml_rpc_fault(403, &e),
     };
 
-    let post_id = params.get(0).map(|v| v.as_i64()).unwrap_or(0) as u64;
+    let post_id = params.first().map(|v| v.as_i64()).unwrap_or(0) as u64;
 
-    let post = match wp_posts::Entity::find_by_id(post_id)
-        .one(&state.db)
-        .await
-    {
+    let post = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
@@ -1265,12 +1280,9 @@ async fn handle_metaweblog_edit_post(state: &AppState, params: &[XmlRpcValue]) -
         Err(e) => return xml_rpc_fault(403, &e),
     };
 
-    let post_id = params.get(0).map(|v| v.as_i64()).unwrap_or(0) as u64;
+    let post_id = params.first().map(|v| v.as_i64()).unwrap_or(0) as u64;
 
-    let existing = match wp_posts::Entity::find_by_id(post_id)
-        .one(&state.db)
-        .await
-    {
+    let existing = match wp_posts::Entity::find_by_id(post_id).one(&state.db).await {
         Ok(Some(p)) => p,
         Ok(None) => return xml_rpc_fault(404, "Post not found"),
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
@@ -1418,7 +1430,10 @@ async fn handle_edit_comment(state: &AppState, params: &[XmlRpcValue]) -> String
     };
 
     let comment_id = params.get(3).map(|v| v.as_i64()).unwrap_or(0) as u64;
-    let existing = match wp_comments::Entity::find_by_id(comment_id).one(&state.db).await {
+    let existing = match wp_comments::Entity::find_by_id(comment_id)
+        .one(&state.db)
+        .await
+    {
         Ok(Some(c)) => c,
         Ok(None) => return xml_rpc_fault(404, "Comment not found"),
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
@@ -1467,7 +1482,10 @@ async fn handle_delete_comment(state: &AppState, params: &[XmlRpcValue]) -> Stri
     };
 
     let comment_id = params.get(3).map(|v| v.as_i64()).unwrap_or(0) as u64;
-    let existing = match wp_comments::Entity::find_by_id(comment_id).one(&state.db).await {
+    let existing = match wp_comments::Entity::find_by_id(comment_id)
+        .one(&state.db)
+        .await
+    {
         Ok(Some(c)) => c,
         Ok(None) => return xml_rpc_fault(404, "Comment not found"),
         Err(e) => return xml_rpc_fault(500, &format!("Database error: {}", e)),
@@ -1512,7 +1530,12 @@ fn comment_to_xmlrpc(c: &wp_comments::Model) -> String {
 
 /// wp.uploadFile / metaWeblog.newMediaObject
 /// (blog_id, username, password, data_struct) -> struct {file, url, type}
-async fn handle_upload_file(state: &AppState, params: &[XmlRpcValue], user_idx: usize, pass_idx: usize) -> String {
+async fn handle_upload_file(
+    state: &AppState,
+    params: &[XmlRpcValue],
+    user_idx: usize,
+    pass_idx: usize,
+) -> String {
     let user = match auth_from_params(state, params, user_idx, pass_idx).await {
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(403, &e),
@@ -1532,8 +1555,10 @@ async fn handle_upload_file(state: &AppState, params: &[XmlRpcValue], user_idx: 
     }
 
     // Decode base64 content
-    use base64::{Engine as _, engine::general_purpose};
-    let file_bytes = match general_purpose::STANDARD.decode(bits_b64.replace(['\n', '\r', ' '], "").as_bytes()) {
+    use base64::{engine::general_purpose, Engine as _};
+    let file_bytes = match general_purpose::STANDARD
+        .decode(bits_b64.replace(['\n', '\r', ' '], "").as_bytes())
+    {
         Ok(b) => b,
         Err(e) => return xml_rpc_fault(400, &format!("Invalid base64: {}", e)),
     };
@@ -1547,8 +1572,15 @@ async fn handle_upload_file(state: &AppState, params: &[XmlRpcValue], user_idx: 
     }
 
     // Sanitize filename
-    let safe_name: String = name.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' { c } else { '_' })
+    let safe_name: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     let file_path = upload_dir.join(&safe_name);
 
@@ -1556,7 +1588,10 @@ async fn handle_upload_file(state: &AppState, params: &[XmlRpcValue], user_idx: 
         return xml_rpc_fault(500, &format!("Failed to write file: {}", e));
     }
 
-    let file_url = format!("{}/wp-content/uploads/{}/{}", state.site_url, sub_dir, safe_name);
+    let file_url = format!(
+        "{}/wp-content/uploads/{}/{}",
+        state.site_url, sub_dir, safe_name
+    );
 
     // Insert attachment post record
     let now_naive = now.naive_utc();
@@ -1582,7 +1617,11 @@ async fn handle_upload_file(state: &AppState, params: &[XmlRpcValue], user_idx: 
         guid: Set(file_url.clone()),
         menu_order: Set(0),
         post_type: Set("attachment".to_string()),
-        post_mime_type: Set(if mime_type.is_empty() { "application/octet-stream".to_string() } else { mime_type.clone() }),
+        post_mime_type: Set(if mime_type.is_empty() {
+            "application/octet-stream".to_string()
+        } else {
+            mime_type.clone()
+        }),
         comment_count: Set(0),
     };
 
@@ -1619,7 +1658,10 @@ async fn handle_get_media_item(state: &AppState, params: &[XmlRpcValue]) -> Stri
 
     let attachment_id = params.get(3).map(|v| v.as_i64()).unwrap_or(0) as u64;
 
-    let post = match wp_posts::Entity::find_by_id(attachment_id).one(&state.db).await {
+    let post = match wp_posts::Entity::find_by_id(attachment_id)
+        .one(&state.db)
+        .await
+    {
         Ok(Some(p)) if p.post_type == "attachment" => p,
         Ok(Some(_)) => return xml_rpc_fault(404, "Not an attachment"),
         Ok(None) => return xml_rpc_fault(404, "Media item not found"),
@@ -1654,9 +1696,8 @@ async fn handle_get_media_library(state: &AppState, params: &[XmlRpcValue]) -> S
     if !mime_type_filter.is_empty() {
         // Allow prefix match: "image" matches "image/jpeg", "image/png", etc.
         if !mime_type_filter.contains('/') {
-            query = query.filter(
-                wp_posts::Column::PostMimeType.like(format!("{}/%", mime_type_filter))
-            );
+            query = query
+                .filter(wp_posts::Column::PostMimeType.like(format!("{}/%", mime_type_filter)));
         } else {
             query = query.filter(wp_posts::Column::PostMimeType.eq(&mime_type_filter));
         }
@@ -1692,8 +1733,13 @@ fn media_item_to_xmlrpc(post: &wp_posts::Model) -> String {
 /// pingback.ping (source_uri, target_uri) -> string
 /// Called by remote blogs to notify us of incoming links.
 async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> String {
-    let source_uri = params.get(0).map(|v| v.as_str().to_string()).unwrap_or_default();
-    let target_uri = params.get(1).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let source_uri = params.first()
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
+    let target_uri = params
+        .get(1)
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
 
     if source_uri.is_empty() || target_uri.is_empty() {
         return xml_rpc_fault(
@@ -1739,12 +1785,18 @@ async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> Strin
         .flatten();
 
     if existing.is_some() {
-        return xml_rpc_fault(0x0030, "The source URI has already been used for a pingback to the target URI");
+        return xml_rpc_fault(
+            0x0030,
+            "The source URI has already been used for a pingback to the target URI",
+        );
     }
 
     // Insert pingback comment
     let now = chrono::Utc::now().naive_utc();
-    let pingback_content = format!("[…] <a href=\"{}\">Pingback from {}</a> […]", source_uri, source_uri);
+    let pingback_content = format!(
+        "[…] <a href=\"{}\">Pingback from {}</a> […]",
+        source_uri, source_uri
+    );
 
     let new_pingback = wp_comments::ActiveModel {
         comment_id: sea_orm::ActiveValue::NotSet,
@@ -1772,7 +1824,9 @@ async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> Strin
 
 /// pingback.extensions.getPingbacks (post_uri) -> array of source URIs
 async fn handle_get_pingbacks(state: &AppState, params: &[XmlRpcValue]) -> String {
-    let target_uri = params.get(0).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let target_uri = params.first()
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
     let slug = target_uri
         .trim_end_matches('/')
         .rsplit('/')
@@ -1875,7 +1929,10 @@ fn term_to_xmlrpc(term: &wp_terms::Model, tt: &wp_term_taxonomy::Model) -> Strin
         ("name", value_string(&term.name)),
         ("slug", value_string(&term.slug)),
         ("term_group", value_string(&term.term_group.to_string())),
-        ("term_taxonomy_id", value_string(&tt.term_taxonomy_id.to_string())),
+        (
+            "term_taxonomy_id",
+            value_string(&tt.term_taxonomy_id.to_string()),
+        ),
         ("taxonomy", value_string(&tt.taxonomy)),
         ("description", value_string(&tt.description)),
         ("parent", value_string(&tt.parent.to_string())),
@@ -1890,14 +1947,20 @@ async fn handle_get_taxonomy(state: &AppState, params: &[XmlRpcValue]) -> String
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(403, &e),
     };
-    let taxonomy = params.get(3).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let taxonomy = params
+        .get(3)
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
     xml_rpc_response(&value_struct(&[
         ("name", value_string(&taxonomy)),
         ("label", value_string(&taxonomy)),
         ("hierarchical", value_bool(taxonomy == "category")),
         ("public", value_bool(true)),
         ("show_ui", value_bool(true)),
-        ("_builtin", value_bool(taxonomy == "category" || taxonomy == "post_tag")),
+        (
+            "_builtin",
+            value_bool(taxonomy == "category" || taxonomy == "post_tag"),
+        ),
     ]))
 }
 
@@ -1907,15 +1970,26 @@ async fn handle_get_taxonomies_list(state: &AppState, params: &[XmlRpcValue]) ->
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(403, &e),
     };
-    let taxonomies = ["category", "post_tag", "post_format", "nav_menu", "link_category"];
-    let items: Vec<String> = taxonomies.iter().map(|t| value_struct(&[
-        ("name", value_string(t)),
-        ("label", value_string(t)),
-        ("hierarchical", value_bool(*t == "category")),
-        ("public", value_bool(true)),
-        ("show_ui", value_bool(true)),
-        ("_builtin", value_bool(*t == "category" || *t == "post_tag")),
-    ])).collect();
+    let taxonomies = [
+        "category",
+        "post_tag",
+        "post_format",
+        "nav_menu",
+        "link_category",
+    ];
+    let items: Vec<String> = taxonomies
+        .iter()
+        .map(|t| {
+            value_struct(&[
+                ("name", value_string(t)),
+                ("label", value_string(t)),
+                ("hierarchical", value_bool(*t == "category")),
+                ("public", value_bool(true)),
+                ("show_ui", value_bool(true)),
+                ("_builtin", value_bool(*t == "category" || *t == "post_tag")),
+            ])
+        })
+        .collect();
     xml_rpc_response(&value_array(&items))
 }
 
@@ -1925,7 +1999,10 @@ async fn handle_get_term(state: &AppState, params: &[XmlRpcValue]) -> String {
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(403, &e),
     };
-    let taxonomy = params.get(3).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let taxonomy = params
+        .get(3)
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
     let term_id = params.get(4).map(|v| v.as_i64()).unwrap_or(0) as u64;
 
     let term = match wp_terms::Entity::find_by_id(term_id).one(&state.db).await {
@@ -1955,10 +2032,19 @@ async fn handle_get_terms(state: &AppState, params: &[XmlRpcValue]) -> String {
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(403, &e),
     };
-    let taxonomy = params.get(3).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let taxonomy = params
+        .get(3)
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
     let filter = params.get(4);
-    let number = filter.and_then(|f| f.get_member("number")).map(|v| v.as_i64()).unwrap_or(100) as u64;
-    let search = filter.and_then(|f| f.get_member("search")).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let number = filter
+        .and_then(|f| f.get_member("number"))
+        .map(|v| v.as_i64())
+        .unwrap_or(100) as u64;
+    let search = filter
+        .and_then(|f| f.get_member("search"))
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
 
     let tts = wp_term_taxonomy::Entity::find()
         .filter(wp_term_taxonomy::Column::Taxonomy.eq(&taxonomy))
@@ -1969,7 +2055,11 @@ async fn handle_get_terms(state: &AppState, params: &[XmlRpcValue]) -> String {
 
     let mut items = Vec::new();
     for tt in &tts {
-        let term = wp_terms::Entity::find_by_id(tt.term_id).one(&state.db).await.ok().flatten();
+        let term = wp_terms::Entity::find_by_id(tt.term_id)
+            .one(&state.db)
+            .await
+            .ok()
+            .flatten();
         if let Some(t) = term {
             if search.is_empty() || t.name.to_lowercase().contains(&search.to_lowercase()) {
                 items.push(term_to_xmlrpc(&t, tt));
@@ -1999,10 +2089,17 @@ async fn handle_new_term(state: &AppState, params: &[XmlRpcValue]) -> String {
     let taxonomy = content.get_member_str("taxonomy");
     let slug = {
         let s = content.get_member_str("slug");
-        if s.is_empty() { slugify(&name) } else { s }
+        if s.is_empty() {
+            slugify(&name)
+        } else {
+            s
+        }
     };
     let description = content.get_member_str("description");
-    let parent = content.get_member("parent").map(|v| v.as_i64()).unwrap_or(0) as u64;
+    let parent = content
+        .get_member("parent")
+        .map(|v| v.as_i64())
+        .unwrap_or(0) as u64;
 
     if name.is_empty() || taxonomy.is_empty() {
         return xml_rpc_fault(400, "Term name and taxonomy are required");
@@ -2060,8 +2157,12 @@ async fn handle_edit_term(state: &AppState, params: &[XmlRpcValue]) -> String {
     };
 
     let mut active: wp_terms::ActiveModel = term.into();
-    if let Some(v) = content.get_member("name") { active.name = Set(v.as_str().to_string()); }
-    if let Some(v) = content.get_member("slug") { active.slug = Set(v.as_str().to_string()); }
+    if let Some(v) = content.get_member("name") {
+        active.name = Set(v.as_str().to_string());
+    }
+    if let Some(v) = content.get_member("slug") {
+        active.slug = Set(v.as_str().to_string());
+    }
 
     if let Err(e) = active.update(&state.db).await {
         return xml_rpc_fault(500, &format!("Failed to update term: {}", e));
@@ -2070,11 +2171,18 @@ async fn handle_edit_term(state: &AppState, params: &[XmlRpcValue]) -> String {
     // Update term_taxonomy
     if let Some(tt) = wp_term_taxonomy::Entity::find()
         .filter(wp_term_taxonomy::Column::TermId.eq(term_id))
-        .one(&state.db).await.ok().flatten()
+        .one(&state.db)
+        .await
+        .ok()
+        .flatten()
     {
         let mut tta: wp_term_taxonomy::ActiveModel = tt.into();
-        if let Some(v) = content.get_member("description") { tta.description = Set(v.as_str().to_string()); }
-        if let Some(v) = content.get_member("parent") { tta.parent = Set(v.as_i64() as u64); }
+        if let Some(v) = content.get_member("description") {
+            tta.description = Set(v.as_str().to_string());
+        }
+        if let Some(v) = content.get_member("parent") {
+            tta.parent = Set(v.as_i64() as u64);
+        }
         tta.update(&state.db).await.ok();
     }
 
@@ -2092,24 +2200,35 @@ async fn handle_delete_term(state: &AppState, params: &[XmlRpcValue]) -> String 
         return xml_rpc_fault(401, "You are not allowed to delete terms.");
     }
 
-    let _taxonomy = params.get(3).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let _taxonomy = params
+        .get(3)
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
     let term_id = params.get(4).map(|v| v.as_i64()).unwrap_or(0) as u64;
 
     // Find all term_taxonomy_ids for this term, then delete relationships
     let tt_ids: Vec<u64> = wp_term_taxonomy::Entity::find()
         .filter(wp_term_taxonomy::Column::TermId.eq(term_id))
-        .all(&state.db).await.unwrap_or_default()
-        .into_iter().map(|tt| tt.term_taxonomy_id).collect();
+        .all(&state.db)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|tt| tt.term_taxonomy_id)
+        .collect();
     if !tt_ids.is_empty() {
         wp_term_relationships::Entity::delete_many()
             .filter(wp_term_relationships::Column::TermTaxonomyId.is_in(tt_ids))
-            .exec(&state.db).await.ok();
+            .exec(&state.db)
+            .await
+            .ok();
     }
 
     // Delete term taxonomy entries
     wp_term_taxonomy::Entity::delete_many()
         .filter(wp_term_taxonomy::Column::TermId.eq(term_id))
-        .exec(&state.db).await.ok();
+        .exec(&state.db)
+        .await
+        .ok();
 
     // Delete term
     if let Ok(Some(term)) = wp_terms::Entity::find_by_id(term_id).one(&state.db).await {
@@ -2142,10 +2261,17 @@ async fn handle_new_category(state: &AppState, params: &[XmlRpcValue]) -> String
     let name = cat.get_member_str("name");
     let slug = {
         let s = cat.get_member_str("slug");
-        if s.is_empty() { slugify(&name) } else { s }
+        if s.is_empty() {
+            slugify(&name)
+        } else {
+            s
+        }
     };
     let description = cat.get_member_str("categoryDescription");
-    let parent = cat.get_member("category_parent").map(|v| v.as_i64()).unwrap_or(0) as u64;
+    let parent = cat
+        .get_member("category_parent")
+        .map(|v| v.as_i64())
+        .unwrap_or(0) as u64;
 
     if name.is_empty() {
         return xml_rpc_fault(400, "Category name is required");
@@ -2191,7 +2317,9 @@ async fn handle_delete_category(state: &AppState, params: &[XmlRpcValue]) -> Str
     wp_term_taxonomy::Entity::delete_many()
         .filter(wp_term_taxonomy::Column::TermId.eq(cat_id))
         .filter(wp_term_taxonomy::Column::Taxonomy.eq("category"))
-        .exec(&state.db).await.ok();
+        .exec(&state.db)
+        .await
+        .ok();
 
     if let Ok(Some(term)) = wp_terms::Entity::find_by_id(cat_id).one(&state.db).await {
         let active: wp_terms::ActiveModel = term.into();
@@ -2207,7 +2335,10 @@ async fn handle_suggest_categories(state: &AppState, params: &[XmlRpcValue]) -> 
         Ok(u) => u,
         Err(e) => return xml_rpc_fault(403, &e),
     };
-    let suggest = params.get(3).map(|v| v.as_str().to_string()).unwrap_or_default();
+    let suggest = params
+        .get(3)
+        .map(|v| v.as_str().to_string())
+        .unwrap_or_default();
     let max = params.get(4).map(|v| v.as_i64()).unwrap_or(10) as u64;
 
     let tts = wp_term_taxonomy::Entity::find()
@@ -2219,8 +2350,14 @@ async fn handle_suggest_categories(state: &AppState, params: &[XmlRpcValue]) -> 
 
     let mut items = Vec::new();
     for tt in &tts {
-        if items.len() >= max as usize { break; }
-        let term = wp_terms::Entity::find_by_id(tt.term_id).one(&state.db).await.ok().flatten();
+        if items.len() >= max as usize {
+            break;
+        }
+        let term = wp_terms::Entity::find_by_id(tt.term_id)
+            .one(&state.db)
+            .await
+            .ok()
+            .flatten();
         if let Some(t) = term {
             if suggest.is_empty() || t.name.to_lowercase().contains(&suggest.to_lowercase()) {
                 items.push(value_struct(&[
@@ -2258,14 +2395,17 @@ async fn handle_set_options(state: &AppState, params: &[XmlRpcValue]) -> String 
             val.as_str().to_string()
         };
         state.options.update_option(key, &new_val).await.ok();
-        updated.push((key.as_str(), value_struct(&[
-            ("value", value_string(&new_val)),
-            ("readonly", value_bool(false)),
-        ])));
+        updated.push((
+            key.as_str(),
+            value_struct(&[
+                ("value", value_string(&new_val)),
+                ("readonly", value_bool(false)),
+            ]),
+        ));
     }
 
     // Return the updated options
-    let items: Vec<(& str, String)> = updated.iter().map(|(k, v)| (*k, v.clone())).collect();
+    let items: Vec<(&str, String)> = updated.iter().map(|(k, v)| (*k, v.clone())).collect();
     xml_rpc_response(&value_struct(&items))
 }
 
@@ -2318,7 +2458,12 @@ async fn handle_edit_profile(state: &AppState, params: &[XmlRpcValue]) -> String
     }
 }
 
-async fn xmlrpc_upsert_usermeta(db: &sea_orm::DatabaseConnection, user_id: u64, key: &str, value: &str) {
+async fn xmlrpc_upsert_usermeta(
+    db: &sea_orm::DatabaseConnection,
+    user_id: u64,
+    key: &str,
+    value: &str,
+) {
     if let Ok(Some(meta)) = wp_usermeta::Entity::find()
         .filter(wp_usermeta::Column::UserId.eq(user_id))
         .filter(wp_usermeta::Column::MetaKey.eq(key))
@@ -2334,7 +2479,10 @@ async fn xmlrpc_upsert_usermeta(db: &sea_orm::DatabaseConnection, user_id: u64, 
             user_id: Set(user_id),
             meta_key: Set(Some(key.to_string())),
             meta_value: Set(Some(value.to_string())),
-        }.insert(db).await.ok();
+        }
+        .insert(db)
+        .await
+        .ok();
     }
 }
 
@@ -2349,10 +2497,18 @@ async fn xmlrpc_get_user_role(db: &sea_orm::DatabaseConnection, user_id: u64) ->
         .flatten();
     if let Some(m) = meta {
         if let Some(val) = m.meta_value {
-            if val.contains("administrator") { return "administrator".to_string(); }
-            if val.contains("editor") { return "editor".to_string(); }
-            if val.contains("author") { return "author".to_string(); }
-            if val.contains("contributor") { return "contributor".to_string(); }
+            if val.contains("administrator") {
+                return "administrator".to_string();
+            }
+            if val.contains("editor") {
+                return "editor".to_string();
+            }
+            if val.contains("author") {
+                return "author".to_string();
+            }
+            if val.contains("contributor") {
+                return "contributor".to_string();
+            }
         }
     }
     "subscriber".to_string()

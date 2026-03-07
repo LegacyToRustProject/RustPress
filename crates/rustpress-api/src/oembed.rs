@@ -57,11 +57,15 @@ async fn oembed_handler(
     let slug = match slug {
         Some(s) => s,
         None => {
-            return (StatusCode::NOT_FOUND, Json(json!({
-                "code": "oembed_invalid_url",
-                "message": "Not Found",
-                "data": {"status": 404}
-            }))).into_response();
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({
+                    "code": "oembed_invalid_url",
+                    "message": "Not Found",
+                    "data": {"status": 404}
+                })),
+            )
+                .into_response();
         }
     };
 
@@ -77,25 +81,37 @@ async fn oembed_handler(
     let post = match post {
         Some(p) => p,
         None => {
-            return (StatusCode::NOT_FOUND, Json(json!({
-                "code": "oembed_invalid_url",
-                "message": "Not Found",
-                "data": {"status": 404}
-            }))).into_response();
+            return (
+                StatusCode::NOT_FOUND,
+                Json(json!({
+                    "code": "oembed_invalid_url",
+                    "message": "Not Found",
+                    "data": {"status": 404}
+                })),
+            )
+                .into_response();
         }
     };
 
     // Don't serve oEmbed for password-protected posts
     if !post.post_password.is_empty() {
-        return (StatusCode::FORBIDDEN, Json(json!({
-            "code": "oembed_forbidden",
-            "message": "Forbidden",
-            "data": {"status": 403}
-        }))).into_response();
+        return (
+            StatusCode::FORBIDDEN,
+            Json(json!({
+                "code": "oembed_forbidden",
+                "message": "Forbidden",
+                "data": {"status": 403}
+            })),
+        )
+            .into_response();
     }
 
     let site_name = "RustPress"; // Could be fetched from options
-    let post_url = format!("{}/{}", state.site_url.trim_end_matches('/'), post.post_name);
+    let post_url = format!(
+        "{}/{}",
+        state.site_url.trim_end_matches('/'),
+        post.post_name
+    );
 
     // Build excerpt (strip HTML, limit to 150 chars)
     let excerpt = if !post.post_excerpt.is_empty() {
@@ -111,7 +127,10 @@ async fn oembed_handler(
 
     // Build the embedded HTML (an iframe pointing to the embed endpoint)
     let embed_url = format!("{}?embed=true", post_url);
-    let height = query.max_height.unwrap_or((max_width as f64 * 0.5625) as u32).max(200);
+    let height = query
+        .max_height
+        .unwrap_or((max_width as f64 * 0.5625) as u32)
+        .max(200);
 
     let html = format!(
         r#"<blockquote class="wp-embedded-content" data-secret="rs{post_id}"><a href="{url}">{title}</a></blockquote><iframe sandbox="allow-scripts" security="restricted" src="{embed_url}" width="{width}" height="{height}" title="{title_attr}" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" class="wp-embedded-content"></iframe>"#,
@@ -143,7 +162,8 @@ async fn oembed_handler(
             StatusCode::OK,
             [("content-type", "text/xml; charset=UTF-8")],
             xml,
-        ).into_response()
+        )
+            .into_response()
     } else {
         Json(response_data).into_response()
     }
@@ -258,19 +278,26 @@ mod tests {
 
     #[test]
     fn test_extract_slug_simple() {
-        let slug = extract_slug_from_url("http://localhost:8080/hello-world", "http://localhost:8080");
+        let slug =
+            extract_slug_from_url("http://localhost:8080/hello-world", "http://localhost:8080");
         assert_eq!(slug, Some("hello-world".to_string()));
     }
 
     #[test]
     fn test_extract_slug_with_trailing_slash() {
-        let slug = extract_slug_from_url("http://localhost:8080/hello-world/", "http://localhost:8080");
+        let slug = extract_slug_from_url(
+            "http://localhost:8080/hello-world/",
+            "http://localhost:8080",
+        );
         assert_eq!(slug, Some("hello-world".to_string()));
     }
 
     #[test]
     fn test_extract_slug_date_permalink() {
-        let slug = extract_slug_from_url("http://localhost:8080/2025/01/my-post", "http://localhost:8080");
+        let slug = extract_slug_from_url(
+            "http://localhost:8080/2025/01/my-post",
+            "http://localhost:8080",
+        );
         assert_eq!(slug, Some("my-post".to_string()));
     }
 
@@ -282,13 +309,17 @@ mod tests {
 
     #[test]
     fn test_extract_slug_query_params() {
-        let slug = extract_slug_from_url("http://localhost:8080/hello?p=1", "http://localhost:8080");
+        let slug =
+            extract_slug_from_url("http://localhost:8080/hello?p=1", "http://localhost:8080");
         assert_eq!(slug, Some("hello".to_string()));
     }
 
     #[test]
     fn test_strip_html() {
-        assert_eq!(strip_html("<p>Hello <strong>world</strong></p>"), "Hello world");
+        assert_eq!(
+            strip_html("<p>Hello <strong>world</strong></p>"),
+            "Hello world"
+        );
     }
 
     #[test]

@@ -248,10 +248,7 @@ mod tests {
 
     #[test]
     fn test_parse_simple_translation() {
-        let entries: Vec<(&[u8], &[u8])> = vec![
-            (b"Hello", b"Hola"),
-            (b"Goodbye", b"Adios"),
-        ];
+        let entries: Vec<(&[u8], &[u8])> = vec![(b"Hello", b"Hola"), (b"Goodbye", b"Adios")];
         let data = build_mo_file(&entries);
         let mo = parse_mo(&data).unwrap();
 
@@ -262,10 +259,7 @@ mod tests {
     #[test]
     fn test_parse_metadata() {
         let meta = b"Content-Type: text/plain; charset=UTF-8\nPlural-Forms: nplurals=2; plural=(n != 1);\n";
-        let entries: Vec<(&[u8], &[u8])> = vec![
-            (b"", meta.as_slice()),
-            (b"Yes", b"Si"),
-        ];
+        let entries: Vec<(&[u8], &[u8])> = vec![(b"", meta.as_slice()), (b"Yes", b"Si")];
         let data = build_mo_file(&entries);
         let mo = parse_mo(&data).unwrap();
 
@@ -297,7 +291,10 @@ mod tests {
 
     #[test]
     fn test_invalid_magic() {
-        let data = vec![0x00, 0x00, 0x00, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let data = vec![
+            0x00, 0x00, 0x00, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ];
         let result = parse_mo(&data);
         assert!(matches!(result, Err(MoError::InvalidMagic(_))));
     }
@@ -325,17 +322,17 @@ mod tests {
         buf.extend_from_slice(&offset_translations.to_be_bytes());
         buf.extend_from_slice(&0u32.to_be_bytes()); // hash size
         buf.extend_from_slice(&0u32.to_be_bytes()); // hash offset
-        // Original table entry: len=2, offset=44
+                                                    // Original table entry: len=2, offset=44
         let string_start: u32 = 44;
         buf.extend_from_slice(&2u32.to_be_bytes()); // orig len
         buf.extend_from_slice(&string_start.to_be_bytes()); // orig offset
-        // Translation table entry: len=3, offset=47
+                                                            // Translation table entry: len=3, offset=47
         let trans_start: u32 = 47;
         buf.extend_from_slice(&3u32.to_be_bytes()); // trans len
         buf.extend_from_slice(&trans_start.to_be_bytes()); // trans offset
-        // String data
-        buf.extend_from_slice(b"Hi\x00");   // original + NUL
-        buf.extend_from_slice(b"Hej\x00");  // translation + NUL
+                                                           // String data
+        buf.extend_from_slice(b"Hi\x00"); // original + NUL
+        buf.extend_from_slice(b"Hej\x00"); // translation + NUL
 
         let mo = parse_mo(&buf).unwrap();
         assert_eq!(mo.translations.get("Hi").unwrap(), "Hej");

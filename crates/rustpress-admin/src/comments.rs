@@ -85,7 +85,7 @@ async fn list_comments(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let items: Vec<AdminComment> = comments.into_iter().map(|c| to_admin_comment(c)).collect();
+    let items: Vec<AdminComment> = comments.into_iter().map(to_admin_comment).collect();
 
     Ok(Json(serde_json::json!({
         "items": items,
@@ -160,8 +160,8 @@ async fn delete_comment(
 
 fn to_admin_comment(c: wp_comments::Model) -> AdminComment {
     AdminComment {
-        id: c.comment_id as u64,
-        post_id: c.comment_post_id as u64,
+        id: c.comment_id,
+        post_id: c.comment_post_id,
         author: c.comment_author,
         author_email: c.comment_author_email,
         content: c.comment_content,
@@ -172,6 +172,6 @@ fn to_admin_comment(c: wp_comments::Model) -> AdminComment {
         },
         date: c.comment_date_gmt.to_string(),
         comment_type: c.comment_type,
-        parent: c.comment_parent as u64,
+        parent: c.comment_parent,
     }
 }

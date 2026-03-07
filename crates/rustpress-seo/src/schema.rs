@@ -50,11 +50,7 @@ pub fn generate_article_schema(
 /// Generates a JSON-LD `<script>` block for a WebSite schema.
 /// If `search_url` is provided, a SearchAction potential action is included.
 /// The `search_url` should contain `{search_term_string}` as a placeholder.
-pub fn generate_website_schema(
-    name: &str,
-    url: &str,
-    search_url: Option<&str>,
-) -> String {
+pub fn generate_website_schema(name: &str, url: &str, search_url: Option<&str>) -> String {
     let mut schema = json!({
         "@context": "https://schema.org",
         "@type": "WebSite",

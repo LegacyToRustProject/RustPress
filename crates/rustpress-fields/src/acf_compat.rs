@@ -79,7 +79,7 @@ impl AcfPostData {
             // or that are not WordPress internal keys
             if field_key
                 .as_ref()
-                .map_or(false, |k| k.starts_with("field_"))
+                .is_some_and(|k| k.starts_with("field_"))
             {
                 fields.push(AcfMetaEntry {
                     field_name: key.clone(),
@@ -180,17 +180,14 @@ fn parse_acf_value(raw: &str) -> FieldValue {
     }
 
     // JSON array/object (ACF sometimes uses JSON for gallery, etc.)
-    if (raw.starts_with('[') && raw.ends_with(']'))
-        || (raw.starts_with('{') && raw.ends_with('}'))
+    if (raw.starts_with('[') && raw.ends_with(']')) || (raw.starts_with('{') && raw.ends_with('}'))
     {
         if let Ok(arr) = serde_json::from_str::<Vec<serde_json::Value>>(raw) {
             let items: Vec<FieldValue> = arr
                 .into_iter()
                 .map(|v| match v {
                     serde_json::Value::String(s) => FieldValue::String(s),
-                    serde_json::Value::Number(n) => {
-                        FieldValue::Number(n.as_f64().unwrap_or(0.0))
-                    }
+                    serde_json::Value::Number(n) => FieldValue::Number(n.as_f64().unwrap_or(0.0)),
                     serde_json::Value::Bool(b) => FieldValue::Bool(b),
                     other => FieldValue::String(other.to_string()),
                 })
@@ -266,7 +263,11 @@ mod tests {
     fn test_field_key_reference() {
         let data = AcfPostData::from_meta(1, &sample_meta());
 
-        let entry = data.fields.iter().find(|f| f.field_name == "hero_title").unwrap();
+        let entry = data
+            .fields
+            .iter()
+            .find(|f| f.field_name == "hero_title")
+            .unwrap();
         assert_eq!(entry.field_key.as_deref(), Some("field_abc123"));
     }
 
@@ -290,25 +291,53 @@ mod tests {
         let data = AcfPostData {
             post_id: 1,
             fields: vec![
-                AcfMetaEntry { field_name: "count".into(), field_key: Some("field_1".into()), value: "42".into() },
-                AcfMetaEntry { field_name: "name".into(), field_key: Some("field_2".into()), value: "hello".into() },
-                AcfMetaEntry { field_name: "flag".into(), field_key: Some("field_3".into()), value: "1".into() },
-                AcfMetaEntry { field_name: "price".into(), field_key: Some("field_4".into()), value: "19.99".into() },
+                AcfMetaEntry {
+                    field_name: "count".into(),
+                    field_key: Some("field_1".into()),
+                    value: "42".into(),
+                },
+                AcfMetaEntry {
+                    field_name: "name".into(),
+                    field_key: Some("field_2".into()),
+                    value: "hello".into(),
+                },
+                AcfMetaEntry {
+                    field_name: "flag".into(),
+                    field_key: Some("field_3".into()),
+                    value: "1".into(),
+                },
+                AcfMetaEntry {
+                    field_name: "price".into(),
+                    field_key: Some("field_4".into()),
+                    value: "19.99".into(),
+                },
             ],
         };
 
         // "42" → parsed as Number (but since it could also be "1"/"0" boolean, "42" is Number)
         // Actually "42" will try i64 parse first → Number(42.0)
-        assert!(matches!(data.get_field_value("count"), Some(FieldValue::Number(_))));
+        assert!(matches!(
+            data.get_field_value("count"),
+            Some(FieldValue::Number(_))
+        ));
 
         // "hello" → String
-        assert!(matches!(data.get_field_value("name"), Some(FieldValue::String(_))));
+        assert!(matches!(
+            data.get_field_value("name"),
+            Some(FieldValue::String(_))
+        ));
 
         // "1" → Boolean(true) (ACF convention)
-        assert!(matches!(data.get_field_value("flag"), Some(FieldValue::Bool(true))));
+        assert!(matches!(
+            data.get_field_value("flag"),
+            Some(FieldValue::Bool(true))
+        ));
 
         // "19.99" → Number
-        assert!(matches!(data.get_field_value("price"), Some(FieldValue::Number(_))));
+        assert!(matches!(
+            data.get_field_value("price"),
+            Some(FieldValue::Number(_))
+        ));
     }
 
     #[test]

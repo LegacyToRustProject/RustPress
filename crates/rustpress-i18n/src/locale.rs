@@ -156,7 +156,11 @@ fn parse_accept_language(header: &str) -> Vec<AcceptLanguageEntry> {
     }
 
     // Sort by quality descending
-    entries.sort_by(|a, b| b.quality.partial_cmp(&a.quality).unwrap_or(std::cmp::Ordering::Equal));
+    entries.sort_by(|a, b| {
+        b.quality
+            .partial_cmp(&a.quality)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     entries
 }
 

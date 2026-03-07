@@ -193,18 +193,8 @@ fn register_widget_blocks(registry: &mut BlockRegistry) {
             render_latest_comments(),
         ),
         ("core/search", "Search", "search", render_search()),
-        (
-            "core/tag-cloud",
-            "Tag Cloud",
-            "tag",
-            render_tag_cloud(),
-        ),
-        (
-            "core/calendar",
-            "Calendar",
-            "calendar",
-            render_calendar(),
-        ),
+        ("core/tag-cloud", "Tag Cloud", "tag", render_tag_cloud()),
+        ("core/calendar", "Calendar", "calendar", render_calendar()),
         ("core/rss", "RSS", "rss", render_rss()),
     ];
 
@@ -237,12 +227,7 @@ fn register_theme_blocks(registry: &mut BlockRegistry) {
             "format-image",
             render_site_logo(),
         ),
-        (
-            "core/navigation",
-            "Navigation",
-            "menu",
-            render_navigation(),
-        ),
+        ("core/navigation", "Navigation", "menu", render_navigation()),
         (
             "core/post-title",
             "Post Title",
@@ -279,18 +264,8 @@ fn register_theme_blocks(registry: &mut BlockRegistry) {
             "format-image",
             render_post_featured_image(),
         ),
-        (
-            "core/post-terms",
-            "Post Terms",
-            "tag",
-            render_post_terms(),
-        ),
-        (
-            "core/query",
-            "Query Loop",
-            "loop",
-            render_query(),
-        ),
+        ("core/post-terms", "Post Terms", "tag", render_post_terms()),
+        ("core/query", "Query Loop", "loop", render_query()),
         (
             "core/query-loop",
             "Query Loop (Legacy)",
@@ -438,7 +413,13 @@ fn render_spacer() -> RenderCallback {
             .attrs
             .get("height")
             .and_then(|v| v.as_str())
-            .or_else(|| block.attrs.get("height").and_then(|v| v.as_u64()).map(|_| "100px"))
+            .or_else(|| {
+                block
+                    .attrs
+                    .get("height")
+                    .and_then(|v| v.as_u64())
+                    .map(|_| "100px")
+            })
             .unwrap_or("100px");
         format!(
             "<div style=\"height:{}\" aria-hidden=\"true\" class=\"wp-block-spacer\"></div>",
@@ -524,10 +505,7 @@ fn render_media_text() -> RenderCallback {
         };
 
         let media_html = match media_type {
-            "video" => format!(
-                "<video controls src=\"{}\"></video>",
-                media_url
-            ),
+            "video" => format!("<video controls src=\"{}\"></video>", media_url),
             _ => format!(
                 "<img src=\"{}\" alt=\"\" class=\"wp-image-media-text\" />",
                 media_url
@@ -622,10 +600,7 @@ fn render_latest_posts() -> RenderCallback {
                     i
                 ));
             } else {
-                items.push_str(&format!(
-                    "<li><a href=\"#\">Latest Post {}</a></li>\n",
-                    i
-                ));
+                items.push_str(&format!("<li><a href=\"#\">Latest Post {}</a></li>\n", i));
             }
         }
         format!("<ul class=\"{}\">\n{}</ul>", class, items)
@@ -729,7 +704,7 @@ fn render_site_title() -> RenderCallback {
             .get("level")
             .and_then(|v| v.as_u64())
             .unwrap_or(1);
-        let tag = if level >= 1 && level <= 6 {
+        let tag = if (1..=6).contains(&level) {
             format!("h{}", level)
         } else {
             "p".to_string()
@@ -796,10 +771,7 @@ fn render_post_title() -> RenderCallback {
                 tag, class, tag
             )
         } else {
-            format!(
-                "<{} class=\"{}\">Post Title</{}>",
-                tag, class, tag
-            )
+            format!("<{} class=\"{}\">Post Title</{}>", tag, class, tag)
         }
     })
 }
@@ -812,10 +784,7 @@ fn render_post_content() -> RenderCallback {
         } else {
             render_inner_blocks_simple(&block.inner_blocks)
         };
-        format!(
-            "<div class=\"entry-content {}\">{}</div>",
-            class, inner
-        )
+        format!("<div class=\"entry-content {}\">{}</div>", class, inner)
     })
 }
 
@@ -1091,15 +1060,8 @@ fn build_style(block: &Block) -> String {
     }
 
     // Handle direct backgroundColor/textColor preset references
-    if let Some(bg) = block
-        .attrs
-        .get("backgroundColor")
-        .and_then(|v| v.as_str())
-    {
-        parts.push(format!(
-            "background-color:var(--wp--preset--color--{})",
-            bg
-        ));
+    if let Some(bg) = block.attrs.get("backgroundColor").and_then(|v| v.as_str()) {
+        parts.push(format!("background-color:var(--wp--preset--color--{})", bg));
     }
 
     parts.join(";")
@@ -1347,10 +1309,7 @@ mod tests {
             detect_embed_provider("https://www.youtube.com/watch?v=abc"),
             "youtube"
         );
-        assert_eq!(
-            detect_embed_provider("https://vimeo.com/123"),
-            "vimeo"
-        );
+        assert_eq!(detect_embed_provider("https://vimeo.com/123"), "vimeo");
         assert_eq!(
             detect_embed_provider("https://twitter.com/user/status/1"),
             "twitter"
@@ -1359,10 +1318,7 @@ mod tests {
             detect_embed_provider("https://x.com/user/status/1"),
             "twitter"
         );
-        assert_eq!(
-            detect_embed_provider("https://example.com/page"),
-            "generic"
-        );
+        assert_eq!(detect_embed_provider("https://example.com/page"), "generic");
     }
 
     #[test]

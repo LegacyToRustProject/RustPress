@@ -78,7 +78,7 @@ impl FieldStorage {
     pub fn has_fields(&self, post_id: i64) -> bool {
         self.data
             .get(&post_id)
-            .map_or(false, |fields| !fields.is_empty())
+            .is_some_and(|fields| !fields.is_empty())
     }
 
     /// Returns the number of posts that have stored field values.
@@ -156,10 +156,7 @@ mod tests {
 
         let fields = storage.get_fields(1);
         assert_eq!(fields.len(), 2);
-        assert_eq!(
-            fields.get("a"),
-            Some(&FieldValue::String("x".to_string()))
-        );
+        assert_eq!(fields.get("a"), Some(&FieldValue::String("x".to_string())));
         assert_eq!(fields.get("b"), Some(&FieldValue::Number(1.0)));
 
         // Non-existent post returns empty map

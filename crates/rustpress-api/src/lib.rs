@@ -198,7 +198,7 @@ async fn verify_app_password(
         .await
         .ok()
         .flatten()
-        .or_else(|| None);
+        .or(None);
 
     // Also try by email if not found by login
     let user = if user.is_none() {

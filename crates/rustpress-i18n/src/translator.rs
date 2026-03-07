@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::RwLock;
 
-use crate::mo_parser::{self, MoFile, MoError};
+use crate::mo_parser::{self, MoError, MoFile};
 use crate::plural::{self, PluralExpression};
 
 /// Context separator used in .mo files for msgctxt lookups.
@@ -294,13 +294,7 @@ mod tests {
     #[test]
     fn test_basic_translation() {
         let translator = Translator::new();
-        let mo_data = build_test_mo(
-            &[
-                (b"Hello", b"Hola"),
-                (b"World", b"Mundo"),
-            ],
-            None,
-        );
+        let mo_data = build_test_mo(&[(b"Hello", b"Hola"), (b"World", b"Mundo")], None);
         translator
             .load_textdomain_from_bytes("default", &mo_data)
             .unwrap();
@@ -338,9 +332,18 @@ mod tests {
             .load_textdomain_from_bytes("default", &mo_data)
             .unwrap();
 
-        assert_eq!(translator._n("%d item", "%d items", 1, "default"), "%d elemento");
-        assert_eq!(translator._n("%d item", "%d items", 0, "default"), "%d elementos");
-        assert_eq!(translator._n("%d item", "%d items", 5, "default"), "%d elementos");
+        assert_eq!(
+            translator._n("%d item", "%d items", 1, "default"),
+            "%d elemento"
+        );
+        assert_eq!(
+            translator._n("%d item", "%d items", 0, "default"),
+            "%d elementos"
+        );
+        assert_eq!(
+            translator._n("%d item", "%d items", 5, "default"),
+            "%d elementos"
+        );
     }
 
     #[test]
@@ -381,10 +384,7 @@ mod tests {
         // Context + plural key: "post type\x04%d post\0%d posts" -> "%d entrada\0%d entradas"
         let ctx_key = b"post type\x04%d post\x00%d posts";
         let ctx_trans = b"%d entrada\x00%d entradas";
-        let mo_data = build_test_mo(
-            &[(ctx_key.as_slice(), ctx_trans.as_slice())],
-            Some(meta),
-        );
+        let mo_data = build_test_mo(&[(ctx_key.as_slice(), ctx_trans.as_slice())], Some(meta));
 
         let translator = Translator::new();
         translator

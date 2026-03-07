@@ -144,9 +144,9 @@ impl ShippingZone {
 
     /// Check if a country code belongs to this zone.
     pub fn matches_country(&self, country: &str) -> bool {
-        self.regions.iter().any(|r| {
-            r == country || r.starts_with(&format!("{}:", country))
-        })
+        self.regions
+            .iter()
+            .any(|r| r == country || r.starts_with(&format!("{}:", country)))
     }
 }
 

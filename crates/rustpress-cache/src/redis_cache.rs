@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info};
 #[cfg(feature = "redis-backend")]
 use tracing::warn;
+use tracing::{debug, info};
 
 /// Redis-compatible cache backend.
 ///
@@ -107,7 +107,10 @@ impl RedisCache {
                                 return Ok(());
                             }
                             Err(e) => {
-                                warn!("Failed to connect to Redis, using in-memory fallback: {}", e);
+                                warn!(
+                                    "Failed to connect to Redis, using in-memory fallback: {}",
+                                    e
+                                );
                                 let mut connected = self.connected.write().await;
                                 *connected = true;
                                 info!("Redis cache connected (in-memory mode)");
@@ -116,7 +119,10 @@ impl RedisCache {
                         }
                     }
                     Err(e) => {
-                        warn!("Failed to create Redis client, using in-memory fallback: {}", e);
+                        warn!(
+                            "Failed to create Redis client, using in-memory fallback: {}",
+                            e
+                        );
                         let mut connected = self.connected.write().await;
                         *connected = true;
                         info!("Redis cache connected (in-memory mode)");
@@ -148,7 +154,11 @@ impl RedisCache {
         #[cfg(feature = "redis-backend")]
         {
             if let Some(mut conn) = self.get_redis_conn().await {
-                match redis::cmd("GET").arg(key).query_async::<Option<String>>(&mut conn).await {
+                match redis::cmd("GET")
+                    .arg(key)
+                    .query_async::<Option<String>>(&mut conn)
+                    .await
+                {
                     Ok(result) => {
                         if result.is_some() {
                             debug!(key, "redis cache hit (real Redis)");
@@ -244,7 +254,11 @@ impl RedisCache {
         #[cfg(feature = "redis-backend")]
         {
             if let Some(mut conn) = self.get_redis_conn().await {
-                match redis::cmd("DEL").arg(key).query_async::<i64>(&mut conn).await {
+                match redis::cmd("DEL")
+                    .arg(key)
+                    .query_async::<i64>(&mut conn)
+                    .await
+                {
                     Ok(count) => {
                         debug!(key, "redis cache del (real Redis)");
                         return count > 0;
@@ -267,7 +281,11 @@ impl RedisCache {
         #[cfg(feature = "redis-backend")]
         {
             if let Some(mut conn) = self.get_redis_conn().await {
-                match redis::cmd("EXISTS").arg(key).query_async::<i64>(&mut conn).await {
+                match redis::cmd("EXISTS")
+                    .arg(key)
+                    .query_async::<i64>(&mut conn)
+                    .await
+                {
                     Ok(count) => {
                         return count > 0;
                     }
@@ -331,7 +349,11 @@ impl RedisCache {
         #[cfg(feature = "redis-backend")]
         {
             if let Some(mut conn) = self.get_redis_conn().await {
-                match redis::cmd("TTL").arg(key).query_async::<i64>(&mut conn).await {
+                match redis::cmd("TTL")
+                    .arg(key)
+                    .query_async::<i64>(&mut conn)
+                    .await
+                {
                     Ok(ttl_val) => {
                         if ttl_val == -2 {
                             return None; // Key doesn't exist
@@ -368,7 +390,11 @@ impl RedisCache {
         #[cfg(feature = "redis-backend")]
         {
             if let Some(mut conn) = self.get_redis_conn().await {
-                match redis::cmd("INCR").arg(key).query_async::<i64>(&mut conn).await {
+                match redis::cmd("INCR")
+                    .arg(key)
+                    .query_async::<i64>(&mut conn)
+                    .await
+                {
                     Ok(val) => {
                         return val;
                     }
@@ -396,7 +422,11 @@ impl RedisCache {
         #[cfg(feature = "redis-backend")]
         {
             if let Some(mut conn) = self.get_redis_conn().await {
-                match redis::cmd("DECR").arg(key).query_async::<i64>(&mut conn).await {
+                match redis::cmd("DECR")
+                    .arg(key)
+                    .query_async::<i64>(&mut conn)
+                    .await
+                {
                     Ok(val) => {
                         return val;
                     }
@@ -507,10 +537,7 @@ impl RedisCache {
         #[cfg(feature = "redis-backend")]
         {
             if let Some(mut conn) = self.get_redis_conn().await {
-                match redis::cmd("FLUSHALL")
-                    .query_async::<()>(&mut conn)
-                    .await
-                {
+                match redis::cmd("FLUSHALL").query_async::<()>(&mut conn).await {
                     Ok(()) => {
                         info!("redis cache flushed (real Redis)");
                         return;
@@ -697,7 +724,10 @@ mod tests {
         cache.hset("user:1", "name", "Alice").await;
         cache.hset("user:1", "email", "alice@example.com").await;
 
-        assert_eq!(cache.hget("user:1", "name").await, Some("Alice".to_string()));
+        assert_eq!(
+            cache.hget("user:1", "name").await,
+            Some("Alice".to_string())
+        );
         assert_eq!(
             cache.hget("user:1", "email").await,
             Some("alice@example.com".to_string())

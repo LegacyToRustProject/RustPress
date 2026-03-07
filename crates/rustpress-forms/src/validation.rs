@@ -55,8 +55,12 @@ pub fn validate_submission(
         let value = data.get(&field.name).map(|s| s.as_str()).unwrap_or("");
 
         // Check required (both from the `required` flag and explicit Required rule)
-        if field.required || field.validation_rules.iter().any(|r| matches!(r, ValidationRule::Required)) {
-            if value.trim().is_empty() {
+        if (field.required
+            || field
+                .validation_rules
+                .iter()
+                .any(|r| matches!(r, ValidationRule::Required)))
+            && value.trim().is_empty() {
                 errors.push(ValidationError {
                     field_name: field.name.clone(),
                     message: format!("{} is required.", field.label),
@@ -64,7 +68,6 @@ pub fn validate_submission(
                 // Skip further validation if required field is empty
                 continue;
             }
-        }
 
         // Skip validation for empty optional fields
         if value.trim().is_empty() {
@@ -299,7 +302,9 @@ mod tests {
         data.insert("email".into(), "a@b.com".into());
 
         let err = validate_submission(&form, &data).unwrap_err();
-        assert!(err.iter().any(|e| e.field_name == "name" && e.message.contains("at least 2")));
+        assert!(err
+            .iter()
+            .any(|e| e.field_name == "name" && e.message.contains("at least 2")));
     }
 
     #[test]

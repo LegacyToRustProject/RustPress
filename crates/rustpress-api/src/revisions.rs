@@ -50,11 +50,11 @@ async fn list_revisions(
     let wp_revisions: Vec<WpRevision> = revisions
         .into_iter()
         .map(|r| WpRevision {
-            id: r.id as u64,
-            author: r.post_author as u64,
+            id: r.id,
+            author: r.post_author,
             date: r.post_date.to_string(),
             date_gmt: r.post_date_gmt.to_string(),
-            parent: r.post_parent as u64,
+            parent: r.post_parent,
             title: super::posts::WpRendered {
                 rendered: rustpress_themes::apply_title_filters(&r.post_title),
             },
@@ -83,11 +83,11 @@ async fn get_revision(
         .ok_or(StatusCode::NOT_FOUND)?;
 
     Ok(Json(WpRevision {
-        id: revision.id as u64,
-        author: revision.post_author as u64,
+        id: revision.id,
+        author: revision.post_author,
         date: revision.post_date.to_string(),
         date_gmt: revision.post_date_gmt.to_string(),
-        parent: revision.post_parent as u64,
+        parent: revision.post_parent,
         title: super::posts::WpRendered {
             rendered: rustpress_themes::apply_title_filters(&revision.post_title),
         },

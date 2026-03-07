@@ -7,13 +7,13 @@ pub mod commerce;
 pub mod forms;
 mod frontend;
 pub mod health;
+pub mod plugin_admin;
 mod posts;
 pub mod seo;
 mod users;
-pub mod plugin_admin;
+pub mod wasm_plugins;
 pub mod wc_api;
 pub mod wp_admin;
-pub mod wasm_plugins;
 pub mod xmlrpc;
 
 use crate::state::AppState;
@@ -56,9 +56,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .with_state(state.clone());
 
     // Frontend routes (includes /{slug} catch-all, must come last)
-    let frontend_router = Router::new()
-        .merge(frontend::routes())
-        .with_state(state);
+    let frontend_router = Router::new().merge(frontend::routes()).with_state(state);
 
     api_router
         .merge(admin_html)

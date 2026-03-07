@@ -194,7 +194,9 @@ mod tests {
         resolver.register_site(make_site(1, "example.com", "/"));
         resolver.register_site(make_site(2, "example.com", "/blog/"));
 
-        let site = resolver.resolve_site("example.com", "/hello-world").unwrap();
+        let site = resolver
+            .resolve_site("example.com", "/hello-world")
+            .unwrap();
         assert_eq!(site.blog_id, 1);
     }
 
@@ -204,7 +206,9 @@ mod tests {
         resolver.register_site(make_site(1, "example.com", "/"));
         resolver.register_site(make_site(2, "example.com", "/blog/"));
 
-        let site = resolver.resolve_site("example.com", "/blog/my-post").unwrap();
+        let site = resolver
+            .resolve_site("example.com", "/blog/my-post")
+            .unwrap();
         assert_eq!(site.blog_id, 2);
     }
 

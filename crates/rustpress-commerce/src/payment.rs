@@ -147,7 +147,10 @@ impl PaymentProvider for StripeProvider {
             success: true,
             transaction_id: Some(format!("stripe_ch_{}", uuid::Uuid::new_v4().as_simple())),
             redirect_url: None,
-            message: format!("Stripe payment of {:.2} {} processed successfully (stub)", amount, currency),
+            message: format!(
+                "Stripe payment of {:.2} {} processed successfully (stub)",
+                amount, currency
+            ),
         })
     }
 }
@@ -210,9 +213,15 @@ impl PaymentProvider for PayPalProvider {
         );
         Ok(PaymentResult {
             success: true,
-            transaction_id: Some(format!("PAYPAL-{}", uuid::Uuid::new_v4().as_simple().to_string()[..12].to_uppercase())),
+            transaction_id: Some(format!(
+                "PAYPAL-{}",
+                uuid::Uuid::new_v4().as_simple().to_string()[..12].to_uppercase()
+            )),
             redirect_url: Some("https://www.sandbox.paypal.com/checkout".to_string()),
-            message: format!("PayPal payment of {:.2} {} processed successfully (stub)", amount, currency),
+            message: format!(
+                "PayPal payment of {:.2} {} processed successfully (stub)",
+                amount, currency
+            ),
         })
     }
 }
@@ -339,7 +348,10 @@ mod tests {
 
         let gateway = manager.get_gateway("mock").unwrap();
         assert_eq!(gateway.id(), "mock");
-        assert_eq!(gateway.description(), "A test payment gateway that always succeeds. Do not use in production.");
+        assert_eq!(
+            gateway.description(),
+            "A test payment gateway that always succeeds. Do not use in production."
+        );
 
         assert!(manager.get_gateway("nonexistent").is_none());
     }

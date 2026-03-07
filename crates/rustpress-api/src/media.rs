@@ -349,13 +349,12 @@ pub fn read_routes() -> Router<ApiState> {
 /// Protected write routes (POST/PUT/DELETE) -- authentication required.
 pub fn write_routes() -> Router<ApiState> {
     Router::new()
-        .route(
-            "/wp-json/wp/v2/media",
-            axum::routing::post(create_media),
-        )
+        .route("/wp-json/wp/v2/media", axum::routing::post(create_media))
         .route(
             "/wp-json/wp/v2/media/{id}",
-            axum::routing::put(update_media).patch(update_media).delete(delete_media),
+            axum::routing::put(update_media)
+                .patch(update_media)
+                .delete(delete_media),
         )
 }
 
@@ -366,8 +365,7 @@ async fn list_media(
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10).min(100);
 
-    let mut query = wp_posts::Entity::find()
-        .filter(wp_posts::Column::PostType.eq("attachment"));
+    let mut query = wp_posts::Entity::find().filter(wp_posts::Column::PostType.eq("attachment"));
 
     // Status filter (default: "inherit" for attachments)
     if let Some(ref status) = params.status {
@@ -376,12 +374,12 @@ async fn list_media(
 
     // Media type filter (e.g. "image", "video", "audio")
     if let Some(ref mt) = params.media_type {
-        query = query.filter(wp_posts::Column::PostMimeType.like(&format!("{}/%", mt)));
+        query = query.filter(wp_posts::Column::PostMimeType.like(format!("{}/%", mt)));
     }
 
     // Search filter
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(&format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
     }
 
     // Author filter
@@ -396,7 +394,7 @@ async fn list_media(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
     let total_pages = if per_page > 0 {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     } else {
         1
     };
@@ -476,7 +474,7 @@ async fn get_media(
         .ok_or(WpError::not_found("Media not found"))?;
 
     let context = RestContext::from_option(params.context.as_deref());
-    let mut val = serde_json::to_value(&build_media(post, &state.site_url)).unwrap_or_default();
+    let mut val = serde_json::to_value(build_media(post, &state.site_url)).unwrap_or_default();
     filter_media_context(&mut val, context);
     Ok(Json(val))
 }
@@ -518,14 +516,7 @@ async fn create_media(
                     let part = part.trim();
                     if let Some(name) = part.strip_prefix("filename=") {
                         Some(name.trim_matches('"').to_string())
-                    } else if let Some(name) = part.strip_prefix("filename*=UTF-8''") {
-                        // URL-encoded filename
-                        Some(
-                            percent_decode_filename(name)
-                        )
-                    } else {
-                        None
-                    }
+                    } else { part.strip_prefix("filename*=UTF-8''").map(|name| percent_decode_filename(name)) }
                 })
             })
             .unwrap_or_else(|| format!("upload-{}.bin", chrono::Utc::now().timestamp()));
@@ -545,7 +536,13 @@ async fn create_media(
         // Sanitize filename
         let safe_name: String = filename
             .chars()
-            .map(|c| if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' { c } else { '_' })
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
             .collect();
 
         // Write to uploads/YYYY/MM/
@@ -559,18 +556,33 @@ async fn create_media(
         std::fs::write(&file_path, &bytes)
             .map_err(|e| WpError::internal(format!("Failed to write file: {}", e)))?;
 
-        let file_url = format!("{}/wp-content/uploads/{}/{}", state.site_url, sub_dir, safe_name);
+        let file_url = format!(
+            "{}/wp-content/uploads/{}/{}",
+            state.site_url, sub_dir, safe_name
+        );
 
         // Generate image sizes if it's an image
         let now_naive = now.naive_utc();
         let (orig_width, orig_height) = if mime_type.starts_with("image/") {
-            generate_image_sizes(&file_path, &upload_dir, &safe_name, &state.site_url, &sub_dir, &state.db, 0)
+            generate_image_sizes(
+                &file_path,
+                &upload_dir,
+                &safe_name,
+                &state.site_url,
+                &sub_dir,
+                &state.db,
+                0,
+            )
         } else {
             (0u32, 0u32)
         };
 
         // Create attachment post
-        let title = safe_name.rsplit_once('.').map(|(n, _)| n).unwrap_or(&safe_name).to_string();
+        let title = safe_name
+            .rsplit_once('.')
+            .map(|(n, _)| n)
+            .unwrap_or(&safe_name)
+            .to_string();
         let slug = crate::common::slugify(&title);
 
         let new_media = wp_posts::ActiveModel {
@@ -599,11 +611,20 @@ async fn create_media(
             comment_count: Set(0),
         };
 
-        let result = new_media.insert(&state.db)
+        let result = new_media
+            .insert(&state.db)
             .await
             .map_err(|e| WpError::internal(e.to_string()))?;
 
-        Ok((StatusCode::CREATED, Json(build_media_with_dimensions(result, &state.site_url, orig_width, orig_height))))
+        Ok((
+            StatusCode::CREATED,
+            Json(build_media_with_dimensions(
+                result,
+                &state.site_url,
+                orig_width,
+                orig_height,
+            )),
+        ))
     } else {
         // JSON metadata upload (original behavior for registering existing files)
         let body = request.into_body();
@@ -616,7 +637,9 @@ async fn create_media(
         let now = chrono::Utc::now().naive_utc();
         let title = input.title.unwrap_or_default();
         let slug = input.slug.unwrap_or_else(|| crate::common::slugify(&title));
-        let mime_type = input.mime_type.unwrap_or_else(|| "application/octet-stream".to_string());
+        let mime_type = input
+            .mime_type
+            .unwrap_or_else(|| "application/octet-stream".to_string());
         let source_url = input.source_url.unwrap_or_default();
 
         let new_media = wp_posts::ActiveModel {
@@ -645,11 +668,15 @@ async fn create_media(
             comment_count: Set(0),
         };
 
-        let result = new_media.insert(&state.db)
+        let result = new_media
+            .insert(&state.db)
             .await
             .map_err(|e| WpError::internal(e.to_string()))?;
 
-        Ok((StatusCode::CREATED, Json(build_media(result, &state.site_url))))
+        Ok((
+            StatusCode::CREATED,
+            Json(build_media(result, &state.site_url)),
+        ))
     }
 }
 
@@ -659,7 +686,7 @@ fn percent_decode_filename(s: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(hex) = std::str::from_utf8(&bytes[i+1..i+3]) {
+            if let Ok(hex) = std::str::from_utf8(&bytes[i + 1..i + 3]) {
                 if let Ok(b) = u8::from_str_radix(hex, 16) {
                     out.push(b as char);
                     i += 3;
@@ -674,7 +701,13 @@ fn percent_decode_filename(s: &str) -> String {
 }
 
 fn mime_from_filename(filename: &str) -> String {
-    match filename.rsplit('.').next().unwrap_or("").to_lowercase().as_str() {
+    match filename
+        .rsplit('.')
+        .next()
+        .unwrap_or("")
+        .to_lowercase()
+        .as_str()
+    {
         "jpg" | "jpeg" => "image/jpeg",
         "png" => "image/png",
         "gif" => "image/gif",
@@ -690,7 +723,8 @@ fn mime_from_filename(filename: &str) -> String {
         "xls" => "application/vnd.ms-excel",
         "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         _ => "application/octet-stream",
-    }.to_string()
+    }
+    .to_string()
 }
 
 fn generate_image_sizes(
@@ -840,7 +874,10 @@ mod tests {
 
     #[test]
     fn test_split_file_ext_with_extension() {
-        assert_eq!(split_file_ext("2026/03/photo.jpg"), ("2026/03/photo", "jpg"));
+        assert_eq!(
+            split_file_ext("2026/03/photo.jpg"),
+            ("2026/03/photo", "jpg")
+        );
     }
 
     #[test]
@@ -850,7 +887,10 @@ mod tests {
 
     #[test]
     fn test_split_file_ext_multiple_dots() {
-        assert_eq!(split_file_ext("my.photo.name.png"), ("my.photo.name", "png"));
+        assert_eq!(
+            split_file_ext("my.photo.name.png"),
+            ("my.photo.name", "png")
+        );
     }
 
     // -- build_image_sizes ---------------------------------------------------
@@ -935,13 +975,7 @@ mod tests {
     fn test_build_image_sizes_small_image() {
         // 200x150 image: only thumbnail (150x150 crop) should be generated
         // because all other sizes are larger than the original.
-        let sizes = build_image_sizes(
-            "http://example.com",
-            "tiny.png",
-            "image/png",
-            200,
-            200,
-        );
+        let sizes = build_image_sizes("http://example.com", "tiny.png", "image/png", 200, 200);
 
         assert!(sizes.contains_key("full"));
         assert!(sizes.contains_key("thumbnail"));
@@ -976,13 +1010,7 @@ mod tests {
 
     #[test]
     fn test_build_image_sizes_trailing_slash_in_site_url() {
-        let sizes = build_image_sizes(
-            "http://example.com/",
-            "photo.jpg",
-            "image/jpeg",
-            2000,
-            1000,
-        );
+        let sizes = build_image_sizes("http://example.com/", "photo.jpg", "image/jpeg", 2000, 1000);
         let full = &sizes["full"];
         assert_eq!(
             full.source_url,

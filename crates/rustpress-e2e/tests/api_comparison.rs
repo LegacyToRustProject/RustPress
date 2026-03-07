@@ -100,11 +100,7 @@ async fn put_json_auth(
 
 /// DELETE with authentication. WordPress REST API requires `?force=true` for
 /// permanent deletion.
-async fn delete_auth(
-    client: &reqwest::Client,
-    url: &str,
-    auth_header: &str,
-) -> Option<Value> {
+async fn delete_auth(client: &reqwest::Client, url: &str, auth_header: &str) -> Option<Value> {
     let resp = match client
         .delete(url)
         .header("Authorization", auth_header)
@@ -171,8 +167,16 @@ async fn test_rest_api_posts_list() {
 
     eprintln!("\n=== test_rest_api_posts_list ===");
 
-    let wp = fetch_json(&client, &format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url)).await;
-    let rp = fetch_json(&client, &format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url)).await;
+    let wp = fetch_json(
+        &client,
+        &format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url),
+    )
+    .await;
+    let rp = fetch_json(
+        &client,
+        &format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url),
+    )
+    .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
@@ -227,8 +231,8 @@ async fn test_rest_api_posts_fields() {
 
             // WordPress post objects have these standard fields:
             let expected_fields = [
-                "id", "date", "slug", "status", "type", "title", "content",
-                "excerpt", "author", "link",
+                "id", "date", "slug", "status", "type", "title", "content", "excerpt", "author",
+                "link",
             ];
             let rp_keys = json_top_keys(&rp_post);
             for field in &expected_fields {
@@ -254,8 +258,16 @@ async fn test_rest_api_users_list() {
 
     eprintln!("\n=== test_rest_api_users_list ===");
 
-    let wp = fetch_json(&client, &format!("{}/wp-json/wp/v2/users", cfg.wordpress_url)).await;
-    let rp = fetch_json(&client, &format!("{}/wp-json/wp/v2/users", cfg.rustpress_url)).await;
+    let wp = fetch_json(
+        &client,
+        &format!("{}/wp-json/wp/v2/users", cfg.wordpress_url),
+    )
+    .await;
+    let rp = fetch_json(
+        &client,
+        &format!("{}/wp-json/wp/v2/users", cfg.rustpress_url),
+    )
+    .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
@@ -309,8 +321,14 @@ async fn test_rest_api_categories() {
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /categories should be an array");
-            assert!(rp_val.is_array(), "RustPress /categories should be an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /categories should be an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /categories should be an array"
+            );
 
             if let (Some(wp_first), Some(rp_first)) = (
                 wp_val.as_array().and_then(|a| a.first()),
@@ -322,7 +340,11 @@ async fn test_rest_api_categories() {
                 for f in &expected {
                     eprintln!(
                         "  [{}] {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -376,7 +398,11 @@ async fn test_rest_api_tags() {
                 for f in &expected {
                     eprintln!(
                         "  [{}] {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -658,8 +684,14 @@ async fn test_rest_api_post_delete() {
             match (wp_del, rp_del) {
                 (Some(wp_val), Some(rp_val)) => {
                     // WordPress returns {"deleted": true, "previous": {...}}
-                    eprintln!("WordPress delete response keys: {:?}", json_top_keys(&wp_val));
-                    eprintln!("RustPress delete response keys: {:?}", json_top_keys(&rp_val));
+                    eprintln!(
+                        "WordPress delete response keys: {:?}",
+                        json_top_keys(&wp_val)
+                    );
+                    eprintln!(
+                        "RustPress delete response keys: {:?}",
+                        json_top_keys(&rp_val)
+                    );
                     eprintln!("[PASS] Both deleted posts successfully");
                 }
                 _ => eprintln!("[PARTIAL] Delete may have failed on one server"),
@@ -756,19 +788,13 @@ async fn test_rest_api_settings() {
     let wp_auth = wordpress_basic_auth(&cfg.admin_user, &cfg.admin_password);
 
     let wp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/settings",
-            cfg.wordpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
 
     let rp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/settings",
-            cfg.rustpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
         .send()
         .await;
 
@@ -830,11 +856,7 @@ async fn test_rest_api_statuses() {
 
             let expected = ["publish"];
             for s in &expected {
-                assert!(
-                    rp_keys.contains(*s),
-                    "RustPress should have '{}' status",
-                    s
-                );
+                assert!(rp_keys.contains(*s), "RustPress should have '{}' status", s);
                 eprintln!("  [OK] RustPress has status: {}", s);
             }
             eprintln!("[PASS] Statuses endpoint compared");
@@ -935,12 +957,25 @@ async fn test_rest_api_comments_list() {
                 assert_json_keys_match(wp_first, rp_first);
                 assert_json_types_match(wp_first, rp_first);
 
-                let expected = ["id", "post", "parent", "author_name", "content", "date", "status", "type"];
+                let expected = [
+                    "id",
+                    "post",
+                    "parent",
+                    "author_name",
+                    "content",
+                    "date",
+                    "status",
+                    "type",
+                ];
                 let rp_keys = json_top_keys(rp_first);
                 for f in &expected {
                     eprintln!(
                         "  [{}] {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -986,14 +1021,27 @@ async fn test_rest_api_pages_list() {
                 assert_json_types_match(wp_first, rp_first);
 
                 let expected = [
-                    "id", "date", "slug", "status", "type", "title", "content",
-                    "excerpt", "author", "parent", "menu_order",
+                    "id",
+                    "date",
+                    "slug",
+                    "status",
+                    "type",
+                    "title",
+                    "content",
+                    "excerpt",
+                    "author",
+                    "parent",
+                    "menu_order",
                 ];
                 let rp_keys = json_top_keys(rp_first);
                 for f in &expected {
                     eprintln!(
                         "  [{}] {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -1055,14 +1103,8 @@ async fn test_rest_api_pagination_headers() {
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("(absent)");
 
-                eprintln!(
-                    "    X-WP-Total - WP: {}, RP: {}",
-                    wp_total, rp_total
-                );
-                eprintln!(
-                    "    X-WP-TotalPages - WP: {}, RP: {}",
-                    wp_pages, rp_pages
-                );
+                eprintln!("    X-WP-Total - WP: {}, RP: {}", wp_total, rp_total);
+                eprintln!("    X-WP-TotalPages - WP: {}, RP: {}", wp_pages, rp_pages);
 
                 // RustPress should provide these headers
                 if rp_total != "(absent)" {
@@ -1116,7 +1158,11 @@ async fn test_rest_api_embed_parameter() {
                 "  _embedded present - WP: {}, RP: {} [{}]",
                 wp_has_embedded,
                 rp_has_embedded,
-                if wp_has_embedded == rp_has_embedded { "MATCH" } else { "DIFFER" }
+                if wp_has_embedded == rp_has_embedded {
+                    "MATCH"
+                } else {
+                    "DIFFER"
+                }
             );
 
             if let Some(rp_embedded) = rp_post.get("_embedded") {
@@ -1128,7 +1174,11 @@ async fn test_rest_api_embed_parameter() {
                 for key in &expected_embeds {
                     eprintln!(
                         "    [{}] {}",
-                        if embed_keys.contains(*key) { "OK" } else { "MISSING" },
+                        if embed_keys.contains(*key) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         key
                     );
                 }
@@ -1239,12 +1289,8 @@ async fn test_rest_api_post_rendered_fields() {
                 let wp_is_obj = wp_val.map(|v| v.is_object()).unwrap_or(false);
                 let rp_is_obj = rp_val.map(|v| v.is_object()).unwrap_or(false);
 
-                let wp_has_rendered = wp_val
-                    .and_then(|v| v.get("rendered"))
-                    .is_some();
-                let rp_has_rendered = rp_val
-                    .and_then(|v| v.get("rendered"))
-                    .is_some();
+                let wp_has_rendered = wp_val.and_then(|v| v.get("rendered")).is_some();
+                let rp_has_rendered = rp_val.and_then(|v| v.get("rendered")).is_some();
 
                 eprintln!(
                     "  {} - WP: obj={} rendered={}, RP: obj={} rendered={} [{}]",
@@ -1253,7 +1299,11 @@ async fn test_rest_api_post_rendered_fields() {
                     wp_has_rendered,
                     rp_is_obj,
                     rp_has_rendered,
-                    if wp_has_rendered == rp_has_rendered { "MATCH" } else { "DIFFER" }
+                    if wp_has_rendered == rp_has_rendered {
+                        "MATCH"
+                    } else {
+                        "DIFFER"
+                    }
                 );
             }
 
@@ -1295,13 +1345,15 @@ async fn test_rest_api_links() {
                 "  _links present - WP: {}, RP: {} [{}]",
                 wp_has_links,
                 rp_has_links,
-                if wp_has_links == rp_has_links { "MATCH" } else { "DIFFER" }
+                if wp_has_links == rp_has_links {
+                    "MATCH"
+                } else {
+                    "DIFFER"
+                }
             );
 
-            if let (Some(wp_links), Some(rp_links)) = (
-                wp_post.get("_links"),
-                rp_post.get("_links"),
-            ) {
+            if let (Some(wp_links), Some(rp_links)) = (wp_post.get("_links"), rp_post.get("_links"))
+            {
                 let wp_link_keys = json_top_keys(wp_links);
                 let rp_link_keys = json_top_keys(rp_links);
 
@@ -1313,7 +1365,11 @@ async fn test_rest_api_links() {
                 for link in &expected_links {
                     eprintln!(
                         "    [{}] {}",
-                        if rp_link_keys.contains(*link) { "OK" } else { "MISSING" },
+                        if rp_link_keys.contains(*link) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         link
                     );
                 }
@@ -1666,28 +1722,30 @@ async fn test_rest_api_users_me() {
     };
 
     let wp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/users/me",
-            cfg.wordpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/users/me", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/users/me",
-            cfg.rustpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/users/me", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
 
-    let wp_json = wp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
-    let rp_json = rp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+    let wp_json = wp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
+    let rp_json = rp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
 
     match (wp_json, rp_json) {
         (Some(wp_r), Some(rp_r)) => {
@@ -1703,7 +1761,11 @@ async fn test_rest_api_users_me() {
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -1717,7 +1779,11 @@ async fn test_rest_api_users_me() {
                     "  User slug - WP: {}, RP: {} [{}]",
                     wp_slug,
                     rp_slug,
-                    if wp_slug == rp_slug { "MATCH" } else { "DIFFER" }
+                    if wp_slug == rp_slug {
+                        "MATCH"
+                    } else {
+                        "DIFFER"
+                    }
                 );
             }
 
@@ -1740,18 +1806,12 @@ async fn test_rest_api_search() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/search?search=hello",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/search?search=hello", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/search?search=hello",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/search?search=hello", cfg.rustpress_url),
     )
     .await;
 
@@ -1779,7 +1839,11 @@ async fn test_rest_api_search() {
                 for f in &expected {
                     eprintln!(
                         "  [{}] {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -1824,8 +1888,14 @@ async fn test_rest_api_posts_orderby() {
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?orderby=title should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?orderby=title should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?orderby=title should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?orderby=title should return an array"
+            );
 
             // Verify that both return arrays sorted by title ascending
             let wp_titles: Vec<String> = wp_val
@@ -1903,25 +1973,25 @@ async fn test_rest_api_posts_search() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?search=hello",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?search=hello", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?search=hello",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?search=hello", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?search=hello should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?search=hello should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?search=hello should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?search=hello should return an array"
+            );
 
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
@@ -1997,10 +2067,18 @@ async fn test_rest_api_posts_by_status() {
         .await;
 
     let wp_val = wp_resp.ok().and_then(|r| {
-        if r.status().is_success() { Some(r) } else { None }
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
     });
     let rp_val = rp_resp.ok().and_then(|r| {
-        if r.status().is_success() { Some(r) } else { None }
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
     });
 
     match (wp_val, rp_val) {
@@ -2008,8 +2086,14 @@ async fn test_rest_api_posts_by_status() {
             let wp_json: Value = wp_r.json().await.unwrap_or(Value::Null);
             let rp_json: Value = rp_r.json().await.unwrap_or(Value::Null);
 
-            assert!(wp_json.is_array(), "WordPress /posts?status=draft should return an array");
-            assert!(rp_json.is_array(), "RustPress /posts?status=draft should return an array");
+            assert!(
+                wp_json.is_array(),
+                "WordPress /posts?status=draft should return an array"
+            );
+            assert!(
+                rp_json.is_array(),
+                "RustPress /posts?status=draft should return an array"
+            );
 
             eprintln!(
                 "WordPress drafts: {}, RustPress drafts: {}",
@@ -2051,25 +2135,25 @@ async fn test_rest_api_posts_per_page() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?per_page=1",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?per_page=1", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?per_page=1",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?per_page=1", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?per_page=1 should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?per_page=1 should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?per_page=1 should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?per_page=1 should return an array"
+            );
 
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
@@ -2107,25 +2191,25 @@ async fn test_rest_api_posts_by_category() {
     // Category 1 is typically "Uncategorized" in WordPress
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?categories=1",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?categories=1", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?categories=1",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?categories=1", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?categories=1 should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?categories=1 should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?categories=1 should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?categories=1 should return an array"
+            );
 
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
@@ -2175,25 +2259,25 @@ async fn test_rest_api_posts_by_tag() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?tags=1",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?tags=1", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?tags=1",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?tags=1", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?tags=1 should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?tags=1 should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?tags=1 should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?tags=1 should return an array"
+            );
 
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
@@ -2229,25 +2313,25 @@ async fn test_rest_api_posts_exclude() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?exclude=1",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?exclude=1", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?exclude=1",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?exclude=1", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?exclude=1 should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?exclude=1 should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?exclude=1 should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?exclude=1 should return an array"
+            );
 
             // Verify post ID 1 is not in either result set
             let wp_has_id_1 = wp_val
@@ -2292,25 +2376,25 @@ async fn test_rest_api_posts_slug() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?slug=hello-world",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?slug=hello-world", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?slug=hello-world",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?slug=hello-world", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?slug=hello-world should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?slug=hello-world should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?slug=hello-world should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?slug=hello-world should return an array"
+            );
 
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
@@ -2370,8 +2454,14 @@ async fn test_rest_api_post_single() {
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
             // Single post should be an object, not an array
-            assert!(wp_val.is_object(), "WordPress /posts/1 should return an object");
-            assert!(rp_val.is_object(), "RustPress /posts/1 should return an object");
+            assert!(
+                wp_val.is_object(),
+                "WordPress /posts/1 should return an object"
+            );
+            assert!(
+                rp_val.is_object(),
+                "RustPress /posts/1 should return an object"
+            );
 
             assert_json_keys_match(&wp_val, &rp_val);
             assert_json_types_match(&wp_val, &rp_val);
@@ -2384,14 +2474,18 @@ async fn test_rest_api_post_single() {
             }
 
             let expected = [
-                "id", "date", "slug", "status", "type", "title", "content",
-                "excerpt", "author", "link",
+                "id", "date", "slug", "status", "type", "title", "content", "excerpt", "author",
+                "link",
             ];
             let rp_keys = json_top_keys(&rp_val);
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -2453,22 +2547,43 @@ async fn test_rest_api_page_single() {
 
             match (wp, rp) {
                 (Some(wp_val), Some(rp_val)) => {
-                    assert!(wp_val.is_object(), "WordPress /pages/{} should return an object", wp_id);
-                    assert!(rp_val.is_object(), "RustPress /pages/{} should return an object", rp_id);
+                    assert!(
+                        wp_val.is_object(),
+                        "WordPress /pages/{} should return an object",
+                        wp_id
+                    );
+                    assert!(
+                        rp_val.is_object(),
+                        "RustPress /pages/{} should return an object",
+                        rp_id
+                    );
 
                     assert_json_keys_match(&wp_val, &rp_val);
                     assert_json_types_match(&wp_val, &rp_val);
                     assert_json_structure_match(&wp_val, &rp_val);
 
                     let expected = [
-                        "id", "date", "slug", "status", "type", "title", "content",
-                        "excerpt", "author", "parent", "menu_order",
+                        "id",
+                        "date",
+                        "slug",
+                        "status",
+                        "type",
+                        "title",
+                        "content",
+                        "excerpt",
+                        "author",
+                        "parent",
+                        "menu_order",
                     ];
                     let rp_keys = json_top_keys(&rp_val);
                     for f in &expected {
                         eprintln!(
                             "  [{}] {}",
-                            if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                            if rp_keys.contains(*f) {
+                                "OK"
+                            } else {
+                                "MISSING"
+                            },
                             f
                         );
                     }
@@ -2506,8 +2621,14 @@ async fn test_rest_api_user_single() {
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_object(), "WordPress /users/1 should return an object");
-            assert!(rp_val.is_object(), "RustPress /users/1 should return an object");
+            assert!(
+                wp_val.is_object(),
+                "WordPress /users/1 should return an object"
+            );
+            assert!(
+                rp_val.is_object(),
+                "RustPress /users/1 should return an object"
+            );
 
             assert_json_keys_match(&wp_val, &rp_val);
             assert_json_types_match(&wp_val, &rp_val);
@@ -2523,7 +2644,11 @@ async fn test_rest_api_user_single() {
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -2558,8 +2683,14 @@ async fn test_rest_api_category_single() {
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_object(), "WordPress /categories/1 should return an object");
-            assert!(rp_val.is_object(), "RustPress /categories/1 should return an object");
+            assert!(
+                wp_val.is_object(),
+                "WordPress /categories/1 should return an object"
+            );
+            assert!(
+                rp_val.is_object(),
+                "RustPress /categories/1 should return an object"
+            );
 
             assert_json_keys_match(&wp_val, &rp_val);
             assert_json_types_match(&wp_val, &rp_val);
@@ -2575,7 +2706,11 @@ async fn test_rest_api_category_single() {
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -2614,14 +2749,25 @@ async fn test_rest_api_media_fields() {
             assert_json_types_match(&wp_media, &rp_media);
 
             let expected = [
-                "id", "date", "slug", "status", "type", "title", "author",
-                "mime_type", "source_url",
+                "id",
+                "date",
+                "slug",
+                "status",
+                "type",
+                "title",
+                "author",
+                "mime_type",
+                "source_url",
             ];
             let rp_keys = json_top_keys(&rp_media);
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -2660,14 +2806,27 @@ async fn test_rest_api_comments_fields() {
             assert_json_types_match(&wp_comment, &rp_comment);
 
             let expected = [
-                "id", "post", "parent", "author", "author_name", "author_email",
-                "content", "date", "status", "type", "link",
+                "id",
+                "post",
+                "parent",
+                "author",
+                "author_name",
+                "author_email",
+                "content",
+                "date",
+                "status",
+                "type",
+                "link",
             ];
             let rp_keys = json_top_keys(&rp_comment);
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -2712,36 +2871,44 @@ async fn test_rest_api_media_crud() {
     // Multipart upload requires the "multipart" feature in reqwest, so we
     // focus on comparing the GET /media response structure with auth.
     let wp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/media",
-            cfg.wordpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/media", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/media",
-            cfg.rustpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/media", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
 
-    let wp_val = wp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
-    let rp_val = rp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+    let wp_val = wp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
+    let rp_val = rp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
 
     match (wp_val, rp_val) {
         (Some(wp_r), Some(rp_r)) => {
             let wp_json: Value = wp_r.json().await.unwrap_or(Value::Null);
             let rp_json: Value = rp_r.json().await.unwrap_or(Value::Null);
 
-            assert!(wp_json.is_array(), "WordPress /media should return an array");
-            assert!(rp_json.is_array(), "RustPress /media should return an array");
+            assert!(
+                wp_json.is_array(),
+                "WordPress /media should return an array"
+            );
+            assert!(
+                rp_json.is_array(),
+                "RustPress /media should return an array"
+            );
 
             eprintln!(
                 "WordPress media (auth): {}, RustPress media (auth): {}",
@@ -2758,14 +2925,25 @@ async fn test_rest_api_media_crud() {
                 assert_json_types_match(wp_first, rp_first);
 
                 let expected = [
-                    "id", "date", "slug", "status", "type", "title", "author",
-                    "mime_type", "source_url",
+                    "id",
+                    "date",
+                    "slug",
+                    "status",
+                    "type",
+                    "title",
+                    "author",
+                    "mime_type",
+                    "source_url",
                 ];
                 let rp_keys = json_top_keys(rp_first);
                 for f in &expected {
                     eprintln!(
                         "  [{}] {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -2805,28 +2983,30 @@ async fn test_rest_api_settings_read() {
     };
 
     let wp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/settings",
-            cfg.wordpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/settings",
-            cfg.rustpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await;
 
-    let wp_val = wp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
-    let rp_val = rp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+    let wp_val = wp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
+    let rp_val = rp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
 
     match (wp_val, rp_val) {
         (Some(wp_r), Some(rp_r)) => {
@@ -2837,15 +3017,25 @@ async fn test_rest_api_settings_read() {
 
             // WordPress settings should include these common keys
             let expected = [
-                "title", "description", "url", "email",
-                "timezone_string", "date_format", "time_format",
-                "posts_per_page", "default_comment_status",
+                "title",
+                "description",
+                "url",
+                "email",
+                "timezone_string",
+                "date_format",
+                "time_format",
+                "posts_per_page",
+                "default_comment_status",
             ];
             let rp_keys = json_top_keys(&rp_json);
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -2885,25 +3075,31 @@ async fn test_rest_api_settings_update() {
 
     // First, read the current description so we can restore it
     let wp_original = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/settings",
-            cfg.wordpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/settings", cfg.wordpress_url))
         .header("Authorization", &wp_auth)
         .send()
         .await
         .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+        .and_then(|r| {
+            if r.status().is_success() {
+                Some(r)
+            } else {
+                None
+            }
+        });
     let rp_original = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/settings",
-            cfg.rustpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/settings", cfg.rustpress_url))
         .header("Authorization", &rp_token)
         .send()
         .await
         .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+        .and_then(|r| {
+            if r.status().is_success() {
+                Some(r)
+            } else {
+                None
+            }
+        });
 
     let wp_orig_json: Value = match wp_original {
         Some(r) => r.json().await.unwrap_or(Value::Null),
@@ -3133,19 +3329,13 @@ async fn test_rest_api_comment_create_anonymous() {
 
     // POST without auth header
     let wp_resp = client
-        .post(&format!(
-            "{}/wp-json/wp/v2/comments",
-            cfg.wordpress_url
-        ))
+        .post(&format!("{}/wp-json/wp/v2/comments", cfg.wordpress_url))
         .header("Content-Type", "application/json")
         .json(&wp_comment_body)
         .send()
         .await;
     let rp_resp = client
-        .post(&format!(
-            "{}/wp-json/wp/v2/comments",
-            cfg.rustpress_url
-        ))
+        .post(&format!("{}/wp-json/wp/v2/comments", cfg.rustpress_url))
         .header("Content-Type", "application/json")
         .json(&rp_comment_body)
         .send()
@@ -3219,8 +3409,16 @@ async fn test_rest_api_comment_create_anonymous() {
         _ => {
             eprintln!(
                 "[WARN] Behavior differs: WP={}, RP={}",
-                if wp_val.is_some() { "accepted" } else { "rejected" },
-                if rp_val.is_some() { "accepted" } else { "rejected" }
+                if wp_val.is_some() {
+                    "accepted"
+                } else {
+                    "rejected"
+                },
+                if rp_val.is_some() {
+                    "accepted"
+                } else {
+                    "rejected"
+                }
             );
         }
     }
@@ -3341,7 +3539,11 @@ async fn test_rest_api_post_revisions() {
                 for f in &expected {
                     eprintln!(
                         "  [{}] {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -3366,17 +3568,11 @@ async fn test_rest_api_error_not_found() {
 
     // Request a non-existent post
     let wp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/posts/999999",
-            cfg.wordpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/posts/999999", cfg.wordpress_url))
         .send()
         .await;
     let rp_resp = client
-        .get(&format!(
-            "{}/wp-json/wp/v2/posts/999999",
-            cfg.rustpress_url
-        ))
+        .get(&format!("{}/wp-json/wp/v2/posts/999999", cfg.rustpress_url))
         .send()
         .await;
 
@@ -3387,8 +3583,14 @@ async fn test_rest_api_error_not_found() {
     eprintln!("RustPress 404 status: {}", rp_status);
 
     // Both should return 404
-    assert_eq!(wp_status, 404, "WordPress should return 404 for non-existent post");
-    assert_eq!(rp_status, 404, "RustPress should return 404 for non-existent post");
+    assert_eq!(
+        wp_status, 404,
+        "WordPress should return 404 for non-existent post"
+    );
+    assert_eq!(
+        rp_status, 404,
+        "RustPress should return 404 for non-existent post"
+    );
 
     // Compare error response structure
     let wp_json: Option<Value> = match wp_resp {
@@ -3408,7 +3610,11 @@ async fn test_rest_api_error_not_found() {
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -3438,19 +3644,13 @@ async fn test_rest_api_error_unauthorized() {
     });
 
     let wp_resp = client
-        .post(&format!(
-            "{}/wp-json/wp/v2/posts",
-            cfg.wordpress_url
-        ))
+        .post(&format!("{}/wp-json/wp/v2/posts", cfg.wordpress_url))
         .header("Content-Type", "application/json")
         .json(&post_body)
         .send()
         .await;
     let rp_resp = client
-        .post(&format!(
-            "{}/wp-json/wp/v2/posts",
-            cfg.rustpress_url
-        ))
+        .post(&format!("{}/wp-json/wp/v2/posts", cfg.rustpress_url))
         .header("Content-Type", "application/json")
         .json(&post_body)
         .send()
@@ -3490,7 +3690,11 @@ async fn test_rest_api_error_unauthorized() {
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -3562,7 +3766,11 @@ async fn test_rest_api_error_invalid_param() {
             for f in &expected {
                 eprintln!(
                     "  [{}] {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -3606,14 +3814,23 @@ async fn test_rest_api_post_types_structure() {
                 assert_json_types_match(wp_post, rp_post);
 
                 let expected = [
-                    "description", "hierarchical", "has_archive", "name", "slug",
-                    "rest_base", "rest_namespace",
+                    "description",
+                    "hierarchical",
+                    "has_archive",
+                    "name",
+                    "slug",
+                    "rest_base",
+                    "rest_namespace",
                 ];
                 let rp_keys = json_top_keys(rp_post);
                 for f in &expected {
                     eprintln!(
                         "  [{}] post type field: {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -3670,7 +3887,11 @@ async fn test_rest_api_statuses_structure() {
                 for f in &expected {
                     eprintln!(
                         "  [{}] publish status field: {}",
-                        if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -3725,21 +3946,27 @@ async fn test_rest_api_taxonomies_structure() {
             }
 
             // Compare category taxonomy structure in detail
-            if let (Some(wp_cat), Some(rp_cat)) =
-                (wp_val.get("category"), rp_val.get("category"))
-            {
+            if let (Some(wp_cat), Some(rp_cat)) = (wp_val.get("category"), rp_val.get("category")) {
                 assert_json_keys_match(wp_cat, rp_cat);
                 assert_json_types_match(wp_cat, rp_cat);
 
                 let expected = [
-                    "name", "slug", "description", "hierarchical",
-                    "rest_base", "rest_namespace",
+                    "name",
+                    "slug",
+                    "description",
+                    "hierarchical",
+                    "rest_base",
+                    "rest_namespace",
                 ];
                 let rp_cat_keys = json_top_keys(rp_cat);
                 for f in &expected {
                     eprintln!(
                         "  [{}] category taxonomy field: {}",
-                        if rp_cat_keys.contains(*f) { "OK" } else { "MISSING" },
+                        if rp_cat_keys.contains(*f) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         f
                     );
                 }
@@ -3781,20 +4008,34 @@ async fn test_rest_api_categories_orderby() {
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /categories?orderby=name should return an array");
-            assert!(rp_val.is_array(), "RustPress /categories?orderby=name should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /categories?orderby=name should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /categories?orderby=name should return an array"
+            );
 
             let wp_names: Vec<String> = wp_val
                 .as_array()
                 .unwrap()
                 .iter()
-                .filter_map(|c| c.get("name").and_then(|n| n.as_str()).map(|s| s.to_lowercase()))
+                .filter_map(|c| {
+                    c.get("name")
+                        .and_then(|n| n.as_str())
+                        .map(|s| s.to_lowercase())
+                })
                 .collect();
             let rp_names: Vec<String> = rp_val
                 .as_array()
                 .unwrap()
                 .iter()
-                .filter_map(|c| c.get("name").and_then(|n| n.as_str()).map(|s| s.to_lowercase()))
+                .filter_map(|c| {
+                    c.get("name")
+                        .and_then(|n| n.as_str())
+                        .map(|s| s.to_lowercase())
+                })
                 .collect();
 
             let rp_sorted = {
@@ -3839,25 +4080,25 @@ async fn test_rest_api_tags_search() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/tags?search=test",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/tags?search=test", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/tags?search=test",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/tags?search=test", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /tags?search=test should return an array");
-            assert!(rp_val.is_array(), "RustPress /tags?search=test should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /tags?search=test should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /tags?search=test should return an array"
+            );
 
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
@@ -3893,37 +4134,45 @@ async fn test_rest_api_users_orderby() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/users?orderby=name",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/users?orderby=name", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/users?orderby=name",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/users?orderby=name", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /users?orderby=name should return an array");
-            assert!(rp_val.is_array(), "RustPress /users?orderby=name should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /users?orderby=name should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /users?orderby=name should return an array"
+            );
 
             let wp_names: Vec<String> = wp_val
                 .as_array()
                 .unwrap()
                 .iter()
-                .filter_map(|u| u.get("name").and_then(|n| n.as_str()).map(|s| s.to_lowercase()))
+                .filter_map(|u| {
+                    u.get("name")
+                        .and_then(|n| n.as_str())
+                        .map(|s| s.to_lowercase())
+                })
                 .collect();
             let rp_names: Vec<String> = rp_val
                 .as_array()
                 .unwrap()
                 .iter()
-                .filter_map(|u| u.get("name").and_then(|n| n.as_str()).map(|s| s.to_lowercase()))
+                .filter_map(|u| {
+                    u.get("name")
+                        .and_then(|n| n.as_str())
+                        .map(|s| s.to_lowercase())
+                })
                 .collect();
 
             eprintln!("WordPress users ordered by name: {:?}", wp_names);
@@ -4004,7 +4253,10 @@ async fn test_rest_api_page_crud() {
             // READ
             let wp_read = fetch_json(
                 &client,
-                &format!("{}/wp-json/wp/v2/pages/{}?context=edit", cfg.wordpress_url, wp_id),
+                &format!(
+                    "{}/wp-json/wp/v2/pages/{}?context=edit",
+                    cfg.wordpress_url, wp_id
+                ),
             )
             .await;
             let rp_read_resp = client
@@ -4015,9 +4267,13 @@ async fn test_rest_api_page_crud() {
                 .header("Authorization", &rp_token)
                 .send()
                 .await;
-            let rp_read = rp_read_resp
-                .ok()
-                .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+            let rp_read = rp_read_resp.ok().and_then(|r| {
+                if r.status().is_success() {
+                    Some(r)
+                } else {
+                    None
+                }
+            });
             let rp_read_json = match rp_read {
                 Some(r) => r.json::<Value>().await.ok(),
                 None => None,
@@ -4032,9 +4288,13 @@ async fn test_rest_api_page_crud() {
                 .header("Authorization", &wp_auth)
                 .send()
                 .await;
-            let wp_read_json = wp_read_resp
-                .ok()
-                .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+            let wp_read_json = wp_read_resp.ok().and_then(|r| {
+                if r.status().is_success() {
+                    Some(r)
+                } else {
+                    None
+                }
+            });
             let wp_read_val = match wp_read_json {
                 Some(r) => r.json::<Value>().await.ok(),
                 None => wp_read,
@@ -4145,12 +4405,20 @@ async fn test_rest_api_post_context_edit() {
         .send()
         .await;
 
-    let wp_val = wp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
-    let rp_val = rp_resp
-        .ok()
-        .and_then(|r| if r.status().is_success() { Some(r) } else { None });
+    let wp_val = wp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
+    let rp_val = rp_resp.ok().and_then(|r| {
+        if r.status().is_success() {
+            Some(r)
+        } else {
+            None
+        }
+    });
 
     match (wp_val, rp_val) {
         (Some(wp_r), Some(rp_r)) => {
@@ -4163,21 +4431,19 @@ async fn test_rest_api_post_context_edit() {
             // In edit context, title/content/excerpt should have "raw" in addition to "rendered"
             let rendered_fields = ["title", "content", "excerpt"];
             for field in &rendered_fields {
-                let wp_has_raw = wp_json
-                    .get(*field)
-                    .and_then(|v| v.get("raw"))
-                    .is_some();
-                let rp_has_raw = rp_json
-                    .get(*field)
-                    .and_then(|v| v.get("raw"))
-                    .is_some();
+                let wp_has_raw = wp_json.get(*field).and_then(|v| v.get("raw")).is_some();
+                let rp_has_raw = rp_json.get(*field).and_then(|v| v.get("raw")).is_some();
 
                 eprintln!(
                     "  {}.raw - WP: {}, RP: {} [{}]",
                     field,
                     wp_has_raw,
                     rp_has_raw,
-                    if wp_has_raw == rp_has_raw { "MATCH" } else { "DIFFER" }
+                    if wp_has_raw == rp_has_raw {
+                        "MATCH"
+                    } else {
+                        "DIFFER"
+                    }
                 );
             }
 
@@ -4187,7 +4453,11 @@ async fn test_rest_api_post_context_edit() {
             for f in &edit_fields {
                 eprintln!(
                     "  [{}] edit context field: {}",
-                    if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                    if rp_keys.contains(*f) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     f
                 );
             }
@@ -4211,25 +4481,25 @@ async fn test_rest_api_posts_sticky() {
 
     let wp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?sticky=true",
-            cfg.wordpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?sticky=true", cfg.wordpress_url),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!(
-            "{}/wp-json/wp/v2/posts?sticky=true",
-            cfg.rustpress_url
-        ),
+        &format!("{}/wp-json/wp/v2/posts?sticky=true", cfg.rustpress_url),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress /posts?sticky=true should return an array");
-            assert!(rp_val.is_array(), "RustPress /posts?sticky=true should return an array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress /posts?sticky=true should return an array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress /posts?sticky=true should return an array"
+            );
 
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
@@ -4297,11 +4567,19 @@ async fn test_rest_api_embed_author() {
 
             eprintln!(
                 "WordPress _embedded.author: {}",
-                if wp_author.is_some() { "present" } else { "absent" }
+                if wp_author.is_some() {
+                    "present"
+                } else {
+                    "absent"
+                }
             );
             eprintln!(
                 "RustPress _embedded.author: {}",
-                if rp_author.is_some() { "present" } else { "absent" }
+                if rp_author.is_some() {
+                    "present"
+                } else {
+                    "absent"
+                }
             );
 
             match (wp_author, rp_author) {
@@ -4317,7 +4595,11 @@ async fn test_rest_api_embed_author() {
                         for f in &expected {
                             eprintln!(
                                 "  [{}] embedded author field: {}",
-                                if rp_keys.contains(*f) { "OK" } else { "MISSING" },
+                                if rp_keys.contains(*f) {
+                                    "OK"
+                                } else {
+                                    "MISSING"
+                                },
                                 f
                             );
                         }
@@ -4356,20 +4638,24 @@ async fn test_rest_api_embed_replies() {
     match (wp, rp) {
         (Some(wp_post), Some(rp_post)) => {
             // Check _embedded.replies exists (array of comment arrays)
-            let wp_replies = wp_post
-                .get("_embedded")
-                .and_then(|e| e.get("replies"));
-            let rp_replies = rp_post
-                .get("_embedded")
-                .and_then(|e| e.get("replies"));
+            let wp_replies = wp_post.get("_embedded").and_then(|e| e.get("replies"));
+            let rp_replies = rp_post.get("_embedded").and_then(|e| e.get("replies"));
 
             eprintln!(
                 "WordPress _embedded.replies: {}",
-                if wp_replies.is_some() { "present" } else { "absent" }
+                if wp_replies.is_some() {
+                    "present"
+                } else {
+                    "absent"
+                }
             );
             eprintln!(
                 "RustPress _embedded.replies: {}",
-                if rp_replies.is_some() { "present" } else { "absent" }
+                if rp_replies.is_some() {
+                    "present"
+                } else {
+                    "absent"
+                }
             );
 
             match (wp_replies, rp_replies) {
@@ -4411,7 +4697,9 @@ async fn test_rest_api_embed_replies() {
                     eprintln!("[INFO] RustPress has embedded replies but WordPress does not");
                 }
                 (None, None) => {
-                    eprintln!("[OK] Neither server has embedded replies (post may have no comments)");
+                    eprintln!(
+                        "[OK] Neither server has embedded replies (post may have no comments)"
+                    );
                 }
             }
         }
@@ -4464,14 +4752,8 @@ async fn test_rest_api_posts_after_before() {
             let wp_count = wp_val.as_array().map(|a| a.len()).unwrap_or(0);
             let rp_count = rp_val.as_array().map(|a| a.len()).unwrap_or(0);
 
-            eprintln!(
-                "WordPress posts in date range: {}",
-                wp_count
-            );
-            eprintln!(
-                "RustPress posts in date range: {}",
-                rp_count
-            );
+            eprintln!("WordPress posts in date range: {}", wp_count);
+            eprintln!("RustPress posts in date range: {}", rp_count);
 
             // Verify dates are within range for RustPress results
             if let Some(rp_arr) = rp_val.as_array() {
@@ -4519,23 +4801,38 @@ async fn test_rest_api_block_patterns_categories() {
 
     let wp = fetch_json(
         &client,
-        &format!("{}/wp-json/wp/v2/block-patterns/categories", cfg.wordpress_url),
+        &format!(
+            "{}/wp-json/wp/v2/block-patterns/categories",
+            cfg.wordpress_url
+        ),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!("{}/wp-json/wp/v2/block-patterns/categories", cfg.rustpress_url),
+        &format!(
+            "{}/wp-json/wp/v2/block-patterns/categories",
+            cfg.rustpress_url
+        ),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress block-patterns/categories should be array");
-            assert!(rp_val.is_array(), "RustPress block-patterns/categories should be array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress block-patterns/categories should be array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress block-patterns/categories should be array"
+            );
 
             let rp_arr = rp_val.as_array().unwrap();
             eprintln!("RustPress pattern categories count: {}", rp_arr.len());
-            assert!(!rp_arr.is_empty(), "RustPress should return at least one category");
+            assert!(
+                !rp_arr.is_empty(),
+                "RustPress should return at least one category"
+            );
 
             // Each category should have name and label
             if let Some(first) = rp_arr.first() {
@@ -4546,10 +4843,9 @@ async fn test_rest_api_block_patterns_categories() {
             }
 
             // Compare structure with WordPress
-            if let (Some(wp_first), Some(rp_first)) = (
-                wp_val.as_array().and_then(|a| a.first()),
-                rp_arr.first(),
-            ) {
+            if let (Some(wp_first), Some(rp_first)) =
+                (wp_val.as_array().and_then(|a| a.first()), rp_arr.first())
+            {
                 assert_json_keys_match(wp_first, rp_first);
             }
 
@@ -4572,23 +4868,38 @@ async fn test_rest_api_block_patterns_patterns() {
 
     let wp = fetch_json(
         &client,
-        &format!("{}/wp-json/wp/v2/block-patterns/patterns", cfg.wordpress_url),
+        &format!(
+            "{}/wp-json/wp/v2/block-patterns/patterns",
+            cfg.wordpress_url
+        ),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!("{}/wp-json/wp/v2/block-patterns/patterns", cfg.rustpress_url),
+        &format!(
+            "{}/wp-json/wp/v2/block-patterns/patterns",
+            cfg.rustpress_url
+        ),
     )
     .await;
 
     match (wp, rp) {
         (Some(wp_val), Some(rp_val)) => {
-            assert!(wp_val.is_array(), "WordPress block-patterns/patterns should be array");
-            assert!(rp_val.is_array(), "RustPress block-patterns/patterns should be array");
+            assert!(
+                wp_val.is_array(),
+                "WordPress block-patterns/patterns should be array"
+            );
+            assert!(
+                rp_val.is_array(),
+                "RustPress block-patterns/patterns should be array"
+            );
 
             let rp_arr = rp_val.as_array().unwrap();
             eprintln!("RustPress patterns count: {}", rp_arr.len());
-            assert!(!rp_arr.is_empty(), "RustPress should return at least one pattern");
+            assert!(
+                !rp_arr.is_empty(),
+                "RustPress should return at least one pattern"
+            );
 
             // Each pattern should have name, title, content
             if let Some(first) = rp_arr.first() {
@@ -4596,17 +4907,20 @@ async fn test_rest_api_block_patterns_patterns() {
                 for field in &["name", "title", "content", "categories"] {
                     eprintln!(
                         "  [{}] {}",
-                        if keys.contains(*field) { "OK" } else { "MISSING" },
+                        if keys.contains(*field) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         field
                     );
                 }
             }
 
             // Compare structure with WordPress first element
-            if let (Some(wp_first), Some(rp_first)) = (
-                wp_val.as_array().and_then(|a| a.first()),
-                rp_arr.first(),
-            ) {
+            if let (Some(wp_first), Some(rp_first)) =
+                (wp_val.as_array().and_then(|a| a.first()), rp_arr.first())
+            {
                 assert_json_keys_match(wp_first, rp_first);
             }
 
@@ -4639,15 +4953,18 @@ async fn test_rest_api_block_types_list() {
 
     match rp {
         Some(rp_val) => {
-            assert!(rp_val.is_array(), "RustPress /block-types should return array");
+            assert!(
+                rp_val.is_array(),
+                "RustPress /block-types should return array"
+            );
             let arr = rp_val.as_array().unwrap();
             eprintln!("RustPress block types count: {}", arr.len());
             assert!(arr.len() >= 10, "Should have at least 10 core block types");
 
             // core/paragraph should be present
-            let has_paragraph = arr.iter().any(|b| {
-                b.get("name").and_then(|v| v.as_str()) == Some("core/paragraph")
-            });
+            let has_paragraph = arr
+                .iter()
+                .any(|b| b.get("name").and_then(|v| v.as_str()) == Some("core/paragraph"));
             if has_paragraph {
                 eprintln!("[OK] core/paragraph block type present");
             } else {
@@ -4660,7 +4977,11 @@ async fn test_rest_api_block_types_list() {
                 for field in &["name", "title", "description"] {
                     eprintln!(
                         "  [{}] {}",
-                        if keys.contains(*field) { "OK" } else { "MISSING" },
+                        if keys.contains(*field) {
+                            "OK"
+                        } else {
+                            "MISSING"
+                        },
                         field
                     );
                 }
@@ -4685,9 +5006,19 @@ async fn test_rest_api_templates_list() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] Could not get RustPress token: {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            return;
+        }
     };
     let wp_auth = wordpress_basic_auth(&cfg.admin_user, &cfg.admin_password);
 
@@ -4754,9 +5085,19 @@ async fn test_rest_api_application_passwords_crud() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] Could not get RustPress token: {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] Could not get RustPress token: {}", e);
+            return;
+        }
     };
     let wp_auth = wordpress_basic_auth(&cfg.admin_user, &cfg.admin_password);
 
@@ -4770,11 +5111,12 @@ async fn test_rest_api_application_passwords_crud() {
             .send()
             .await;
         match r {
-            Ok(resp) if resp.status().is_success() => {
-                resp.json::<Value>().await.ok()
-                    .and_then(|u| u.get("id").and_then(|v| v.as_u64()))
-                    .unwrap_or(1)
-            }
+            Ok(resp) if resp.status().is_success() => resp
+                .json::<Value>()
+                .await
+                .ok()
+                .and_then(|u| u.get("id").and_then(|v| v.as_u64()))
+                .unwrap_or(1),
             _ => 1,
         }
     };
@@ -4785,7 +5127,10 @@ async fn test_rest_api_application_passwords_crud() {
     let create_body = serde_json::json!({"name": "E2E Test Password"});
     let rp_created = post_json_auth(
         &client,
-        &format!("{}/wp-json/wp/v2/users/{}/application-passwords", cfg.rustpress_url, rp_user_id),
+        &format!(
+            "{}/wp-json/wp/v2/users/{}/application-passwords",
+            cfg.rustpress_url, rp_user_id
+        ),
         &create_body,
         &rp_token,
     )
@@ -4800,7 +5145,11 @@ async fn test_rest_api_application_passwords_crud() {
             for field in &["uuid", "name", "password"] {
                 eprintln!(
                     "  [{}] {}",
-                    if ap_keys.contains(*field) { "OK" } else { "MISSING" },
+                    if ap_keys.contains(*field) {
+                        "OK"
+                    } else {
+                        "MISSING"
+                    },
                     field
                 );
             }
@@ -4813,18 +5162,22 @@ async fn test_rest_api_application_passwords_crud() {
                     .send()
                     .await;
                 match r {
-                    Ok(resp) if resp.status().is_success() => {
-                        resp.json::<Value>().await.ok()
-                            .and_then(|u| u.get("id").and_then(|v| v.as_u64()))
-                            .unwrap_or(1)
-                    }
+                    Ok(resp) if resp.status().is_success() => resp
+                        .json::<Value>()
+                        .await
+                        .ok()
+                        .and_then(|u| u.get("id").and_then(|v| v.as_u64()))
+                        .unwrap_or(1),
                     _ => 1,
                 }
             };
 
             let wp_created = post_json_auth(
                 &client,
-                &format!("{}/wp-json/wp/v2/users/{}/application-passwords", cfg.wordpress_url, wp_user_id),
+                &format!(
+                    "{}/wp-json/wp/v2/users/{}/application-passwords",
+                    cfg.wordpress_url, wp_user_id
+                ),
                 &create_body,
                 &wp_auth,
             )
@@ -4838,7 +5191,10 @@ async fn test_rest_api_application_passwords_crud() {
                 if let Some(wp_uuid) = wp_ap.get("uuid").and_then(|v| v.as_str()) {
                     let _ = delete_auth(
                         &client,
-                        &format!("{}/wp-json/wp/v2/users/{}/application-passwords/{}", cfg.wordpress_url, wp_user_id, wp_uuid),
+                        &format!(
+                            "{}/wp-json/wp/v2/users/{}/application-passwords/{}",
+                            cfg.wordpress_url, wp_user_id, wp_uuid
+                        ),
                         &wp_auth,
                     )
                     .await;
@@ -4849,7 +5205,10 @@ async fn test_rest_api_application_passwords_crud() {
             if let Some(rp_uuid) = rp_ap.get("uuid").and_then(|v| v.as_str()) {
                 let _ = delete_auth(
                     &client,
-                    &format!("{}/wp-json/wp/v2/users/{}/application-passwords/{}", cfg.rustpress_url, rp_user_id, rp_uuid),
+                    &format!(
+                        "{}/wp-json/wp/v2/users/{}/application-passwords/{}",
+                        cfg.rustpress_url, rp_user_id, rp_uuid
+                    ),
                     &rp_token,
                 )
                 .await;
@@ -4871,9 +5230,19 @@ async fn test_rest_api_application_passwords_list() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] {}", e);
+            return;
+        }
     };
 
     eprintln!("\n=== test_rest_api_application_passwords_list ===");
@@ -4885,17 +5254,21 @@ async fn test_rest_api_application_passwords_list() {
             .send()
             .await;
         match r {
-            Ok(resp) if resp.status().is_success() => {
-                resp.json::<Value>().await.ok()
-                    .and_then(|u| u.get("id").and_then(|v| v.as_u64()))
-                    .unwrap_or(1)
-            }
+            Ok(resp) if resp.status().is_success() => resp
+                .json::<Value>()
+                .await
+                .ok()
+                .and_then(|u| u.get("id").and_then(|v| v.as_u64()))
+                .unwrap_or(1),
             _ => 1,
         }
     };
 
     let resp = client
-        .get(&format!("{}/wp-json/wp/v2/users/{}/application-passwords", cfg.rustpress_url, user_id))
+        .get(&format!(
+            "{}/wp-json/wp/v2/users/{}/application-passwords",
+            cfg.rustpress_url, user_id
+        ))
         .header("Authorization", &rp_token)
         .send()
         .await;
@@ -4927,9 +5300,19 @@ async fn test_rest_api_batch() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] {}", e);
+            return;
+        }
     };
     let wp_auth = wordpress_basic_auth(&cfg.admin_user, &cfg.admin_password);
 
@@ -4966,10 +5349,17 @@ async fn test_rest_api_batch() {
             eprintln!("WordPress /batch/v1 -> {}", wp_status);
             eprintln!("RustPress /batch/v1 -> {}", rp_status);
 
-            assert!(rp_status.is_success(), "RustPress batch should return 2xx, got {}", rp_status);
+            assert!(
+                rp_status.is_success(),
+                "RustPress batch should return 2xx, got {}",
+                rp_status
+            );
 
             let rp_body: Value = rp_r.json().await.unwrap_or(Value::Null);
-            eprintln!("RustPress batch response keys: {:?}", json_top_keys(&rp_body));
+            eprintln!(
+                "RustPress batch response keys: {:?}",
+                json_top_keys(&rp_body)
+            );
 
             // Response should have "responses" array
             assert!(
@@ -5013,32 +5403,59 @@ async fn test_rest_api_patch_post() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] {}", e);
+            return;
+        }
     };
     let wp_auth = wordpress_basic_auth(&cfg.admin_user, &cfg.admin_password);
 
     eprintln!("\n=== test_rest_api_patch_post ===");
 
     // Get first post ID from each server
-    let wp_id = fetch_json(&client, &format!("{}/wp-json/wp/v2/posts?per_page=1", cfg.wordpress_url))
-        .await
-        .and_then(|v| v.as_array().and_then(|a| a.first().and_then(|p| p.get("id"))).map(|v| v.clone()))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(1);
+    let wp_id = fetch_json(
+        &client,
+        &format!("{}/wp-json/wp/v2/posts?per_page=1", cfg.wordpress_url),
+    )
+    .await
+    .and_then(|v| {
+        v.as_array()
+            .and_then(|a| a.first().and_then(|p| p.get("id")))
+            .map(|v| v.clone())
+    })
+    .and_then(|v| v.as_u64())
+    .unwrap_or(1);
 
-    let rp_id = fetch_json(&client, &format!("{}/wp-json/wp/v2/posts?per_page=1", cfg.rustpress_url))
-        .await
-        .and_then(|v| v.as_array().and_then(|a| a.first().and_then(|p| p.get("id"))).map(|v| v.clone()))
-        .and_then(|v| v.as_u64())
-        .unwrap_or(1);
+    let rp_id = fetch_json(
+        &client,
+        &format!("{}/wp-json/wp/v2/posts?per_page=1", cfg.rustpress_url),
+    )
+    .await
+    .and_then(|v| {
+        v.as_array()
+            .and_then(|a| a.first().and_then(|p| p.get("id")))
+            .map(|v| v.clone())
+    })
+    .and_then(|v| v.as_u64())
+    .unwrap_or(1);
 
     let patch_body = serde_json::json!({"excerpt": {"raw": "PATCH test excerpt"}});
 
     // WordPress PATCH
     let wp_resp = client
-        .patch(&format!("{}/wp-json/wp/v2/posts/{}", cfg.wordpress_url, wp_id))
+        .patch(&format!(
+            "{}/wp-json/wp/v2/posts/{}",
+            cfg.wordpress_url, wp_id
+        ))
         .header("Authorization", &wp_auth)
         .json(&patch_body)
         .send()
@@ -5046,7 +5463,10 @@ async fn test_rest_api_patch_post() {
 
     // RustPress PATCH
     let rp_resp = client
-        .patch(&format!("{}/wp-json/wp/v2/posts/{}", cfg.rustpress_url, rp_id))
+        .patch(&format!(
+            "{}/wp-json/wp/v2/posts/{}",
+            cfg.rustpress_url, rp_id
+        ))
         .header("Authorization", &rp_token)
         .json(&patch_body)
         .send()
@@ -5084,9 +5504,19 @@ async fn test_rest_api_patch_category() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] {}", e);
+            return;
+        }
     };
     let wp_auth = wordpress_basic_auth(&cfg.admin_user, &cfg.admin_password);
 
@@ -5095,8 +5525,20 @@ async fn test_rest_api_patch_category() {
     // Create a category to patch, then clean up
     let create_body = serde_json::json!({"name": "PATCH Test Category"});
 
-    let wp_cat = post_json_auth(&client, &format!("{}/wp-json/wp/v2/categories", cfg.wordpress_url), &create_body, &wp_auth).await;
-    let rp_cat = post_json_auth(&client, &format!("{}/wp-json/wp/v2/categories", cfg.rustpress_url), &create_body, &rp_token).await;
+    let wp_cat = post_json_auth(
+        &client,
+        &format!("{}/wp-json/wp/v2/categories", cfg.wordpress_url),
+        &create_body,
+        &wp_auth,
+    )
+    .await;
+    let rp_cat = post_json_auth(
+        &client,
+        &format!("{}/wp-json/wp/v2/categories", cfg.rustpress_url),
+        &create_body,
+        &rp_token,
+    )
+    .await;
 
     match (wp_cat, rp_cat) {
         (Some(wp_c), Some(rp_c)) => {
@@ -5106,14 +5548,20 @@ async fn test_rest_api_patch_category() {
             let patch_body = serde_json::json!({"description": "patched description"});
 
             let wp_patch = client
-                .patch(&format!("{}/wp-json/wp/v2/categories/{}", cfg.wordpress_url, wp_id))
+                .patch(&format!(
+                    "{}/wp-json/wp/v2/categories/{}",
+                    cfg.wordpress_url, wp_id
+                ))
                 .header("Authorization", &wp_auth)
                 .json(&patch_body)
                 .send()
                 .await;
 
             let rp_patch = client
-                .patch(&format!("{}/wp-json/wp/v2/categories/{}", cfg.rustpress_url, rp_id))
+                .patch(&format!(
+                    "{}/wp-json/wp/v2/categories/{}",
+                    cfg.rustpress_url, rp_id
+                ))
                 .header("Authorization", &rp_token)
                 .json(&patch_body)
                 .send()
@@ -5130,8 +5578,24 @@ async fn test_rest_api_patch_category() {
             }
 
             // Cleanup
-            let _ = delete_auth(&client, &format!("{}/wp-json/wp/v2/categories/{}?force=true", cfg.wordpress_url, wp_id), &wp_auth).await;
-            let _ = delete_auth(&client, &format!("{}/wp-json/wp/v2/categories/{}?force=true", cfg.rustpress_url, rp_id), &rp_token).await;
+            let _ = delete_auth(
+                &client,
+                &format!(
+                    "{}/wp-json/wp/v2/categories/{}?force=true",
+                    cfg.wordpress_url, wp_id
+                ),
+                &wp_auth,
+            )
+            .await;
+            let _ = delete_auth(
+                &client,
+                &format!(
+                    "{}/wp-json/wp/v2/categories/{}?force=true",
+                    cfg.rustpress_url, rp_id
+                ),
+                &rp_token,
+            )
+            .await;
         }
         _ => eprintln!("[SKIP] Could not create test categories"),
     }
@@ -5150,9 +5614,19 @@ async fn test_rest_api_xwp_nonce_header() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] {}", e);
+            return;
+        }
     };
 
     eprintln!("\n=== test_rest_api_xwp_nonce_header ===");
@@ -5167,7 +5641,8 @@ async fn test_rest_api_xwp_nonce_header() {
     match resp {
         Ok(r) => {
             let status = r.status();
-            let nonce = r.headers()
+            let nonce = r
+                .headers()
                 .get("x-wp-nonce")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("(absent)");
@@ -5176,7 +5651,10 @@ async fn test_rest_api_xwp_nonce_header() {
             eprintln!("X-WP-Nonce: {}", nonce);
 
             assert!(status.is_success(), "Should return 2xx");
-            assert_ne!(nonce, "(absent)", "Authenticated requests should include X-WP-Nonce");
+            assert_ne!(
+                nonce, "(absent)",
+                "Authenticated requests should include X-WP-Nonce"
+            );
             assert!(!nonce.is_empty(), "X-WP-Nonce should not be empty");
 
             eprintln!("[PASS] X-WP-Nonce header present on authenticated responses");
@@ -5198,16 +5676,29 @@ async fn test_rest_api_global_styles() {
         return;
     }
 
-    let rp_token = match get_rustpress_token(&client, &cfg.rustpress_url, &cfg.admin_user, &cfg.admin_password).await {
+    let rp_token = match get_rustpress_token(
+        &client,
+        &cfg.rustpress_url,
+        &cfg.admin_user,
+        &cfg.admin_password,
+    )
+    .await
+    {
         Ok(t) => format!("Bearer {}", t),
-        Err(e) => { eprintln!("[SKIP] {}", e); return; }
+        Err(e) => {
+            eprintln!("[SKIP] {}", e);
+            return;
+        }
     };
 
     eprintln!("\n=== test_rest_api_global_styles ===");
 
     // GET global styles for the active theme
     let resp = client
-        .get(&format!("{}/wp-json/wp/v2/global-styles/themes/default", cfg.rustpress_url))
+        .get(&format!(
+            "{}/wp-json/wp/v2/global-styles/themes/default",
+            cfg.rustpress_url
+        ))
         .header("Authorization", &rp_token)
         .send()
         .await;
@@ -5247,12 +5738,18 @@ async fn test_rest_api_fields_parameter_detailed() {
 
     let wp = fetch_json(
         &client,
-        &format!("{}/wp-json/wp/v2/posts?_fields={}&per_page=1", cfg.wordpress_url, fields),
+        &format!(
+            "{}/wp-json/wp/v2/posts?_fields={}&per_page=1",
+            cfg.wordpress_url, fields
+        ),
     )
     .await;
     let rp = fetch_json(
         &client,
-        &format!("{}/wp-json/wp/v2/posts?_fields={}&per_page=1", cfg.rustpress_url, fields),
+        &format!(
+            "{}/wp-json/wp/v2/posts?_fields={}&per_page=1",
+            cfg.rustpress_url, fields
+        ),
     )
     .await;
 
@@ -5265,9 +5762,18 @@ async fn test_rest_api_fields_parameter_detailed() {
                 eprintln!("RustPress _fields response keys: {:?}", rp_keys);
 
                 // Should only have the requested fields
-                assert!(rp_keys.contains("id"), "_fields=id,title,slug should include id");
-                assert!(rp_keys.contains("title"), "_fields=id,title,slug should include title");
-                assert!(rp_keys.contains("slug"), "_fields=id,title,slug should include slug");
+                assert!(
+                    rp_keys.contains("id"),
+                    "_fields=id,title,slug should include id"
+                );
+                assert!(
+                    rp_keys.contains("title"),
+                    "_fields=id,title,slug should include title"
+                );
+                assert!(
+                    rp_keys.contains("slug"),
+                    "_fields=id,title,slug should include slug"
+                );
 
                 // Should NOT have unrequested fields like content, excerpt
                 if !rp_keys.contains("content") {

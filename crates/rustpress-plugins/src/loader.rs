@@ -71,21 +71,19 @@ impl PluginLoader {
             let manifest_path = path.join("plugin.json");
             if manifest_path.exists() {
                 match std::fs::read_to_string(&manifest_path) {
-                    Ok(content) => {
-                        match serde_json::from_str::<PluginMeta>(&content) {
-                            Ok(meta) => {
-                                info!(name = &meta.name, "discovered plugin from manifest");
-                                return Some(PluginEntry {
-                                    meta,
-                                    status: PluginStatus::Inactive,
-                                    file_path: path.to_string_lossy().to_string(),
-                                });
-                            }
-                            Err(e) => {
-                                warn!(path = ?manifest_path, error = %e, "failed to parse plugin manifest");
-                            }
+                    Ok(content) => match serde_json::from_str::<PluginMeta>(&content) {
+                        Ok(meta) => {
+                            info!(name = &meta.name, "discovered plugin from manifest");
+                            return Some(PluginEntry {
+                                meta,
+                                status: PluginStatus::Inactive,
+                                file_path: path.to_string_lossy().to_string(),
+                            });
                         }
-                    }
+                        Err(e) => {
+                            warn!(path = ?manifest_path, error = %e, "failed to parse plugin manifest");
+                        }
+                    },
                     Err(e) => {
                         warn!(path = ?manifest_path, error = %e, "failed to read plugin manifest");
                     }

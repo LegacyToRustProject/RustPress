@@ -65,9 +65,23 @@ pub mod product_keys {
     pub const PRODUCT_TYPE: &str = "product_type";
 
     pub const ALL: &[&str] = &[
-        PRICE, REGULAR_PRICE, SALE_PRICE, SKU, STOCK, STOCK_STATUS,
-        MANAGE_STOCK, WEIGHT, LENGTH, WIDTH, HEIGHT, VIRTUAL,
-        DOWNLOADABLE, IMAGE_GALLERY, TAX_STATUS, TAX_CLASS, BACKORDERS,
+        PRICE,
+        REGULAR_PRICE,
+        SALE_PRICE,
+        SKU,
+        STOCK,
+        STOCK_STATUS,
+        MANAGE_STOCK,
+        WEIGHT,
+        LENGTH,
+        WIDTH,
+        HEIGHT,
+        VIRTUAL,
+        DOWNLOADABLE,
+        IMAGE_GALLERY,
+        TAX_STATUS,
+        TAX_CLASS,
+        BACKORDERS,
     ];
 }
 
@@ -187,16 +201,18 @@ impl WooProductData {
                 .unwrap_or_else(|| "instock".to_string()),
             manage_stock: meta
                 .get(product_keys::MANAGE_STOCK)
-                .map_or(false, |v| v == "yes"),
+                .is_some_and(|v| v == "yes"),
             product_type: get_str(meta, product_keys::PRODUCT_TYPE),
             weight: non_empty_f64(meta.get(product_keys::WEIGHT)),
             length: non_empty_f64(meta.get(product_keys::LENGTH)),
             width: non_empty_f64(meta.get(product_keys::WIDTH)),
             height: non_empty_f64(meta.get(product_keys::HEIGHT)),
-            is_virtual: meta.get(product_keys::VIRTUAL).map_or(false, |v| v == "yes"),
+            is_virtual: meta
+                .get(product_keys::VIRTUAL)
+                .is_some_and(|v| v == "yes"),
             is_downloadable: meta
                 .get(product_keys::DOWNLOADABLE)
-                .map_or(false, |v| v == "yes"),
+                .is_some_and(|v| v == "yes"),
             image_gallery: gallery_ids,
             tax_status: meta
                 .get(product_keys::TAX_STATUS)
@@ -312,11 +328,7 @@ impl WooProductData {
             product_type,
             categories: vec![],
             tags: vec![],
-            images: self
-                .image_gallery
-                .iter()
-                .map(|id| id.to_string())
-                .collect(),
+            images: self.image_gallery.iter().map(|id| id.to_string()).collect(),
             weight: self.weight,
             dimensions,
             attributes: vec![],
@@ -436,28 +448,84 @@ impl WooOrderData {
         }
 
         // Billing
-        push_if_nonempty(&mut pairs, order_keys::BILLING_FIRST_NAME, &self.billing.first_name);
-        push_if_nonempty(&mut pairs, order_keys::BILLING_LAST_NAME, &self.billing.last_name);
-        push_if_nonempty(&mut pairs, order_keys::BILLING_COMPANY, &self.billing.company);
-        push_if_nonempty(&mut pairs, order_keys::BILLING_ADDRESS_1, &self.billing.address_1);
-        push_if_nonempty(&mut pairs, order_keys::BILLING_ADDRESS_2, &self.billing.address_2);
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::BILLING_FIRST_NAME,
+            &self.billing.first_name,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::BILLING_LAST_NAME,
+            &self.billing.last_name,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::BILLING_COMPANY,
+            &self.billing.company,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::BILLING_ADDRESS_1,
+            &self.billing.address_1,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::BILLING_ADDRESS_2,
+            &self.billing.address_2,
+        );
         push_if_nonempty(&mut pairs, order_keys::BILLING_CITY, &self.billing.city);
         push_if_nonempty(&mut pairs, order_keys::BILLING_STATE, &self.billing.state);
-        push_if_nonempty(&mut pairs, order_keys::BILLING_POSTCODE, &self.billing.postcode);
-        push_if_nonempty(&mut pairs, order_keys::BILLING_COUNTRY, &self.billing.country);
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::BILLING_POSTCODE,
+            &self.billing.postcode,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::BILLING_COUNTRY,
+            &self.billing.country,
+        );
         push_if_nonempty(&mut pairs, order_keys::BILLING_EMAIL, &self.billing.email);
         push_if_nonempty(&mut pairs, order_keys::BILLING_PHONE, &self.billing.phone);
 
         // Shipping
-        push_if_nonempty(&mut pairs, order_keys::SHIPPING_FIRST_NAME, &self.shipping.first_name);
-        push_if_nonempty(&mut pairs, order_keys::SHIPPING_LAST_NAME, &self.shipping.last_name);
-        push_if_nonempty(&mut pairs, order_keys::SHIPPING_COMPANY, &self.shipping.company);
-        push_if_nonempty(&mut pairs, order_keys::SHIPPING_ADDRESS_1, &self.shipping.address_1);
-        push_if_nonempty(&mut pairs, order_keys::SHIPPING_ADDRESS_2, &self.shipping.address_2);
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::SHIPPING_FIRST_NAME,
+            &self.shipping.first_name,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::SHIPPING_LAST_NAME,
+            &self.shipping.last_name,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::SHIPPING_COMPANY,
+            &self.shipping.company,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::SHIPPING_ADDRESS_1,
+            &self.shipping.address_1,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::SHIPPING_ADDRESS_2,
+            &self.shipping.address_2,
+        );
         push_if_nonempty(&mut pairs, order_keys::SHIPPING_CITY, &self.shipping.city);
         push_if_nonempty(&mut pairs, order_keys::SHIPPING_STATE, &self.shipping.state);
-        push_if_nonempty(&mut pairs, order_keys::SHIPPING_POSTCODE, &self.shipping.postcode);
-        push_if_nonempty(&mut pairs, order_keys::SHIPPING_COUNTRY, &self.shipping.country);
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::SHIPPING_POSTCODE,
+            &self.shipping.postcode,
+        );
+        push_if_nonempty(
+            &mut pairs,
+            order_keys::SHIPPING_COUNTRY,
+            &self.shipping.country,
+        );
 
         pairs
     }
@@ -500,9 +568,7 @@ fn get_str(meta: &HashMap<String, String>, key: &str) -> String {
 }
 
 fn get_f64(meta: &HashMap<String, String>, key: &str) -> f64 {
-    meta.get(key)
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(0.0)
+    meta.get(key).and_then(|v| v.parse().ok()).unwrap_or(0.0)
 }
 
 fn non_empty_f64(val: Option<&String>) -> Option<f64> {
@@ -550,7 +616,10 @@ mod tests {
         m.insert("_order_currency".into(), "USD".into());
         m.insert("_order_key".into(), "wc_order_abc123".into());
         m.insert("_payment_method".into(), "stripe".into());
-        m.insert("_payment_method_title".into(), "Credit Card (Stripe)".into());
+        m.insert(
+            "_payment_method_title".into(),
+            "Credit Card (Stripe)".into(),
+        );
         m.insert("_customer_user".into(), "42".into());
         m.insert("_billing_first_name".into(), "Alice".into());
         m.insert("_billing_last_name".into(), "Smith".into());
@@ -568,7 +637,12 @@ mod tests {
     fn test_product_from_meta() {
         let meta = sample_product_meta();
         let product = WooProductData::from_post_and_meta(
-            1, "Rust Book", "rust-book", "A great book about Rust.", "Short desc", &meta,
+            1,
+            "Rust Book",
+            "rust-book",
+            "A great book about Rust.",
+            "Short desc",
+            &meta,
         );
 
         assert_eq!(product.post_id, 1);
@@ -590,9 +664,7 @@ mod tests {
     #[test]
     fn test_product_to_meta_roundtrip() {
         let meta = sample_product_meta();
-        let product = WooProductData::from_post_and_meta(
-            1, "Test", "test", "", "", &meta,
-        );
+        let product = WooProductData::from_post_and_meta(1, "Test", "test", "", "", &meta);
         let pairs = product.to_meta();
         let restored: HashMap<String, String> = pairs.into_iter().collect();
 
@@ -601,14 +673,22 @@ mod tests {
         assert_eq!(restored.get("_stock").unwrap(), "50");
         assert_eq!(restored.get("_stock_status").unwrap(), "instock");
         assert_eq!(restored.get("_manage_stock").unwrap(), "yes");
-        assert_eq!(restored.get("_product_image_gallery").unwrap(), "101,102,103");
+        assert_eq!(
+            restored.get("_product_image_gallery").unwrap(),
+            "101,102,103"
+        );
     }
 
     #[test]
     fn test_product_to_internal() {
         let meta = sample_product_meta();
         let woo = WooProductData::from_post_and_meta(
-            1, "Rust Book", "rust-book", "Description", "Short", &meta,
+            1,
+            "Rust Book",
+            "rust-book",
+            "Description",
+            "Short",
+            &meta,
         );
         let product = woo.to_product();
 
@@ -656,21 +736,38 @@ mod tests {
 
     #[test]
     fn test_order_status_conversion() {
-        assert_eq!(wc_status_to_order_status("wc-processing"), OrderStatus::Processing);
-        assert_eq!(wc_status_to_order_status("wc-completed"), OrderStatus::Completed);
+        assert_eq!(
+            wc_status_to_order_status("wc-processing"),
+            OrderStatus::Processing
+        );
+        assert_eq!(
+            wc_status_to_order_status("wc-completed"),
+            OrderStatus::Completed
+        );
         assert_eq!(wc_status_to_order_status("wc-on-hold"), OrderStatus::OnHold);
-        assert_eq!(wc_status_to_order_status("processing"), OrderStatus::Processing);
+        assert_eq!(
+            wc_status_to_order_status("processing"),
+            OrderStatus::Processing
+        );
 
-        assert_eq!(order_status_to_wc_status(&OrderStatus::Processing), "wc-processing");
-        assert_eq!(order_status_to_wc_status(&OrderStatus::Completed), "wc-completed");
-        assert_eq!(order_status_to_wc_status(&OrderStatus::OnHold), "wc-on-hold");
+        assert_eq!(
+            order_status_to_wc_status(&OrderStatus::Processing),
+            "wc-processing"
+        );
+        assert_eq!(
+            order_status_to_wc_status(&OrderStatus::Completed),
+            "wc-completed"
+        );
+        assert_eq!(
+            order_status_to_wc_status(&OrderStatus::OnHold),
+            "wc-on-hold"
+        );
     }
 
     #[test]
     fn test_empty_product_meta() {
-        let product = WooProductData::from_post_and_meta(
-            1, "Empty", "empty", "", "", &HashMap::new(),
-        );
+        let product =
+            WooProductData::from_post_and_meta(1, "Empty", "empty", "", "", &HashMap::new());
         assert_eq!(product.price, 0.0);
         assert_eq!(product.stock_status, "instock");
         assert!(!product.manage_stock);

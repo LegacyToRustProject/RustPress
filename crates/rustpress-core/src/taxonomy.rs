@@ -224,9 +224,7 @@ impl TaxonomyRegistry {
     /// Check if a taxonomy is hierarchical.
     pub fn is_hierarchical(&self, name: &str) -> bool {
         let taxonomies = self.taxonomies.read().expect("taxonomy lock poisoned");
-        taxonomies
-            .get(name)
-            .is_some_and(|t| t.args.hierarchical)
+        taxonomies.get(name).is_some_and(|t| t.args.hierarchical)
     }
 }
 

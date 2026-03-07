@@ -5,7 +5,10 @@ use tracing_subscriber::EnvFilter;
 
 #[derive(Parser)]
 #[command(name = "rustpress")]
-#[command(version, about = "RustPress CLI - WordPress-compatible site management")]
+#[command(
+    version,
+    about = "RustPress CLI - WordPress-compatible site management"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -352,8 +355,7 @@ async fn get_db() -> Result<DatabaseConnection> {
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("rustpress=info")),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("rustpress=info")),
         )
         .init();
 
@@ -472,10 +474,7 @@ async fn handle_db(action: DbAction) -> Result<()> {
             let db = get_db().await?;
             println!("Executing: {}", sql);
             let result = db
-                .execute(Statement::from_string(
-                    sea_orm::DatabaseBackend::MySql,
-                    sql,
-                ))
+                .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
             println!("Rows affected: {}", result.rows_affected());
         }
@@ -580,7 +579,11 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
                     for post in &result.items {
                         println!(
                             "{},\"{}\",{},{},{}",
-                            post.id, post.post_title, post.post_status, post.post_type, post.post_date
+                            post.id,
+                            post.post_title,
+                            post.post_status,
+                            post.post_type,
+                            post.post_date
                         );
                     }
                 }
@@ -630,10 +633,7 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
                 post_type
             );
             let result = db
-                .execute(Statement::from_string(
-                    sea_orm::DatabaseBackend::MySql,
-                    sql,
-                ))
+                .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
             println!(
                 "Success: Created post '{}' (ID: {}).",
@@ -659,11 +659,8 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
                 updates.join(", "),
                 id
             );
-            db.execute(Statement::from_string(
-                sea_orm::DatabaseBackend::MySql,
-                sql,
-            ))
-            .await?;
+            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                .await?;
             println!("Success: Updated post {}.", id);
         }
         PostAction::Delete { id, force } => {
@@ -725,11 +722,8 @@ async fn handle_post(action: PostAction, format: &OutputFormat) -> Result<()> {
                     "INSERT INTO wp_posts (post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt, post_status, post_name, post_modified, post_modified_gmt, post_type, to_ping, pinged, post_content_filtered, guid) VALUES (1, '{}', '{}', '{}', '{}', '', 'publish', '{}', '{}', '{}', '{}', '', '', '', '')",
                     now, now, content, title, slug, now, now, post_type
                 );
-                db.execute(Statement::from_string(
-                    sea_orm::DatabaseBackend::MySql,
-                    sql,
-                ))
-                .await?;
+                db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                    .await?;
                 println!("  Created: {}", title);
             }
             println!("Generated {} {}s.", count, post_type);
@@ -803,28 +797,18 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
                 login, hash, login, email, now, login
             );
             let result = db
-                .execute(Statement::from_string(
-                    sea_orm::DatabaseBackend::MySql,
-                    sql,
-                ))
+                .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
             let user_id = result.last_insert_id();
 
             // Set role in usermeta
-            let capabilities = format!(
-                r#"a:1:{{s:{}:"{}";b:1;}}"#,
-                role.len(),
-                role
-            );
+            let capabilities = format!(r#"a:1:{{s:{}:"{}";b:1;}}"#, role.len(), role);
             let sql = format!(
                 "INSERT INTO wp_usermeta (user_id, meta_key, meta_value) VALUES ({}, 'wp_capabilities', '{}')",
                 user_id, capabilities
             );
-            db.execute(Statement::from_string(
-                sea_orm::DatabaseBackend::MySql,
-                sql,
-            ))
-            .await?;
+            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                .await?;
 
             println!(
                 "Success: Created user '{}' (ID: {}) with role '{}'.",
@@ -853,11 +837,8 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
                 updates.join(", "),
                 id
             );
-            db.execute(Statement::from_string(
-                sea_orm::DatabaseBackend::MySql,
-                sql,
-            ))
-            .await?;
+            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                .await?;
             println!("Success: Updated user {}.", id);
         }
         UserAction::Delete { id, reassign } => {
@@ -892,10 +873,7 @@ async fn handle_user(action: UserAction, format: &OutputFormat) -> Result<()> {
                 hash, login
             );
             let result = db
-                .execute(Statement::from_string(
-                    sea_orm::DatabaseBackend::MySql,
-                    sql,
-                ))
+                .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
                 .await?;
             if result.rows_affected() > 0 {
                 println!("Success: Password reset for user '{}'.", login);
@@ -966,11 +944,8 @@ async fn handle_theme(action: ThemeAction) -> Result<()> {
                 "UPDATE wp_options SET option_value = '{}' WHERE option_name IN ('template', 'stylesheet')",
                 name
             );
-            db.execute(Statement::from_string(
-                sea_orm::DatabaseBackend::MySql,
-                sql,
-            ))
-            .await?;
+            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                .await?;
             println!("Success: Theme '{}' activated.", name);
         }
         ThemeAction::Status => {
@@ -978,7 +953,8 @@ async fn handle_theme(action: ThemeAction) -> Result<()> {
             let rows = db
                 .query_all(Statement::from_string(
                     sea_orm::DatabaseBackend::MySql,
-                    "SELECT option_value FROM wp_options WHERE option_name = 'template'".to_string(),
+                    "SELECT option_value FROM wp_options WHERE option_name = 'template'"
+                        .to_string(),
                 ))
                 .await?;
             if let Some(row) = rows.first() {
@@ -1020,24 +996,15 @@ async fn handle_option(action: OptionAction, format: &OutputFormat) -> Result<()
                 value.replace('\'', "''"),
                 value.replace('\'', "''")
             );
-            db.execute(Statement::from_string(
-                sea_orm::DatabaseBackend::MySql,
-                sql,
-            ))
-            .await?;
+            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                .await?;
             println!("Success: Updated option '{}'.", name);
         }
         OptionAction::Delete { name } => {
             let db = get_db().await?;
-            let sql = format!(
-                "DELETE FROM wp_options WHERE option_name = '{}'",
-                name
-            );
-            db.execute(Statement::from_string(
-                sea_orm::DatabaseBackend::MySql,
-                sql,
-            ))
-            .await?;
+            let sql = format!("DELETE FROM wp_options WHERE option_name = '{}'", name);
+            db.execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                .await?;
             println!("Success: Deleted option '{}'.", name);
         }
         OptionAction::List { autoload } => {
@@ -1071,10 +1038,7 @@ async fn handle_option(action: OptionAction, format: &OutputFormat) -> Result<()
                     println!("{}", serde_json::to_string_pretty(&json)?);
                 }
                 _ => {
-                    println!(
-                        "{:<40} {:<50} {:<8}",
-                        "Option Name", "Value", "Autoload"
-                    );
+                    println!("{:<40} {:<50} {:<8}", "Option Name", "Value", "Autoload");
                     println!("{}", "-".repeat(100));
                     for row in &rows {
                         let name: String = row.try_get("", "option_name").unwrap_or_default();
@@ -1320,7 +1284,10 @@ async fn handle_media(action: MediaAction) -> Result<()> {
     match action {
         MediaAction::Regenerate { id } => {
             if let Some(attachment_id) = id {
-                println!("Regenerating thumbnails for attachment {}...", attachment_id);
+                println!(
+                    "Regenerating thumbnails for attachment {}...",
+                    attachment_id
+                );
                 println!("Success: Thumbnails regenerated.");
             } else {
                 println!("Regenerating all thumbnails...");

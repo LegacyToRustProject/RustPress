@@ -15,7 +15,9 @@ use serde_json::Value;
 use rustpress_db::entities::wp_posts;
 use rustpress_db::revisions::RevisionManager;
 
-use crate::common::{filter_post_context, pagination_headers, post_links, slugify, RestContext, WpError};
+use crate::common::{
+    filter_post_context, pagination_headers, post_links, slugify, RestContext, WpError,
+};
 use crate::posts::WpRendered;
 use crate::ApiState;
 
@@ -156,13 +158,12 @@ pub fn read_routes() -> Router<ApiState> {
 /// Protected write routes (POST/PUT/DELETE) -- authentication required.
 pub fn write_routes() -> Router<ApiState> {
     Router::new()
-        .route(
-            "/wp-json/wp/v2/pages",
-            axum::routing::post(create_page),
-        )
+        .route("/wp-json/wp/v2/pages", axum::routing::post(create_page))
         .route(
             "/wp-json/wp/v2/pages/{id}",
-            axum::routing::put(update_page).patch(update_page).delete(delete_page),
+            axum::routing::put(update_page)
+                .patch(update_page)
+                .delete(delete_page),
         )
 }
 
@@ -173,8 +174,7 @@ async fn list_pages(
     let page = params.page.unwrap_or(1);
     let per_page = params.per_page.unwrap_or(10).min(100);
 
-    let mut query = wp_posts::Entity::find()
-        .filter(wp_posts::Column::PostType.eq("page"));
+    let mut query = wp_posts::Entity::find().filter(wp_posts::Column::PostType.eq("page"));
 
     // Status filter (default: "publish")
     let status = params.status.as_deref().unwrap_or("publish");
@@ -182,7 +182,7 @@ async fn list_pages(
 
     // Search filter
     if let Some(ref search) = params.search {
-        query = query.filter(wp_posts::Column::PostTitle.like(&format!("%{}%", search)));
+        query = query.filter(wp_posts::Column::PostTitle.like(format!("%{}%", search)));
     }
 
     // Author filter
@@ -229,7 +229,7 @@ async fn list_pages(
         .await
         .map_err(|e| WpError::internal(e.to_string()))?;
     let total_pages = if per_page > 0 {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     } else {
         1
     };
@@ -316,7 +316,7 @@ async fn get_page(
         .ok_or(WpError::not_found("Page not found"))?;
 
     let context = RestContext::from_option(params.context.as_deref());
-    let mut val = serde_json::to_value(&build_page(post, &state.site_url)).unwrap_or_default();
+    let mut val = serde_json::to_value(build_page(post, &state.site_url)).unwrap_or_default();
     filter_post_context(&mut val, context);
     Ok(Json(val))
 }
@@ -345,9 +345,13 @@ async fn create_page(
         post_author: Set(input.author.unwrap_or(1)),
         post_date: Set(post_date),
         post_date_gmt: Set(post_date),
-        post_content: Set(rustpress_core::wp_kses_post(&input.content.unwrap_or_default())),
+        post_content: Set(rustpress_core::wp_kses_post(
+            &input.content.unwrap_or_default(),
+        )),
         post_title: Set(title),
-        post_excerpt: Set(rustpress_core::wp_kses_post(&input.excerpt.unwrap_or_default())),
+        post_excerpt: Set(rustpress_core::wp_kses_post(
+            &input.excerpt.unwrap_or_default(),
+        )),
         post_status: Set(status),
         comment_status: Set(input.comment_status.unwrap_or_else(|| "closed".to_string())),
         ping_status: Set(input.ping_status.unwrap_or_else(|| "closed".to_string())),

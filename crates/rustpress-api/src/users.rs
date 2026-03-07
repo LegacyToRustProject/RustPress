@@ -108,7 +108,9 @@ pub fn write_routes() -> Router<ApiState> {
         .route("/wp-json/wp/v2/users", axum::routing::post(create_user))
         .route(
             "/wp-json/wp/v2/users/{id}",
-            axum::routing::put(update_user).patch(update_user).delete(delete_user),
+            axum::routing::put(update_user)
+                .patch(update_user)
+                .delete(delete_user),
         )
 }
 
@@ -243,10 +245,9 @@ async fn list_users(
     let per_page = params.per_page.unwrap_or(10).min(100);
 
     // Check authentication for private fields
-    let authenticated =
-        extract_user_id(&state.jwt, &state.sessions, &headers)
-            .await
-            .is_some();
+    let authenticated = extract_user_id(&state.jwt, &state.sessions, &headers)
+        .await
+        .is_some();
 
     // Build base query for count
     let mut count_query = wp_users::Entity::find();
@@ -298,9 +299,9 @@ async fn list_users(
     let total = count_query
         .count(&state.db)
         .await
-        .map_err(|e| WpError::internal(e.to_string()))? as u64;
+        .map_err(|e| WpError::internal(e.to_string()))?;
     let total_pages = if per_page > 0 {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     } else {
         1
     };
@@ -391,10 +392,9 @@ async fn get_user(
     Path(id): Path<u64>,
     Query(params): Query<GetUserQuery>,
 ) -> Result<Json<Value>, WpError> {
-    let authenticated =
-        extract_user_id(&state.jwt, &state.sessions, &headers)
-            .await
-            .is_some();
+    let authenticated = extract_user_id(&state.jwt, &state.sessions, &headers)
+        .await
+        .is_some();
 
     let user = wp_users::Entity::find_by_id(id)
         .one(&state.db)
@@ -560,8 +560,8 @@ async fn update_user(
         active.user_nicename = Set(slug);
     }
     if let Some(password) = input.password {
-        let hashed = PasswordHasher::hash_argon2(&password)
-            .map_err(|e| WpError::internal(e.to_string()))?;
+        let hashed =
+            PasswordHasher::hash_argon2(&password).map_err(|e| WpError::internal(e.to_string()))?;
         active.user_pass = Set(hashed);
     }
 

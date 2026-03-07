@@ -12,11 +12,12 @@ use sea_orm::{
 use serde::Deserialize;
 use std::sync::Arc;
 
-use rustpress_db::entities::{wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_users};
+use rustpress_db::entities::{
+    wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_users,
+};
 use rustpress_themes::hierarchy::PageType;
 use rustpress_themes::tags::{
-    insert_post_context_full, insert_posts_context_with_hooks,
-    PaginationData, PostTemplateData,
+    insert_post_context_full, insert_posts_context_with_hooks, PaginationData, PostTemplateData,
 };
 
 use rustpress_cache::page_cache::CachedPage;
@@ -87,20 +88,20 @@ pub fn routes() -> Router<Arc<AppState>> {
         // Date-based archives (WordPress compatible) — single post routes BEFORE archives
         .route("/{year}/{month}/{day}/{slug}", get(single_by_date_slug))
         .route("/{year}/{month}/{day}/{slug}/", get(single_by_date_slug))
-        .route("/{year}/{month}/{slug}", get(single_by_month_slug_or_day_archive))
-        .route("/{year}/{month}/{slug}/", get(single_by_month_slug_or_day_archive))
+        .route(
+            "/{year}/{month}/{slug}",
+            get(single_by_month_slug_or_day_archive),
+        )
+        .route(
+            "/{year}/{month}/{slug}/",
+            get(single_by_month_slug_or_day_archive),
+        )
         .route("/{year}/{month}", get(month_archive))
         .route("/{year}/{month}/", get(month_archive))
-        .route(
-            "/wp-comments-post.php",
-            axum::routing::post(submit_comment),
-        )
+        .route("/wp-comments-post.php", axum::routing::post(submit_comment))
         // wp-login.php is registered in wp_admin routes
         // admin-ajax.php compatible endpoint
-        .route(
-            "/wp-admin/admin-ajax.php",
-            get(admin_ajax).post(admin_ajax),
-        )
+        .route("/wp-admin/admin-ajax.php", get(admin_ajax).post(admin_ajax))
         // wp-cron.php HTTP trigger
         .route("/wp-cron.php", get(wp_cron))
         // Per-post comment feed
@@ -132,8 +133,13 @@ async fn build_base_context(state: &AppState) -> tera::Context {
     ctx.insert("wp_footer", &wp_footer_html);
 
     // Fire wp_head and wp_footer action hooks so plugins can add output
-    state.hooks.do_action("wp_head", &serde_json::json!({"site_url": &state.site_url}));
-    state.hooks.do_action("wp_footer", &serde_json::json!({"site_url": &state.site_url}));
+    state
+        .hooks
+        .do_action("wp_head", &serde_json::json!({"site_url": &state.site_url}));
+    state.hooks.do_action(
+        "wp_footer",
+        &serde_json::json!({"site_url": &state.site_url}),
+    );
 
     // Load navigation menu links
     let header_menu_text = state
@@ -263,7 +269,7 @@ async fn get_posts_page(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
 
-    let total_pages = (total + per_page - 1) / per_page;
+    let total_pages = total.div_ceil(per_page);
 
     let models = query
         .offset((page - 1) * per_page)
@@ -312,7 +318,8 @@ async fn front_page(
         let sticky_posts: Vec<PostTemplateData> = sticky_models
             .iter()
             .map(|m| {
-                let mut data = PostTemplateData::from_model_with_rewrite(m, &state.site_url, &rewrite);
+                let mut data =
+                    PostTemplateData::from_model_with_rewrite(m, &state.site_url, &rewrite);
                 data.sticky = true;
                 data
             })
@@ -332,11 +339,17 @@ async fn front_page(
     let result = render_theme_page(&state, &PageType::FrontPage, &context).await?;
 
     // Store in cache
-    state.page_cache.set(cache_key, CachedPage {
-        html: result.0.clone(),
-        content_type: "text/html".to_string(),
-        status_code: 200,
-    }).await;
+    state
+        .page_cache
+        .set(
+            cache_key,
+            CachedPage {
+                html: result.0.clone(),
+                content_type: "text/html".to_string(),
+                status_code: 200,
+            },
+        )
+        .await;
     Ok(result)
 }
 
@@ -396,8 +409,8 @@ async fn front_page_or_query(
             .filter(wp_posts::Column::PostType.eq("post"))
             .filter(
                 sea_orm::Condition::any()
-                    .add(wp_posts::Column::PostTitle.like(&format!("%{}%", s)))
-                    .add(wp_posts::Column::PostContent.like(&format!("%{}%", s))),
+                    .add(wp_posts::Column::PostTitle.like(format!("%{}%", s)))
+                    .add(wp_posts::Column::PostContent.like(format!("%{}%", s))),
             )
             .order_by_desc(wp_posts::Column::PostDate)
             .limit(20)
@@ -422,49 +435,65 @@ async fn front_page_or_query(
         drop(rewrite);
         let pagination = rustpress_themes::tags::PaginationData::new(1, 1, results.len() as u64);
         insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
-        return conv(render_theme_page(&state, &rustpress_themes::hierarchy::PageType::Search, &context).await);
+        return conv(
+            render_theme_page(
+                &state,
+                &rustpress_themes::hierarchy::PageType::Search,
+                &context,
+            )
+            .await,
+        );
     }
 
     // ?cat=5 — category archive by term_id
     if let Some(cat_id) = qv.cat {
-        let term = wp_terms::Entity::find_by_id(cat_id)
-            .one(&state.db)
-            .await;
+        let term = wp_terms::Entity::find_by_id(cat_id).one(&state.db).await;
         let (slug, proper_name) = match term {
             Ok(Some(t)) => (t.slug.clone(), t.name.clone()),
             _ => (cat_id.to_string(), cat_id.to_string()),
         };
         let mut context = build_base_context(&state).await;
-        let (posts, pagination, term_id) = match taxonomy_posts(&state, &slug, "category", 1).await {
+        let (posts, pagination, term_id) = match taxonomy_posts(&state, &slug, "category", 1).await
+        {
             Ok(v) => v,
             Err(e) => return conv(Err(e)),
         };
         context.insert("term_name", &proper_name);
         context.insert("archive_title", &format!("Category: {}", proper_name));
         insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
-        return conv(render_theme_page(
-            &state,
-            &rustpress_themes::hierarchy::PageType::Category { slug, id: term_id },
-            &context,
-        ).await);
+        return conv(
+            render_theme_page(
+                &state,
+                &rustpress_themes::hierarchy::PageType::Category { slug, id: term_id },
+                &context,
+            )
+            .await,
+        );
     }
 
     // ?tag=slug — tag archive by slug
     if let Some(tag_slug) = qv.tag {
         let mut context = build_base_context(&state).await;
-        let (posts, pagination, term_id) = match taxonomy_posts(&state, &tag_slug, "post_tag", 1).await {
-            Ok(v) => v,
-            Err(e) => return conv(Err(e)),
-        };
+        let (posts, pagination, term_id) =
+            match taxonomy_posts(&state, &tag_slug, "post_tag", 1).await {
+                Ok(v) => v,
+                Err(e) => return conv(Err(e)),
+            };
         let term_name = tag_slug.replace('-', " ");
         context.insert("term_name", &term_name);
         context.insert("archive_title", &format!("Tag: {}", term_name));
         insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
-        return conv(render_theme_page(
-            &state,
-            &rustpress_themes::hierarchy::PageType::Tag { slug: tag_slug, id: term_id },
-            &context,
-        ).await);
+        return conv(
+            render_theme_page(
+                &state,
+                &rustpress_themes::hierarchy::PageType::Tag {
+                    slug: tag_slug,
+                    id: term_id,
+                },
+                &context,
+            )
+            .await,
+        );
     }
 
     // ?attachment_id=N — attachment/media page
@@ -475,7 +504,11 @@ async fn front_page_or_query(
             .await;
         return match post {
             Ok(Some(p)) => conv(single_post_by_slug(&state, &p.post_name, &headers).await),
-            Ok(None) => (StatusCode::NOT_FOUND, Html("Attachment not found".to_string())).into_response(),
+            Ok(None) => (
+                StatusCode::NOT_FOUND,
+                Html("Attachment not found".to_string()),
+            )
+                .into_response(),
             Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())).into_response(),
         };
     }
@@ -502,10 +535,8 @@ async fn front_page_or_query(
     // ?m=YYYYMM or ?m=YYYYMMDD — date archive via query param → redirect to /YYYY/MM/
     if let Some(ref m_val) = qv.m {
         if m_val.len() >= 6 {
-            if let (Ok(year), Ok(month)) = (
-                m_val[0..4].parse::<u32>(),
-                m_val[4..6].parse::<u32>(),
-            ) {
+            if let (Ok(year), Ok(month)) = (m_val[0..4].parse::<u32>(), m_val[4..6].parse::<u32>())
+            {
                 let url = format!("/{:04}/{:02}", year, month);
                 return Redirect::permanent(&url).into_response();
             }
@@ -514,12 +545,14 @@ async fn front_page_or_query(
 
     // ?author=N — author archive by user ID → redirect to /author/{nicename}/
     if let Some(author_id) = qv.author {
-        let user = wp_users::Entity::find_by_id(author_id)
-            .one(&state.db)
-            .await;
+        let user = wp_users::Entity::find_by_id(author_id).one(&state.db).await;
         return match user {
-            Ok(Some(u)) => Redirect::permanent(&format!("/author/{}/", u.user_nicename)).into_response(),
-            Ok(None) => (StatusCode::NOT_FOUND, Html("Author not found".to_string())).into_response(),
+            Ok(Some(u)) => {
+                Redirect::permanent(&format!("/author/{}/", u.user_nicename)).into_response()
+            }
+            Ok(None) => {
+                (StatusCode::NOT_FOUND, Html("Author not found".to_string())).into_response()
+            }
             Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())).into_response(),
         };
     }
@@ -579,14 +612,20 @@ async fn single_post_by_slug(
                 let has_access = check_post_password_cookie(headers, slug, &post_password);
                 if !has_access {
                     // Show password form
-                    let mut context = build_base_context(&state).await;
+                    let mut context = build_base_context(state).await;
                     context.insert("post_title", &p.post_title);
                     context.insert("post_id", &post_id);
                     context.insert("redirect_to", &format!("/{}", slug));
-                    return render_theme_page(&state, &PageType::Single {
-                        post_type: "password-form".to_string(),
-                        slug: slug.to_string(),
-                    }, &context).await.or_else(|_| {
+                    return render_theme_page(
+                        state,
+                        &PageType::Single {
+                            post_type: "password-form".to_string(),
+                            slug: slug.to_string(),
+                        },
+                        &context,
+                    )
+                    .await
+                    .or_else(|_| {
                         // Fallback: render inline password form
                         let html = format!(
                             r#"<h1>{}</h1>
@@ -607,7 +646,7 @@ async fn single_post_by_slug(
             let rewrite = state.rewrite_rules.read().await;
             let data = PostTemplateData::from_model_with_rewrite(&p, &state.site_url, &rewrite);
             drop(rewrite);
-            let mut context = build_base_context(&state).await;
+            let mut context = build_base_context(state).await;
             insert_post_context_full(&mut context, &data, Some(&state.shortcodes), &state.hooks);
 
             // If content has Gutenberg blocks, render them with the block renderer
@@ -620,19 +659,36 @@ async fn single_post_by_slug(
             // Generate SEO meta tags for this post
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             let seo_meta = rustpress_seo::SeoMeta {
-                title: Some(rustpress_seo::generate_title(&p.post_title, &site_name, "-")),
-                description: Some(rustpress_seo::auto_generate_description(&p.post_content, 160)),
+                title: Some(rustpress_seo::generate_title(
+                    &p.post_title,
+                    &site_name,
+                    "-",
+                )),
+                description: Some(rustpress_seo::auto_generate_description(
+                    &p.post_content,
+                    160,
+                )),
                 canonical: Some(format!("{}/{}", state.site_url, p.post_name)),
                 robots: Some("index, follow".to_string()),
                 og_title: Some(p.post_title.clone()),
-                og_description: Some(rustpress_seo::auto_generate_description(&p.post_content, 200)),
+                og_description: Some(rustpress_seo::auto_generate_description(
+                    &p.post_content,
+                    200,
+                )),
                 og_url: Some(format!("{}/{}", state.site_url, p.post_name)),
-                og_type: Some(if post_type == "page" { "website".to_string() } else { "article".to_string() }),
+                og_type: Some(if post_type == "page" {
+                    "website".to_string()
+                } else {
+                    "article".to_string()
+                }),
                 og_site_name: Some(site_name),
                 twitter_card: Some("summary_large_image".to_string()),
                 ..Default::default()
             };
-            context.insert("seo_meta_tags", &rustpress_seo::generate_meta_tags(&seo_meta));
+            context.insert(
+                "seo_meta_tags",
+                &rustpress_seo::generate_meta_tags(&seo_meta),
+            );
 
             // Load featured image
             let thumb_meta = wp_postmeta::Entity::find()
@@ -670,7 +726,9 @@ async fn single_post_by_slug(
             context.insert("comment_count", &comment_count);
 
             // Generate nonce for comment form (WordPress uses "comment_{post_id}" action)
-            let comment_nonce = state.nonces.create_nonce(&format!("comment_{}", post_id), 0);
+            let comment_nonce = state
+                .nonces
+                .create_nonce(&format!("comment_{}", post_id), 0);
             context.insert("comment_nonce", &comment_nonce);
 
             // Load previous/next posts for navigation
@@ -727,11 +785,11 @@ async fn single_post_by_slug(
                 }
             };
 
-            render_theme_page(&state, &page_type, &context).await
+            render_theme_page(state, &page_type, &context).await
         }
         None => {
             // 404
-            let mut context = build_base_context(&state).await;
+            let mut context = build_base_context(state).await;
             context.insert("request_uri", &format!("/{}", slug));
             let engine = state.theme_engine.read().await;
             match engine.render_page(&PageType::NotFound, &context) {
@@ -897,7 +955,7 @@ async fn author_archive(
             .count(&state.db)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
-        let total_pages = (total + per_page - 1) / per_page;
+        let total_pages = total.div_ceil(per_page);
 
         let models = query
             .offset((page - 1) * per_page)
@@ -1001,7 +1059,7 @@ async fn taxonomy_posts(
     let total_pages = if total == 0 {
         1
     } else {
-        (total + per_page - 1) / per_page
+        total.div_ceil(per_page)
     };
 
     let models = query
@@ -1126,12 +1184,18 @@ async fn submit_comment(
 ) -> Response {
     // Validate nonce (WordPress uses "comment_{post_id}" action)
     let nonce_action = format!("comment_{}", form.comment_post_id);
-    let nonce_valid = form._wpnonce.as_deref()
+    let nonce_valid = form
+        ._wpnonce
+        .as_deref()
         .map(|n| state.nonces.verify_nonce(n, &nonce_action, 0).is_some())
         .unwrap_or(false);
 
     if !nonce_valid {
-        return (StatusCode::FORBIDDEN, Html("<p>Security check failed. Please go back and try again.</p>".to_string())).into_response();
+        return (
+            StatusCode::FORBIDDEN,
+            Html("<p>Security check failed. Please go back and try again.</p>".to_string()),
+        )
+            .into_response();
     }
 
     let author = form.author.as_deref().unwrap_or("").trim().to_string();
@@ -1139,11 +1203,8 @@ async fn submit_comment(
 
     // Validate required fields
     if author.is_empty() || form.comment.trim().is_empty() {
-        return Redirect::to(&format!(
-            "/{}?comment_error=required",
-            form.comment_post_id
-        ))
-        .into_response();
+        return Redirect::to(&format!("/{}?comment_error=required", form.comment_post_id))
+            .into_response();
     }
 
     // Check that the post exists and comments are open
@@ -1162,7 +1223,8 @@ async fn submit_comment(
 
     // Determine redirect URL
     let post_slug = post.post_name.clone();
-    let redirect_url = form.redirect_to
+    let redirect_url = form
+        .redirect_to
         .as_deref()
         .filter(|r| !r.is_empty())
         .unwrap_or(&format!("/{}", post_slug))
@@ -1241,7 +1303,11 @@ async fn year_archive_page(
         .count(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
-    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+    let total_pages = if total == 0 {
+        1
+    } else {
+        total.div_ceil(per_page)
+    };
 
     let models = query
         .offset((page - 1) * per_page)
@@ -1267,12 +1333,12 @@ async fn month_archive(
     Path((year, month)): Path<(String, String)>,
     Query(params): Query<PageQuery>,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
-    let year: u32 = year.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
-    let month: u32 = month.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
+    let year: u32 = year
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
+    let month: u32 = month
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
 
     if !(1..=12).contains(&month) {
         return Err((StatusCode::NOT_FOUND, Html("Not found".to_string())));
@@ -1319,7 +1385,7 @@ async fn month_archive(
         return render_theme_page(&state, &PageType::NotFound, &context).await;
     }
 
-    let total_pages = (total + per_page - 1) / per_page;
+    let total_pages = total.div_ceil(per_page);
 
     let models = query
         .offset((page - 1) * per_page)
@@ -1345,15 +1411,15 @@ async fn day_archive(
     Path((year, month, day)): Path<(String, String, String)>,
     Query(params): Query<PageQuery>,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
-    let year: u32 = year.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
-    let month: u32 = month.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
-    let day: u32 = day.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
+    let year: u32 = year
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
+    let month: u32 = month
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
+    let day: u32 = day
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
 
     if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
         return Err((StatusCode::NOT_FOUND, Html("Not found".to_string())));
@@ -1361,7 +1427,10 @@ async fn day_archive(
 
     let mut context = build_base_context(&state).await;
     let month_name = month_to_name(month);
-    context.insert("archive_title", &format!("{} {}, {}", month_name, day, year));
+    context.insert(
+        "archive_title",
+        &format!("{} {}, {}", month_name, day, year),
+    );
     context.insert("archive_year", &year);
     context.insert("archive_month", &month);
     context.insert("archive_day", &day);
@@ -1390,7 +1459,11 @@ async fn day_archive(
         .count(&state.db)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
-    let total_pages = if total == 0 { 1 } else { (total + per_page - 1) / per_page };
+    let total_pages = if total == 0 {
+        1
+    } else {
+        total.div_ceil(per_page)
+    };
 
     let models = query
         .offset((page - 1) * per_page)
@@ -1460,7 +1533,7 @@ fn parse_php_serialized_ids(input: &str) -> Vec<u64> {
         let numbers: Vec<u64> = trimmed
             .split("i:")
             .filter_map(|s| {
-                s.trim_end_matches(|c: char| c == ';' || c == '}')
+                s.trim_end_matches([';', '}'])
                     .parse::<u64>()
                     .ok()
             })
@@ -1509,9 +1582,7 @@ fn check_post_password_cookie(headers: &HeaderMap, slug: &str, expected_password
 }
 
 /// POST /{slug}/trackback — WordPress trackback receiver (deprecated, respond with success XML).
-async fn trackback_handler(
-    Path(_slug): Path<String>,
-) -> Response {
+async fn trackback_handler(Path(_slug): Path<String>) -> Response {
     let xml = r#"<?xml version="1.0" encoding="UTF-8"?><response><error>1</error><message>Trackbacks are not accepted on this site.</message></response>"#;
     (
         StatusCode::OK,
@@ -1522,9 +1593,7 @@ async fn trackback_handler(
 }
 
 /// GET /wp-register.php — redirect to wp-login.php?action=register (or disabled message).
-async fn wp_register_redirect(
-    State(state): State<Arc<AppState>>,
-) -> Response {
+async fn wp_register_redirect(State(state): State<Arc<AppState>>) -> Response {
     // Check if user registration is enabled (users_can_register option)
     let can_register = state
         .options
@@ -1536,7 +1605,10 @@ async fn wp_register_redirect(
         .unwrap_or(false);
 
     let redirect_url = if can_register {
-        format!("{}/wp-login.php?action=register", state.site_url.trim_end_matches('/'))
+        format!(
+            "{}/wp-login.php?action=register",
+            state.site_url.trim_end_matches('/')
+        )
     } else {
         format!("{}/wp-login.php", state.site_url.trim_end_matches('/'))
     };
@@ -1545,35 +1617,43 @@ async fn wp_register_redirect(
 
 // ---- Threaded Comments ----
 
-fn build_comment_tree(comments: &[rustpress_db::entities::wp_comments::Model]) -> Vec<serde_json::Value> {
+fn build_comment_tree(
+    comments: &[rustpress_db::entities::wp_comments::Model],
+) -> Vec<serde_json::Value> {
     let flat: Vec<serde_json::Value> = comments
         .iter()
         .map(|c| {
-            {
-                let dt = c.comment_date;
-                let month_name = match dt.format("%m").to_string().as_str() {
-                    "01" => "January", "02" => "February", "03" => "March",
-                    "04" => "April", "05" => "May", "06" => "June",
-                    "07" => "July", "08" => "August", "09" => "September",
-                    "10" => "October", "11" => "November", "12" => "December",
-                    _ => "January",
-                };
-                let day = dt.format("%-d").to_string();
-                let year = dt.format("%Y").to_string();
-                let time_12h = dt.format("%-I:%M %P").to_string();
-                let date_formatted = format!("{} {}, {} at {}", month_name, day, year, time_12h);
-                let date_iso = dt.format("%Y-%m-%dT%H:%M:%S+00:00").to_string();
-                serde_json::json!({
-                    "id": c.comment_id,
-                    "author": c.comment_author,
-                    "author_url": c.comment_author_url,
-                    "content": c.comment_content,
-                    "date": date_formatted,
-                    "date_iso": date_iso,
-                    "parent": c.comment_parent,
-                    "children": [],
-                })
-            }
+            let dt = c.comment_date;
+            let month_name = match dt.format("%m").to_string().as_str() {
+                "01" => "January",
+                "02" => "February",
+                "03" => "March",
+                "04" => "April",
+                "05" => "May",
+                "06" => "June",
+                "07" => "July",
+                "08" => "August",
+                "09" => "September",
+                "10" => "October",
+                "11" => "November",
+                "12" => "December",
+                _ => "January",
+            };
+            let day = dt.format("%-d").to_string();
+            let year = dt.format("%Y").to_string();
+            let time_12h = dt.format("%-I:%M %P").to_string();
+            let date_formatted = format!("{} {}, {} at {}", month_name, day, year, time_12h);
+            let date_iso = dt.format("%Y-%m-%dT%H:%M:%S+00:00").to_string();
+            serde_json::json!({
+                "id": c.comment_id,
+                "author": c.comment_author,
+                "author_url": c.comment_author_url,
+                "content": c.comment_content,
+                "date": date_formatted,
+                "date_iso": date_iso,
+                "parent": c.comment_parent,
+                "children": [],
+            })
         })
         .collect();
 
@@ -1622,17 +1702,11 @@ fn build_comment_tree(comments: &[rustpress_db::entities::wp_comments::Model]) -
 
 // ---- Category / Tag RSS Feeds ----
 
-async fn category_feed(
-    State(state): State<Arc<AppState>>,
-    Path(slug): Path<String>,
-) -> Response {
+async fn category_feed(State(state): State<Arc<AppState>>, Path(slug): Path<String>) -> Response {
     taxonomy_feed(&state, "category", &slug).await
 }
 
-async fn tag_feed(
-    State(state): State<Arc<AppState>>,
-    Path(slug): Path<String>,
-) -> Response {
+async fn tag_feed(State(state): State<Arc<AppState>>, Path(slug): Path<String>) -> Response {
     taxonomy_feed(&state, "post_tag", &slug).await
 }
 
@@ -1700,15 +1774,27 @@ async fn taxonomy_feed(state: &AppState, taxonomy: &str, slug: &str) -> Response
         .await
         .unwrap_or_default();
 
-    let taxonomy_label = if taxonomy == "category" { "Category" } else { "Tag" };
+    let taxonomy_label = if taxonomy == "category" {
+        "Category"
+    } else {
+        "Tag"
+    };
     let feed_title = format!("{} » {} {} Feed", site_name, term.name, taxonomy_label);
     let feed_link = format!(
         "{}/{}/{}",
         site_url,
-        if taxonomy == "category" { "category" } else { "tag" },
+        if taxonomy == "category" {
+            "category"
+        } else {
+            "tag"
+        },
         slug
     );
-    let feed_desc = format!("Posts in {} \"{}\"", taxonomy_label.to_lowercase(), term.name);
+    let feed_desc = format!(
+        "Posts in {} \"{}\"",
+        taxonomy_label.to_lowercase(),
+        term.name
+    );
 
     let items = build_rss_items(&posts, site_url);
 
@@ -1757,7 +1843,10 @@ async fn comments_feed(State(state): State<Arc<AppState>>) -> Response {
     let mut items = String::new();
     for c in &comments {
         let pub_date = c.comment_date_gmt.format("%a, %d %b %Y %H:%M:%S +0000");
-        let link = format!("{}/?p={}#comment-{}", site_url, c.comment_post_id, c.comment_id);
+        let link = format!(
+            "{}/?p={}#comment-{}",
+            site_url, c.comment_post_id, c.comment_id
+        );
         let title = format!("{} on post #{}", c.comment_author, c.comment_post_id);
         items.push_str(&format!(
             r#"    <item>
@@ -1967,15 +2056,15 @@ async fn single_by_date_slug(
     headers: HeaderMap,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
     // Validate year/month/day are numeric — if not, fall through to archive
-    let _year: u32 = year.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
-    let _month: u32 = month.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
-    let _day: u32 = day.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
+    let _year: u32 = year
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
+    let _month: u32 = month
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
+    let _day: u32 = day
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
 
     // Delegate to slug-based post lookup
     single_post_by_slug(&state, &slug, &headers).await
@@ -1989,12 +2078,12 @@ async fn single_by_month_slug_or_day_archive(
     Query(params): Query<PageQuery>,
     headers: HeaderMap,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
-    let _year: u32 = year.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
-    let _month: u32 = month.parse().map_err(|_| {
-        (StatusCode::NOT_FOUND, Html("Not found".to_string()))
-    })?;
+    let _year: u32 = year
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
+    let _month: u32 = month
+        .parse()
+        .map_err(|_| (StatusCode::NOT_FOUND, Html("Not found".to_string())))?;
 
     // If third segment is a number (1-31), treat as day archive
     if let Ok(day) = slug_or_day.parse::<u32>() {
@@ -2003,7 +2092,8 @@ async fn single_by_month_slug_or_day_archive(
                 State(state),
                 Path((year, month, slug_or_day)),
                 Query(params),
-            ).await;
+            )
+            .await;
         }
     }
 

@@ -101,7 +101,9 @@ impl FormBuilder {
             fields: Vec::new(),
             submit_label: "Submit".to_string(),
             success_message: "Thank you for your submission.".to_string(),
-            error_message: "There were errors in your submission. Please correct them and try again.".to_string(),
+            error_message:
+                "There were errors in your submission. Please correct them and try again."
+                    .to_string(),
             email_to: None,
         }
     }
@@ -151,7 +153,11 @@ impl FormBuilder {
 }
 
 /// Helper to create a `FieldConfig` with minimal boilerplate.
-pub fn field(field_type: FormField, name: impl Into<String>, label: impl Into<String>) -> FieldConfig {
+pub fn field(
+    field_type: FormField,
+    name: impl Into<String>,
+    label: impl Into<String>,
+) -> FieldConfig {
     FieldConfig {
         field_type,
         name: name.into(),

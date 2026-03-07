@@ -63,9 +63,7 @@ async fn search(
     if subtype != "any" {
         condition = condition.add(wp_posts::Column::PostType.eq(&subtype));
     } else {
-        condition = condition.add(
-            wp_posts::Column::PostType.is_in(vec!["post", "page"]),
-        );
+        condition = condition.add(wp_posts::Column::PostType.is_in(vec!["post", "page"]));
     }
 
     let results = wp_posts::Entity::find()
@@ -80,7 +78,7 @@ async fn search(
     let search_results: Vec<WpSearchResult> = results
         .into_iter()
         .map(|p| WpSearchResult {
-            id: p.id as u64,
+            id: p.id,
             title: p.post_title,
             url: format!("{}/{}", state.site_url, p.post_name),
             result_type: "post".to_string(),
