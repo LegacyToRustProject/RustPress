@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}{{ the_title }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}attachment{% endblock %}
+
+{% block content %}
+<h1 class="wp-block-post-title">{{ the_title }}</h1>
+<div class="entry-content wp-block-post-content is-layout-constrained">
+{{ the_content | safe }}
+</div>
+{% endblock %}

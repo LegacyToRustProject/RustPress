@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schemas.wp.org/wp/6.1/theme.json",
+  "version": 1,
+  "settings": {
+    "color": {
+      "palette": [
+        { "slug": "primary", "color": "#6d4fc2", "name": "Primary" },
+        { "slug": "secondary", "color": "#f0ede8", "name": "Secondary" },
+        { "slug": "foreground", "color": "#333333", "name": "Foreground" },
+        { "slug": "background", "color": "#ffffff", "name": "Background" },
+        { "slug": "tertiary", "color": "#ddd9d0", "name": "Tertiary" }
+      ]
+    },
+    "layout": {
+      "contentSize": "680px",
+      "wideSize": "1200px"
+    },
+    "typography": {
+      "fontFamilies": [
+        {
+          "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif",
+          "name": "System Sans-Serif",
+          "slug": "system-sans-serif"
+        }
+      ],
+      "fontSizes": [
+        { "slug": "small", "size": "0.875rem", "name": "Small" },
+        { "slug": "normal", "size": "1.125rem", "name": "Normal" },
+        { "slug": "large", "size": "1.5rem", "name": "Large" },
+        { "slug": "huge", "size": "2.25rem", "name": "Huge" }
+      ]
+    }
+  }
+}
