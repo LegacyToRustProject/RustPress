@@ -14,3 +14,5 @@ tracing = { workspace = true }
 regex = { workspace = true }
 chrono = { workspace = true }
 lettre = { workspace = true }
+hmac = "0.12"
+sha2 = "0.10"

@@ -1,5 +1,7 @@
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, TokenData, Validation};
+use jsonwebtoken::{
+    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::debug;
@@ -81,10 +83,12 @@ impl JwtManager {
 
     /// Validate and decode a JWT token.
     pub fn validate_token(&self, token: &str) -> Result<Claims, JwtError> {
+        // Explicitly enforce HS256 to prevent algorithm confusion attacks
+        let validation = Validation::new(Algorithm::HS256);
         let token_data: TokenData<Claims> = decode(
             token,
             &DecodingKey::from_secret(self.secret.as_bytes()),
-            &Validation::default(),
+            &validation,
         )
         .map_err(|e| match e.kind() {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => JwtError::Expired,

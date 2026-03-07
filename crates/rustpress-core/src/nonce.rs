@@ -67,16 +67,22 @@ impl NonceManager {
         (now / 43200.0).ceil()
     }
 
-    /// Hash the nonce components.
+    /// Hash the nonce components using HMAC-SHA256.
     fn hash_nonce(&self, tick: f64, action: &str, user_id: u64) -> String {
-        use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
 
-        let input = format!("{}|{}|{}|{}", tick as u64, action, user_id, self.secret);
-        let mut hasher = DefaultHasher::new();
-        input.hash(&mut hasher);
-        let hash = hasher.finish();
-        format!("{:016x}", hash)[..10].to_string()
+        let message = format!("{}|{}|{}", tick as u64, action, user_id);
+        let mut mac =
+            Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).expect("HMAC accepts any key");
+        mac.update(message.as_bytes());
+        let result = mac.finalize();
+        let hex = result
+            .into_bytes()
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>();
+        hex[..10].to_string()
     }
 }
 
