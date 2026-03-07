@@ -1157,6 +1157,29 @@ async fn post_editor_new(
     });
     ctx.insert("post_json", &post_json.to_string());
 
+    // Gutenberg editor template variables
+    ctx.insert("post_id", &0u64);
+    ctx.insert("post_type", &post_type);
+    ctx.insert(
+        "post_title_json",
+        &serde_json::to_string("").unwrap_or_default(),
+    );
+    ctx.insert(
+        "post_content_json",
+        &serde_json::to_string("").unwrap_or_default(),
+    );
+    ctx.insert(
+        "post_excerpt_json",
+        &serde_json::to_string("").unwrap_or_default(),
+    );
+    ctx.insert("post_status", &"draft");
+    ctx.insert("post_slug", &"");
+    ctx.insert("site_url", &state.site_url);
+    ctx.insert(
+        "api_nonce",
+        &state.nonces.create_nonce("wp_rest", session.user_id),
+    );
+
     render_admin(&state, "admin/post-edit.html", &ctx)
 }
 
@@ -1259,6 +1282,29 @@ async fn post_editor_edit(
                 "isNew": false,
             });
             ctx.insert("post_json", &post_json.to_string());
+
+            // Gutenberg editor template variables
+            ctx.insert("post_id", &p.id);
+            ctx.insert("post_type", p.post_type.as_str());
+            ctx.insert(
+                "post_title_json",
+                &serde_json::to_string(&p.post_title).unwrap_or_default(),
+            );
+            ctx.insert(
+                "post_content_json",
+                &serde_json::to_string(&p.post_content).unwrap_or_default(),
+            );
+            ctx.insert(
+                "post_excerpt_json",
+                &serde_json::to_string(&p.post_excerpt).unwrap_or_default(),
+            );
+            ctx.insert("post_status", p.post_status.as_str());
+            ctx.insert("post_slug", p.post_name.as_str());
+            ctx.insert("site_url", &state.site_url);
+            ctx.insert(
+                "api_nonce",
+                &state.nonces.create_nonce("wp_rest", session.user_id),
+            );
 
             render_admin(&state, "admin/post-edit.html", &ctx).into_response()
         }
@@ -4060,19 +4106,12 @@ async fn media_upload(
     };
 
     let raw_name = field.file_name().unwrap_or("upload").to_string();
-    let content_type = field
+    let declared_content_type = field
         .content_type()
         .unwrap_or("application/octet-stream")
         .to_string();
 
-    if !ALLOWED_UPLOAD_MIME_TYPES.contains(&content_type.as_str()) {
-        return (
-            StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            Json(serde_json::json!({"error": format!("File type '{}' is not allowed.", content_type)})),
-        )
-            .into_response();
-    }
-
+    // Read file bytes first so we can inspect magic bytes
     let data = match field.bytes().await {
         Ok(d) => d,
         Err(e) => {
@@ -4091,6 +4130,33 @@ async fn media_upload(
         )
             .into_response();
     }
+
+    // Validate MIME type from magic bytes (prevents Content-Type spoofing)
+    let content_type = match infer::get(&data) {
+        Some(kind) => {
+            // Magic bytes detected — use the real type, ignore declared type
+            let detected = kind.mime_type();
+            if !ALLOWED_UPLOAD_MIME_TYPES.contains(&detected) {
+                return (
+                    StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                    Json(serde_json::json!({"error": format!("File type '{}' is not allowed.", detected)})),
+                )
+                    .into_response();
+            }
+            detected.to_string()
+        }
+        None => {
+            // No magic bytes matched (e.g. plain text / CSV) — fall back to declared type
+            if !ALLOWED_UPLOAD_MIME_TYPES.contains(&declared_content_type.as_str()) {
+                return (
+                    StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                    Json(serde_json::json!({"error": format!("File type '{}' is not allowed.", declared_content_type)})),
+                )
+                    .into_response();
+            }
+            declared_content_type.clone()
+        }
+    };
 
     let file_name = raw_name
         .chars()
