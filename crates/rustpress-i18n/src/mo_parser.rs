@@ -7,9 +7,9 @@
 use std::collections::HashMap;
 
 /// Magic number for little-endian .mo files.
-const MO_MAGIC_LE: u32 = 0x950412de;
+pub const MO_MAGIC_LE: u32 = 0x950412de;
 /// Magic number for big-endian .mo files.
-const MO_MAGIC_BE: u32 = 0xde120495;
+pub const MO_MAGIC_BE: u32 = 0xde120495;
 
 /// Separator used between singular and plural forms in .mo files.
 const PLURAL_SEPARATOR: u8 = 0x00;
@@ -313,13 +313,8 @@ mod tests {
     fn test_big_endian_magic() {
         // Build a file with BE magic. We build LE then swap the magic.
         let entries: Vec<(&[u8], &[u8])> = vec![(b"Hi", b"Hej")];
-        let mut data = build_mo_file(&entries);
-        // Replace magic with big-endian version but keep data as LE.
-        // This tests that the magic is recognized but since the rest is LE-encoded,
-        // reading with BE interpretation will produce garbage. Let's build a proper BE file.
-        // Actually, let's just test that BE magic is recognized with a proper BE file.
-        // For simplicity, we test that the magic detection path works by constructing a
-        // minimal BE .mo manually.
+        let _data = build_mo_file(&entries);
+        // Build a proper big-endian .mo file manually.
         let mut buf = Vec::new();
         buf.extend_from_slice(&MO_MAGIC_BE.to_le_bytes()); // When read as LE u32, gives 0xde120495
         buf.extend_from_slice(&0u32.to_be_bytes()); // revision
@@ -342,7 +337,6 @@ mod tests {
         buf.extend_from_slice(b"Hi\x00");   // original + NUL
         buf.extend_from_slice(b"Hej\x00");  // translation + NUL
 
-        let _ = data; // suppress unused warning
         let mo = parse_mo(&buf).unwrap();
         assert_eq!(mo.translations.get("Hi").unwrap(), "Hej");
     }

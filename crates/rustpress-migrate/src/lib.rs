@@ -1,3 +1,6 @@
+pub mod analyze;
+pub mod rewrites;
+
 use sea_orm::{ConnectionTrait, DatabaseConnection, DbErr, Statement};
 use tracing::info;
 

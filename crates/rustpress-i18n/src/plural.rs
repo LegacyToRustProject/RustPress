@@ -580,11 +580,10 @@ mod tests {
     #[test]
     fn test_modulo_operator() {
         let expr = parse_plural_expression("nplurals=2; plural=(n % 10 == 1);");
-        assert_eq!(expr.evaluate(1), 0);  // n%10==1 -> true -> 1... wait
-        // Actually: (n%10==1) evaluates to 1 (true) for n=1, which is plural index 1
-        // But nplurals=2, so index 1 is valid
+        // (n%10==1) evaluates to 1 (true) for n=1, which is plural index 1
         assert_eq!(expr.evaluate(1), 1);
         assert_eq!(expr.evaluate(11), 1);
+        assert_eq!(expr.evaluate(21), 1);
         assert_eq!(expr.evaluate(2), 0);
         assert_eq!(expr.evaluate(5), 0);
     }

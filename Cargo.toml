@@ -20,6 +20,9 @@ members = [
     "crates/rustpress-fields",
     "crates/rustpress-multisite",
     "crates/rustpress-commerce",
+    "crates/rustpress-security",
+    "crates/rustpress-i18n",
+    "crates/rustpress-blocks",
 ]
 
 [workspace.package]
@@ -51,6 +54,10 @@ rustpress-seo = { path = "crates/rustpress-seo" }
 rustpress-forms = { path = "crates/rustpress-forms" }
 rustpress-fields = { path = "crates/rustpress-fields" }
 rustpress-multisite = { path = "crates/rustpress-multisite" }
+rustpress-security = { path = "crates/rustpress-security" }
+rustpress-i18n = { path = "crates/rustpress-i18n" }
+rustpress-blocks = { path = "crates/rustpress-blocks" }
+rustpress-commerce = { path = "crates/rustpress-commerce" }
 
 # Web framework
 axum = "0.8"

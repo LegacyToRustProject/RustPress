@@ -204,28 +204,28 @@ impl WafEngine {
             WafRule {
                 id: "sqli-001".into(),
                 name: "SQL Injection - UNION SELECT".into(),
-                pattern: r"(?i)\bunion\s+(all\s+)?select\b".into(),
+                pattern: r#"(?i)\bunion\s+(all\s+)?select\b"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
             WafRule {
                 id: "sqli-002".into(),
                 name: "SQL Injection - OR/AND boolean".into(),
-                pattern: r"(?i)(\bor\b|\band\b)\s+\d+\s*=\s*\d+".into(),
+                pattern: r#"(?i)(\bor\b|\band\b)\s+\d+\s*=\s*\d+"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
             WafRule {
                 id: "sqli-003".into(),
                 name: "SQL Injection - Comment injection".into(),
-                pattern: r"(?i)(\b(select|insert|update|delete|drop|alter)\b.*--)|(\/\*.*\*\/)".into(),
+                pattern: r#"(?i)(\b(select|insert|update|delete|drop|alter)\b.*--)|(\/\*.*\*\/)"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
             WafRule {
                 id: "sqli-004".into(),
                 name: "SQL Injection - SLEEP/BENCHMARK".into(),
-                pattern: r"(?i)\b(sleep|benchmark|waitfor\s+delay)\s*\(".into(),
+                pattern: r#"(?i)\b(sleep|benchmark|waitfor\s+delay)\s*\("#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
@@ -233,21 +233,21 @@ impl WafEngine {
             WafRule {
                 id: "xss-001".into(),
                 name: "XSS - Script tag".into(),
-                pattern: r"(?i)<\s*script[^>]*>".into(),
+                pattern: r#"(?i)<\s*script[^>]*>"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
             WafRule {
                 id: "xss-002".into(),
                 name: "XSS - Event handler attribute".into(),
-                pattern: r"(?i)\bon(load|error|click|mouseover|focus|blur|submit|change|input)\s*=".into(),
+                pattern: r#"(?i)\bon(load|error|click|mouseover|focus|blur|submit|change|input)\s*="#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
             WafRule {
                 id: "xss-003".into(),
                 name: "XSS - JavaScript URI".into(),
-                pattern: r"(?i)javascript\s*:".into(),
+                pattern: r#"(?i)javascript\s*:"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
@@ -255,7 +255,7 @@ impl WafEngine {
             WafRule {
                 id: "lfi-001".into(),
                 name: "Directory Traversal".into(),
-                pattern: r"(\.\.[\\/]){2,}".into(),
+                pattern: r#"(\.\.[\\/]){2,}"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
@@ -263,7 +263,7 @@ impl WafEngine {
             WafRule {
                 id: "rfi-001".into(),
                 name: "Remote File Inclusion".into(),
-                pattern: r"(?i)(include|require)(_once)?\s*\(\s*['\"]?(https?|ftp|php|data):".into(),
+                pattern: r#"(?i)(include|require)(_once)?\s*\(\s*['"]?(https?|ftp|php|data):"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
@@ -271,7 +271,7 @@ impl WafEngine {
             WafRule {
                 id: "cmdi-001".into(),
                 name: "Command Injection".into(),
-                pattern: r"[;&|`]\s*(cat|ls|pwd|whoami|id|uname|wget|curl|nc|bash|sh|python|perl|ruby)\b".into(),
+                pattern: r#"[;&|`]\s*(cat|ls|pwd|whoami|id|uname|wget|curl|nc|bash|sh|python|perl|ruby)\b"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
@@ -279,14 +279,14 @@ impl WafEngine {
             WafRule {
                 id: "wp-001".into(),
                 name: "WP Config Access".into(),
-                pattern: r"(?i)wp-config\.php".into(),
+                pattern: r#"(?i)wp-config\.php"#.into(),
                 action: WafAction::Block,
                 enabled: true,
             },
             WafRule {
                 id: "wp-002".into(),
                 name: "PHP File Upload Attempt".into(),
-                pattern: r"(?i)\.(php[345s]?|phtml|phar)\s*$".into(),
+                pattern: r#"(?i)\.(php[345s]?|phtml|phar)\s*$"#.into(),
                 action: WafAction::Log,
                 enabled: true,
             },
@@ -367,7 +367,6 @@ mod tests {
     fn test_disabled_rule_does_not_match() {
         let mut engine = WafEngine::with_default_rules();
         engine.set_rule_enabled("sqli-001", false);
-        // UNION SELECT should no longer be blocked by sqli-001
         let result = engine.check_request(
             "GET",
             "/page",
@@ -387,7 +386,7 @@ mod tests {
         let ok = engine.add_rule(WafRule {
             id: "custom-001".into(),
             name: "Block admin path".into(),
-            pattern: r"/secret-admin".into(),
+            pattern: "/secret-admin".into(),
             action: WafAction::Block,
             enabled: true,
         });
@@ -438,7 +437,7 @@ mod tests {
         let ok = engine.add_rule(WafRule {
             id: "bad-001".into(),
             name: "Bad regex".into(),
-            pattern: r"[invalid".into(),
+            pattern: "[invalid".into(),
             action: WafAction::Block,
             enabled: true,
         });

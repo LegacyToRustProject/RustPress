@@ -101,24 +101,22 @@ pub fn parse_blocks(content: &str) -> Vec<Block> {
                 pos = match_end;
             } else {
                 // Find the matching closing tag
-                let closing_tag = format!("<!-- /wp:{}{} -->", namespace, block_name_short);
                 if let Some(close_result) = find_matching_close(
                     &input[match_end..],
                     namespace,
                     block_name_short,
                 ) {
                     let inner_content = &input[match_end..match_end + close_result.inner_end];
-                    let inner_blocks = parse_blocks(inner_content);
+                    let inner_blocks_parsed = parse_blocks(inner_content);
 
-                    // Determine inner_html: if there are inner blocks, we still store
-                    // the raw HTML. For static blocks this is the content itself.
-                    let inner_html = if inner_blocks.is_empty()
-                        || inner_blocks.iter().all(|b| b.name == "core/freeform")
-                    {
-                        inner_content.to_string()
-                    } else {
-                        inner_content.to_string()
-                    };
+                    // If the inner content only produced freeform blocks (no actual
+                    // Gutenberg blocks), treat as raw inner_html with no inner_blocks.
+                    let (inner_html, inner_blocks) =
+                        if inner_blocks_parsed.iter().all(|b| b.name == "core/freeform") {
+                            (inner_content.to_string(), Vec::new())
+                        } else {
+                            (inner_content.to_string(), inner_blocks_parsed)
+                        };
 
                     blocks.push(Block {
                         name: full_name,

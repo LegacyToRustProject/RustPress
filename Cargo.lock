@@ -3536,6 +3536,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustpress-blocks"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "rustpress-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "rustpress-cache"
 version = "0.1.0"
 dependencies = [
@@ -3664,6 +3676,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustpress-i18n"
+version = "0.1.0"
+dependencies = [
+ "rustpress-core",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "rustpress-migrate"
 version = "0.1.0"
 dependencies = [
@@ -3713,6 +3736,19 @@ dependencies = [
  "rustpress-core",
  "rustpress-db",
  "sea-orm",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
+name = "rustpress-security"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "regex",
+ "rustpress-core",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
