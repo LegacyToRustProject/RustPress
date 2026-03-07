@@ -328,7 +328,32 @@ PostQueryで複雑な条件指定のクエリが実行できること。
 ### Phase 6: プラグインシステム
 > **目標: サードパーティによる機能拡張を可能にする**
 
-#### 6-1. ネイティブRustプラグイン
+#### プラグイン戦略: 二段構え
+
+RustPressのプラグイン戦略は以下の2本柱で進める:
+
+1. **主要プラグインはRustで再開発** (本リポジトリ内)
+   - WordPress主要プラグイン相当の機能をRustネイティブで再実装
+   - PHPの技術的負債なしにゼロから最適設計
+   - 対象: EC, SEO, フォーム, カスタムフィールド, セキュリティ等
+
+2. **中小プラグインはAI変換Webサービスで対応** (別リポジトリ)
+   - PHPプラグインをアップロードすると、Rustプラグインに変換するWebサービス
+   - Claude API等のLLMで関数/クラス単位で変換 + cargo checkで自動検証
+   - 100%自動ではなく、80%スキャフォールド生成 + 20%手動調整を想定
+   - リポジトリ: `rustpress/rustpress-convert` (別途作成)
+
+#### 6-1. 主要プラグイン再開発 (Rustネイティブ)
+
+| クレート | WordPress相当 | 概要 |
+|---------|-------------|------|
+| `rustpress-commerce` | WooCommerce | EC機能 (商品, カート, 決済) |
+| `rustpress-seo` | Yoast / RankMath | SEOメタタグ, サイトマップ, OGP |
+| `rustpress-forms` | Contact Form 7 / Gravity Forms | フォーム構築・送信 |
+| `rustpress-fields` | ACF (Advanced Custom Fields) | カスタムフィールド管理 |
+| `rustpress-security` | Wordfence | WAF, ログイン保護, 脆弱性スキャン |
+
+#### 6-2. ネイティブRustプラグインAPI
 ```
 実装内容:
 - プラグイントレイト定義
@@ -340,7 +365,7 @@ PostQueryで複雑な条件指定のクエリが実行できること。
 - プラグインの有効化/無効化の永続化
 ```
 
-#### 6-2. WASMプラグイン (Extism利用)
+#### 6-3. WASMプラグイン (Extism利用)
 ```
 実装内容:
 - Extism hostランタイム統合
@@ -350,7 +375,7 @@ PostQueryで複雑な条件指定のクエリが実行できること。
 - ホスト関数の公開 (DB読み取り, オプション取得, etc.)
 ```
 
-#### 6-3. プラグインSDK
+#### 6-4. プラグインSDK
 ```
 実装内容:
 - Rustプラグイン用テンプレート (cargo-generate)
@@ -361,9 +386,20 @@ PostQueryで複雑な条件指定のクエリが実行できること。
   - サイトマップ生成
 ```
 
+#### 6-5. AI変換Webサービス (rustpress-convert)
+```
+実装内容 (別リポジトリ):
+- Web UI: PHPプラグインzipアップロード → 変換進捗表示 → 結果ダウンロード
+- API: POST /convert でPHPプラグイン受付
+- Worker: LLM APIでPHP→Rust変換 + cargo checkによる自動検証ループ
+- CLI連携: rustpress-cli convert-plugin でサーバー経由の変換も可能
+- 技術スタック: Axum + Tera (RustPress本体と統一)
+```
+
 **Phase 6 完了基準:**
 Rust (ネイティブ) と WASM の両方でプラグインを書いて、
 フックを通じて動作を拡張できること。
+主要プラグイン (SEO, フォーム) の最低1つがRustネイティブで動作すること。
 
 ---
 
@@ -592,7 +628,7 @@ rustpress-cli      ← server, db (CLIツール)
 | リスク | 影響度 | 対策 |
 |-------|-------|------|
 | WordPressの全機能再現は膨大 | 高 | 80/20: 最重要機能に集中。全再現は目指さない |
-| PHPプラグイン互換は困難 | 高 | WASM + 新規プラグインAPIに注力。PHP互換は後回し |
+| PHPプラグイン互換は困難 | 高 | 主要プラグインはRustで再開発、中小プラグインはAI変換Webサービスで移行支援。PHP直接実行は行わない |
 | SeaORMの制約 | 中 | 必要に応じてraw SQLにフォールバック |
 | WP DBのPHPシリアライズデータ | 中 | php-serialize クレートで対応 |
 | 一人での開発は遅い | 高 | Phase 5でOpen → コミュニティ構築 |
