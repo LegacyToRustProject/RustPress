@@ -207,9 +207,7 @@ impl WooProductData {
             length: non_empty_f64(meta.get(product_keys::LENGTH)),
             width: non_empty_f64(meta.get(product_keys::WIDTH)),
             height: non_empty_f64(meta.get(product_keys::HEIGHT)),
-            is_virtual: meta
-                .get(product_keys::VIRTUAL)
-                .is_some_and(|v| v == "yes"),
+            is_virtual: meta.get(product_keys::VIRTUAL).is_some_and(|v| v == "yes"),
             is_downloadable: meta
                 .get(product_keys::DOWNLOADABLE)
                 .is_some_and(|v| v == "yes"),
@@ -415,19 +413,19 @@ impl WooOrderData {
 
     /// Convert to wp_postmeta key-value pairs for writing.
     pub fn to_meta(&self) -> Vec<(String, String)> {
-        let mut pairs = Vec::new();
-
-        pairs.push((order_keys::ORDER_TOTAL.into(), self.total.to_string()));
-        pairs.push((order_keys::ORDER_TAX.into(), self.tax_total.to_string()));
-        pairs.push((
-            order_keys::ORDER_SHIPPING.into(),
-            self.shipping_total.to_string(),
-        ));
-        pairs.push((
-            order_keys::ORDER_DISCOUNT.into(),
-            self.discount_total.to_string(),
-        ));
-        pairs.push((order_keys::ORDER_CURRENCY.into(), self.currency.clone()));
+        let mut pairs = vec![
+            (order_keys::ORDER_TOTAL.into(), self.total.to_string()),
+            (order_keys::ORDER_TAX.into(), self.tax_total.to_string()),
+            (
+                order_keys::ORDER_SHIPPING.into(),
+                self.shipping_total.to_string(),
+            ),
+            (
+                order_keys::ORDER_DISCOUNT.into(),
+                self.discount_total.to_string(),
+            ),
+            (order_keys::ORDER_CURRENCY.into(), self.currency.clone()),
+        ];
         if !self.order_key.is_empty() {
             pairs.push((order_keys::ORDER_KEY.into(), self.order_key.clone()));
         }

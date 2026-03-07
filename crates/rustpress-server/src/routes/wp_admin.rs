@@ -3134,10 +3134,7 @@ async fn widgets_page(
     let mut area_widgets = serde_json::Map::new();
     for area_info in widgets::WIDGET_AREAS {
         let instances = config.areas.get(area_info.id).cloned().unwrap_or_default();
-        let items: Vec<serde_json::Value> = instances
-            .iter()
-            .map(widget_instance_to_json)
-            .collect();
+        let items: Vec<serde_json::Value> = instances.iter().map(widget_instance_to_json).collect();
         area_widgets.insert(area_info.id.to_string(), serde_json::Value::Array(items));
     }
     ctx.insert("area_widgets", &area_widgets);
@@ -3253,10 +3250,7 @@ async fn widgets_save(
     let mut area_widgets = serde_json::Map::new();
     for area_info in widgets::WIDGET_AREAS {
         let instances = config.areas.get(area_info.id).cloned().unwrap_or_default();
-        let items: Vec<serde_json::Value> = instances
-            .iter()
-            .map(widget_instance_to_json)
-            .collect();
+        let items: Vec<serde_json::Value> = instances.iter().map(widget_instance_to_json).collect();
         area_widgets.insert(area_info.id.to_string(), serde_json::Value::Array(items));
     }
     ctx.insert("area_widgets", &area_widgets);

@@ -10,8 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Tax class categories.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum TaxClass {
     #[default]
     Standard,
@@ -19,7 +18,6 @@ pub enum TaxClass {
     Zero,
     Custom(String),
 }
-
 
 /// A tax rate definition.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -260,10 +258,12 @@ impl TaxCalculator {
         }
 
         // City match (empty means "all cities")
-        if !rate.city.is_empty() && rate.city != "*"
-            && rate.city.to_lowercase() != location.city.to_lowercase() {
-                return false;
-            }
+        if !rate.city.is_empty()
+            && rate.city != "*"
+            && rate.city.to_lowercase() != location.city.to_lowercase()
+        {
+            return false;
+        }
 
         true
     }

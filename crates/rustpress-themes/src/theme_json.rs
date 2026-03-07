@@ -127,6 +127,7 @@ impl ThemeJson {
     }
 
     /// Load from a JSON string.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(json: &str) -> Result<Self, String> {
         serde_json::from_str(json).map_err(|e| format!("Failed to parse theme.json: {}", e))
     }
@@ -522,8 +523,8 @@ impl ThemeJson {
 
 /// Convert `var:preset|type|slug` references to `var(--wp--preset--type--slug)`.
 fn resolve_var_ref(value: &str) -> String {
-    if value.starts_with("var:") {
-        let parts: Vec<&str> = value[4..].split('|').collect();
+    if let Some(rest) = value.strip_prefix("var:") {
+        let parts: Vec<&str> = rest.split('|').collect();
         if parts.len() >= 3 {
             format!("var(--wp--{}--{}--{})", parts[0], parts[1], parts[2])
         } else if parts.len() == 2 {

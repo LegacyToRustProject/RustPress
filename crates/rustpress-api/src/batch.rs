@@ -30,7 +30,6 @@ use crate::ApiState;
 ///   ]
 /// }
 /// ```
-
 const MAX_BATCH_REQUESTS: usize = 25;
 
 #[derive(Debug, Deserialize)]

@@ -50,7 +50,7 @@ async fn oembed_handler(
     Query(query): Query<OEmbedQuery>,
 ) -> Response {
     let format = query.format.as_deref().unwrap_or("json");
-    let max_width = query.max_width.unwrap_or(600).min(1200).max(200);
+    let max_width = query.max_width.unwrap_or(600).clamp(200, 1200);
 
     // Extract slug from the URL
     let slug = extract_slug_from_url(&query.url, &state.site_url);
@@ -198,17 +198,13 @@ async fn oembed_discovery(State(_state): State<ApiState>) -> Json<Value> {
 /// Extract slug from a URL like `http://example.com/my-post` → `my-post`.
 fn extract_slug_from_url(url: &str, site_url: &str) -> Option<String> {
     let base = site_url.trim_end_matches('/');
-    let path = if url.starts_with(base) {
-        &url[base.len()..]
+    let path = if let Some(stripped) = url.strip_prefix(base) {
+        stripped
     } else {
         // Try stripping protocol differences
         let url_path = url.find("://").map(|i| &url[i + 3..]).unwrap_or(url);
         let base_path = base.find("://").map(|i| &base[i + 3..]).unwrap_or(base);
-        if url_path.starts_with(base_path) {
-            &url_path[base_path.len()..]
-        } else {
-            return None;
-        }
+        url_path.strip_prefix(base_path)?
     };
 
     let path = path.trim_matches('/');

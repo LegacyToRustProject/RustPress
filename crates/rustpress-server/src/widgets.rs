@@ -231,9 +231,7 @@ impl WidgetConfig {
     /// Ensure all registered areas exist in the config (for forward-compat).
     pub fn ensure_areas(&mut self) {
         for area in WIDGET_AREAS {
-            self.areas
-                .entry(area.id.to_string())
-                .or_default();
+            self.areas.entry(area.id.to_string()).or_default();
         }
     }
 }

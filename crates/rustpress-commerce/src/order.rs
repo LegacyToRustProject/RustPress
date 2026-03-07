@@ -92,6 +92,7 @@ impl OrderManager {
     }
 
     /// Create a new order from a list of items and addresses. Returns the order id.
+    #[allow(clippy::too_many_arguments)]
     pub fn create_order(
         &mut self,
         items: Vec<OrderItem>,

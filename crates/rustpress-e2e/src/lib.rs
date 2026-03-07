@@ -727,6 +727,7 @@ pub fn compare_images_pixel_perfect(
 
 /// Full visual comparison pipeline: take screenshots of both sites at the
 /// given path and viewport, compare them pixel-by-pixel, and save artifacts.
+#[allow(clippy::too_many_arguments)]
 pub async fn visual_compare(
     wp_driver: &WebDriver,
     rp_driver: &WebDriver,
@@ -891,6 +892,7 @@ pub fn assert_pixel_match(result: &PixelDiffResult, threshold: f64, label: &str)
 }
 
 /// Run a full visual regression test across multiple viewports for a single page.
+#[allow(clippy::too_many_arguments)]
 pub async fn visual_regression_test(
     wp_driver: &WebDriver,
     rp_driver: &WebDriver,

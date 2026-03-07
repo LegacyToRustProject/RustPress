@@ -24,7 +24,6 @@ pub enum Position {
     AcfAfterTitle,
 }
 
-
 /// Visual style of the field group metabox.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -36,7 +35,6 @@ pub enum Style {
     /// No border, blends into the page.
     Seamless,
 }
-
 
 /// The parameter used to determine where a field group is displayed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

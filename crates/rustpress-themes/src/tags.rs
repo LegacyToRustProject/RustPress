@@ -6,7 +6,6 @@ use rustpress_db::entities::wp_posts;
 
 /// Template tag helpers for rendering WordPress-like template data.
 /// These functions populate Tera contexts with post/page data.
-
 /// Format a NaiveDateTime to WordPress's default "F j, Y" format (e.g., "January 1, 2024").
 fn format_date_human(dt: NaiveDateTime) -> String {
     let month = match dt.format("%m").to_string().as_str() {

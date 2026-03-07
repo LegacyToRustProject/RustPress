@@ -368,6 +368,11 @@ async fn thank_you_page(
         ));
     }
 
+    let billing_name = format!(
+        "{} {}",
+        order.billing_address.first_name, order.billing_address.last_name
+    );
+
     let html = format!(
         r#"<!DOCTYPE html>
 <html>
@@ -413,10 +418,7 @@ th {{ background: #f5f5f5; }}
         date = order.created_at.format("%B %e, %Y %H:%M"),
         items_html = items_html,
         total = order.total,
-        billing_name = format!(
-            "{} {}",
-            order.billing_address.first_name, order.billing_address.last_name
-        ),
+        billing_name = billing_name,
         billing_address = order.billing_address.address_1,
         billing_city = order.billing_address.city,
         billing_state = order.billing_address.state,

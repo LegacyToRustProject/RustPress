@@ -8,7 +8,6 @@ use tracing::info;
 ///
 /// Handles creating the WordPress-compatible database schema
 /// and running migrations for RustPress-specific extensions.
-
 /// Create all WordPress core tables if they don't exist.
 /// Compatible with WordPress 6.9 database schema.
 pub async fn create_wp_tables(db: &DatabaseConnection) -> Result<(), DbErr> {

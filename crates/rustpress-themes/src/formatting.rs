@@ -736,13 +736,12 @@ fn add_block_layout_classes(content: &str) -> String {
     }
 
     // wp-block-column (without matching wp-block-columns)
-    // Use word boundary: "wp-block-column" not followed by "s"
-    if let Ok(re) = Regex::new(r#"class="([^"]*\bwp-block-column\b(?!s)(?:(?!\bis-layout-)[^"])*)"#)
-    {
+    if let Ok(re) = Regex::new(r#"class="([^"]*\bwp-block-column\b[^"]*)"#) {
         result = re
             .replace_all(&result, |caps: &regex::Captures| {
                 let classes = &caps[1];
-                if classes.contains("is-layout-") {
+                // Skip wp-block-columns (plural) and already-laid-out blocks
+                if classes.contains("wp-block-columns") || classes.contains("is-layout-") {
                     return caps[0].to_string();
                 }
                 format!(

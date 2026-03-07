@@ -731,6 +731,40 @@ async fn single_post_by_slug(
                 .create_nonce(&format!("comment_{}", post_id), 0);
             context.insert("comment_nonce", &comment_nonce);
 
+            // Load author info
+            if let Ok(Some(author)) = wp_users::Entity::find_by_id(p.post_author)
+                .one(&state.db)
+                .await
+            {
+                context.insert("author_name", &author.display_name);
+                context.insert("author_slug", &author.user_nicename);
+            }
+
+            // Load post categories
+            let term_rels = wp_term_relationships::Entity::find()
+                .filter(wp_term_relationships::Column::ObjectId.eq(post_id))
+                .all(&state.db)
+                .await
+                .unwrap_or_default();
+            let mut cats: Vec<serde_json::Value> = vec![];
+            for rel in &term_rels {
+                if let Ok(Some(tax)) = wp_term_taxonomy::Entity::find_by_id(rel.term_taxonomy_id)
+                    .filter(wp_term_taxonomy::Column::Taxonomy.eq("category"))
+                    .one(&state.db)
+                    .await
+                {
+                    if let Ok(Some(term)) = wp_terms::Entity::find_by_id(tax.term_id)
+                        .one(&state.db)
+                        .await
+                    {
+                        cats.push(serde_json::json!({"name": term.name, "slug": term.slug}));
+                    }
+                }
+            }
+            if !cats.is_empty() {
+                context.insert("categories", &cats);
+            }
+
             // Load previous/next posts for navigation
             if post_type == "post" {
                 // Previous post (older)
@@ -1532,11 +1566,7 @@ fn parse_php_serialized_ids(input: &str) -> Vec<u64> {
         // Extract all "i:NUMBER;" patterns — values are at odd positions
         let numbers: Vec<u64> = trimmed
             .split("i:")
-            .filter_map(|s| {
-                s.trim_end_matches([';', '}'])
-                    .parse::<u64>()
-                    .ok()
-            })
+            .filter_map(|s| s.trim_end_matches([';', '}']).parse::<u64>().ok())
             .collect();
         // In PHP serialized arrays, format is i:KEY;i:VALUE; so values are at odd indices
         // But since we split on "i:", we get ["a:1:{", "0;", "6;", "}"]

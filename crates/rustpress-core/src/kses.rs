@@ -413,9 +413,10 @@ fn filter_attributes(attrs_raw: &str, allowed_attrs: &[&str]) -> String {
             Some(value) => {
                 // Validate URL attributes.
                 if URL_ATTRS.contains(&attr_name.as_str())
-                    && (RE_BAD_PROTOCOL.is_match(value) || is_bad_data_uri(value)) {
-                        continue;
-                    }
+                    && (RE_BAD_PROTOCOL.is_match(value) || is_bad_data_uri(value))
+                {
+                    continue;
+                }
                 // Validate style attributes.
                 if attr_name == "style" && RE_BAD_CSS.is_match(value) {
                     continue;
@@ -461,9 +462,9 @@ fn encode_url_entities(url: &str) -> String {
         match bytes[i] {
             b'&' => {
                 // Keep existing `&amp;`, `&#nnn;`, `&#xHH;` entities as-is.
-                if i + 1 < len && bytes[i + 1] == b'#' {
-                    out.push('&');
-                } else if i + 3 < len && &bytes[i + 1..i + 4] == b"amp" {
+                if (i + 1 < len && bytes[i + 1] == b'#')
+                    || (i + 3 < len && &bytes[i + 1..i + 4] == b"amp")
+                {
                     out.push('&');
                 } else {
                     out.push_str("&amp;");

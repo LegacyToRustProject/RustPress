@@ -441,9 +441,7 @@ fn detect_first_tag(xml: &str) -> Option<String> {
     // Skip the '<'
     let rest = &trimmed[1..];
     // Find the end of the tag name (space, >, or /)
-    let end = rest
-        .find(['>', ' ', '/', '\n', '\r'])
-        .unwrap_or(rest.len());
+    let end = rest.find(['>', ' ', '/', '\n', '\r']).unwrap_or(rest.len());
     let tag_name = &rest[..end];
     if tag_name.is_empty() || tag_name.starts_with('/') {
         None
@@ -1733,7 +1731,8 @@ fn media_item_to_xmlrpc(post: &wp_posts::Model) -> String {
 /// pingback.ping (source_uri, target_uri) -> string
 /// Called by remote blogs to notify us of incoming links.
 async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> String {
-    let source_uri = params.first()
+    let source_uri = params
+        .first()
         .map(|v| v.as_str().to_string())
         .unwrap_or_default();
     let target_uri = params
@@ -1824,7 +1823,8 @@ async fn handle_pingback_ping(state: &AppState, params: &[XmlRpcValue]) -> Strin
 
 /// pingback.extensions.getPingbacks (post_uri) -> array of source URIs
 async fn handle_get_pingbacks(state: &AppState, params: &[XmlRpcValue]) -> String {
-    let target_uri = params.first()
+    let target_uri = params
+        .first()
         .map(|v| v.as_str().to_string())
         .unwrap_or_default();
     let slug = target_uri

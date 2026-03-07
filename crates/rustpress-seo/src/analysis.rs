@@ -484,9 +484,7 @@ fn count_sentences(text: &str) -> usize {
 }
 
 fn count_syllables(text: &str) -> usize {
-    text.split_whitespace()
-        .map(count_word_syllables)
-        .sum()
+    text.split_whitespace().map(count_word_syllables).sum()
 }
 
 fn count_word_syllables(word: &str) -> usize {

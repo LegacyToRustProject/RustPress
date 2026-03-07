@@ -68,17 +68,18 @@ impl SecurityScanner {
     pub fn run_all_checks(&self) -> Vec<SecurityCheck> {
         info!("Running security scan...");
 
-        let mut checks = Vec::new();
-        checks.push(self.check_debug_mode());
-        checks.push(self.check_ssl());
-        checks.push(self.check_db_prefix());
-        checks.push(self.check_default_admin());
-        checks.push(self.check_directory_listing());
-        checks.push(self.check_file_permissions());
-        checks.push(self.check_php_upload());
-        checks.push(self.check_wp_config_accessible());
-        checks.push(self.check_strong_db_prefix());
-        checks.push(self.check_upload_directory());
+        let checks = vec![
+            self.check_debug_mode(),
+            self.check_ssl(),
+            self.check_db_prefix(),
+            self.check_default_admin(),
+            self.check_directory_listing(),
+            self.check_file_permissions(),
+            self.check_php_upload(),
+            self.check_wp_config_accessible(),
+            self.check_strong_db_prefix(),
+            self.check_upload_directory(),
+        ];
 
         let pass_count = checks
             .iter()
@@ -310,10 +311,7 @@ impl SecurityScanner {
             .map(|s| s.as_str())
             .collect();
 
-        let all_suspicious: Vec<&str> = suspicious
-            .into_iter()
-            .chain(double_ext)
-            .collect();
+        let all_suspicious: Vec<&str> = suspicious.into_iter().chain(double_ext).collect();
 
         SecurityCheck {
             name: "PHP File Upload Detection".into(),

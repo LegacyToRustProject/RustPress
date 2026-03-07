@@ -14,8 +14,11 @@
 
 <h1 class="wp-block-post-title">{{ the_title }}</h1>
 
-<div class="wp-block-group is-layout-flex wp-block-group-is-layout-flex" style="gap:var(--wp--preset--spacing--20)">
-<div class="wp-block-post-date"><time datetime="{{ post.date_iso | default(value=the_date) }}">{{ post.date_formatted | default(value=the_date) }}</time></div>
+<div class="wp-block-group has-accent-4-color has-text-color has-link-color has-small-font-size is-layout-flex wp-block-group-is-layout-flex" style="margin-bottom:var(--wp--preset--spacing--60)">
+<p>Written by </p>
+<div class="wp-block-post-author-name"><a href="{{ site_url | default(value='') }}/author/{{ author_slug | default(value='admin') }}/" class="wp-block-post-author-name__link">{{ author_name | default(value="admin") }}</a></div>
+<p>in</p>
+<div style="font-weight:300" class="taxonomy-category wp-block-post-terms">{% if categories is defined and categories %}{% for cat in categories %}<a href="{{ site_url | default(value='') }}/category/{{ cat.slug }}/" rel="tag">{{ cat.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}<a href="{{ site_url | default(value='') }}/category/uncategorized/" rel="tag">Uncategorized</a>{% endif %}</div>
 </div>
 
 <div class="entry-content alignfull wp-block-post-content has-global-padding is-layout-constrained wp-block-post-content-is-layout-constrained">

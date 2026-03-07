@@ -2,7 +2,6 @@
 ///
 /// Equivalent to the output produced by WordPress's `wp_head()` and
 /// `wp_footer()` action hooks in `wp-includes/default-filters.php`.
-
 /// Generate standard WordPress `<head>` outputs.
 ///
 /// All standard head elements (RSS feeds, api.w.org, EditURI, pingback,

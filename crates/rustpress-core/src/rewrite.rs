@@ -222,8 +222,6 @@ impl RewriteRules {
         let month = date.format("%m").to_string();
         let day = date.format("%d").to_string();
 
-        
-
         structure_str
             .replace("%year%", &year)
             .replace("%monthnum%", &month)

@@ -60,14 +60,15 @@ pub fn validate_submission(
                 .validation_rules
                 .iter()
                 .any(|r| matches!(r, ValidationRule::Required)))
-            && value.trim().is_empty() {
-                errors.push(ValidationError {
-                    field_name: field.name.clone(),
-                    message: format!("{} is required.", field.label),
-                });
-                // Skip further validation if required field is empty
-                continue;
-            }
+            && value.trim().is_empty()
+        {
+            errors.push(ValidationError {
+                field_name: field.name.clone(),
+                message: format!("{} is required.", field.label),
+            });
+            // Skip further validation if required field is empty
+            continue;
+        }
 
         // Skip validation for empty optional fields
         if value.trim().is_empty() {

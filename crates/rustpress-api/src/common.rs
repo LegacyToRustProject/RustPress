@@ -24,6 +24,7 @@ pub enum RestContext {
 impl RestContext {
     /// Parse a context string (from `?context=` query param).
     /// Unknown values default to `View`.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s {
             "edit" => Self::Edit,
@@ -201,7 +202,7 @@ pub fn filter_media_context(val: &mut Value, context: RestContext) {
 /// Apply context filtering to every element of a JSON array.
 /// `filter_fn` is one of the `filter_*_context` helpers above.
 pub fn apply_context_to_array(
-    items: &mut Vec<Value>,
+    items: &mut [Value],
     context: RestContext,
     filter_fn: fn(&mut Value, RestContext),
 ) {

@@ -299,8 +299,7 @@ async fn get_comment(
         .ok_or(WpError::not_found("Comment not found"))?;
 
     let context = RestContext::from_option(params.context.as_deref());
-    let mut val =
-        serde_json::to_value(build_comment(comment, &state.site_url)).unwrap_or_default();
+    let mut val = serde_json::to_value(build_comment(comment, &state.site_url)).unwrap_or_default();
     filter_comment_context(&mut val, context);
     Ok(Json(val))
 }

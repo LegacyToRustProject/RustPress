@@ -205,15 +205,12 @@ async fn introspect_app_password(
     // Return info about the first application password (the one most recently used, if any)
     // In a real implementation this would identify the specific password used in the request.
     // Here we return info about the most recently used password.
-    let pw = passwords
-        .into_iter()
-        .filter(|p| {
-            p.get("last_used")
-                .and_then(|v| v.as_str())
-                .map(|s| !s.is_empty())
-                .unwrap_or(false)
-        })
-        .next();
+    let pw = passwords.into_iter().find(|p| {
+        p.get("last_used")
+            .and_then(|v| v.as_str())
+            .map(|s| !s.is_empty())
+            .unwrap_or(false)
+    });
 
     match pw {
         Some(mut p) => {

@@ -77,10 +77,7 @@ impl AcfPostData {
 
             // Only include entries that have an ACF reference key (field_xxx)
             // or that are not WordPress internal keys
-            if field_key
-                .as_ref()
-                .is_some_and(|k| k.starts_with("field_"))
-            {
+            if field_key.as_ref().is_some_and(|k| k.starts_with("field_")) {
                 fields.push(AcfMetaEntry {
                     field_name: key.clone(),
                     field_key,

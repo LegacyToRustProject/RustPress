@@ -516,7 +516,10 @@ async fn create_media(
                     let part = part.trim();
                     if let Some(name) = part.strip_prefix("filename=") {
                         Some(name.trim_matches('"').to_string())
-                    } else { part.strip_prefix("filename*=UTF-8''").map(|name| percent_decode_filename(name)) }
+                    } else {
+                        part.strip_prefix("filename*=UTF-8''")
+                            .map(percent_decode_filename)
+                    }
                 })
             })
             .unwrap_or_else(|| format!("upload-{}.bin", chrono::Utc::now().timestamp()));
