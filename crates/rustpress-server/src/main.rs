@@ -165,6 +165,30 @@ async fn main() -> Result<()> {
 
     // Register i18n functions on the admin Tera instance
     i18n::register_tera_i18n_functions(&mut admin_tera, &translations);
+
+    // Register wp_nonce_field() Tera function for CSRF protection in forms.
+    // Usage: {{ wp_nonce_field(nonce=wpnonce_save_post) }}
+    // Or with custom field name: {{ wp_nonce_field(nonce=wpnonce_general, name="_custom_nonce") }}
+    admin_tera.register_function(
+        "wp_nonce_field",
+        |args: &std::collections::HashMap<String, tera::Value>| -> tera::Result<tera::Value> {
+            let nonce = args
+                .get("nonce")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| tera::Error::msg("wp_nonce_field requires a 'nonce' argument"))?;
+            let name = args
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("_wpnonce");
+            let html = format!(
+                "<input type=\"hidden\" name=\"{}\" value=\"{}\" />",
+                rustpress_core::esc_attr(name),
+                rustpress_core::esc_attr(nonce),
+            );
+            Ok(tera::Value::String(html))
+        },
+    );
+
     let admin_tera = Arc::new(admin_tera);
 
     // Initialize rewrite rules from permalink_structure option

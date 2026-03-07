@@ -302,8 +302,14 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/wp-admin/", get(dashboard))
         .route("/wp-admin/index.php", get(dashboard))
         .route("/wp-admin/edit.php", get(posts_list))
-        .route("/wp-admin/post-new.php", get(post_editor_new))
-        .route("/wp-admin/post.php", get(post_editor_edit))
+        .route(
+            "/wp-admin/post-new.php",
+            get(post_editor_new),
+        )
+        .route(
+            "/wp-admin/post.php",
+            get(post_editor_edit),
+        )
         .route(
             "/wp-admin/upload.php",
             get(media_library).post(media_edit_save),
@@ -402,6 +408,38 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
         "wpnonce_manage_users",
         &state.nonces.create_nonce("manage_users", user_id),
     );
+    ctx.insert(
+        "wpnonce_login",
+        &state.nonces.create_nonce("login", user_id),
+    );
+    ctx.insert(
+        "wpnonce_manage_menus",
+        &state.nonces.create_nonce("manage_menus", user_id),
+    );
+    ctx.insert(
+        "wpnonce_manage_widgets",
+        &state.nonces.create_nonce("manage_widgets", user_id),
+    );
+    ctx.insert(
+        "wpnonce_manage_themes",
+        &state.nonces.create_nonce("manage_themes", user_id),
+    );
+    ctx.insert(
+        "wpnonce_export",
+        &state.nonces.create_nonce("export", user_id),
+    );
+    ctx.insert(
+        "wpnonce_import",
+        &state.nonces.create_nonce("import", user_id),
+    );
+    ctx.insert(
+        "wpnonce_manage_media",
+        &state.nonces.create_nonce("manage_media", user_id),
+    );
+    ctx.insert(
+        "wpnonce_manage_network",
+        &state.nonces.create_nonce("manage_network", user_id),
+    );
 
     ctx
 }
@@ -415,9 +453,36 @@ async fn admin_context(state: &AppState, session: &Session) -> tera::Context {
 
 async fn login_page_dispatch(
     State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
     Query(params): Query<LoginQuery>,
 ) -> Response {
     match params.action.as_deref() {
+        Some("logout") => {
+            // WordPress-compatible logout: /wp-login.php?action=logout
+            // Extract session from cookie if present, destroy it, then redirect
+            if let Some(sid) = headers
+                .get(header::COOKIE)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|cookies| {
+                    cookies.split(';').find_map(|c| {
+                        c.trim()
+                            .strip_prefix("rustpress_session=")
+                            .map(|v| v.to_string())
+                    })
+                })
+            {
+                state.sessions.destroy_session(&sid).await;
+            }
+            let cookie = "rustpress_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0";
+            (
+                StatusCode::SEE_OTHER,
+                [
+                    (header::SET_COOKIE, cookie.to_string()),
+                    (header::LOCATION, "/wp-login.php?loggedout=true".to_string()),
+                ],
+            )
+                .into_response()
+        }
         Some("lostpassword") => lost_password_page(State(state)).await.into_response(),
         Some("rp") => {
             let key = params.key.unwrap_or_default();
@@ -431,6 +496,8 @@ async fn login_page_dispatch(
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
             ctx.insert("error", &"");
+            // Nonce for unauthenticated login form (user_id=0)
+            ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
             render_admin(&state, "admin/login.html", &ctx).into_response()
         }
     }
@@ -452,6 +519,7 @@ async fn login_post_dispatch(
                     ctx.insert("site_name", &site_name);
                     ctx.insert("error", "Invalid form data.");
                     ctx.insert("success", &false);
+                    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
                     return render_admin(&state, "admin/lost-password.html", &ctx).into_response();
                 }
             };
@@ -469,6 +537,7 @@ async fn login_post_dispatch(
                     ctx.insert("error", "Invalid form data.");
                     ctx.insert("success", &false);
                     ctx.insert("invalid_token", &false);
+                    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
                     return render_admin(&state, "admin/reset-password.html", &ctx).into_response();
                 }
             };
@@ -484,6 +553,7 @@ async fn login_post_dispatch(
                     let site_name = state.options.get_blogname().await.unwrap_or_default();
                     ctx.insert("site_name", &site_name);
                     ctx.insert("error", "Invalid form data.");
+                    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
                     return render_admin(&state, "admin/login.html", &ctx).into_response();
                 }
             };
@@ -519,6 +589,7 @@ async fn login_submit(
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
             ctx.insert("error", "Invalid username or password.");
+            ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
             return render_admin(&state, "admin/login.html", &ctx).into_response();
         }
     };
@@ -535,6 +606,7 @@ async fn login_submit(
         let site_name = state.options.get_blogname().await.unwrap_or_default();
         ctx.insert("site_name", &site_name);
         ctx.insert("error", "Invalid username or password.");
+        ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
         return render_admin(&state, "admin/login.html", &ctx).into_response();
     }
 
@@ -581,13 +653,13 @@ async fn logout(
     Extension(session): Extension<Session>,
 ) -> Response {
     state.sessions.destroy_session(&session.id).await;
-    let cookie = "rustpress_session=; HttpOnly; Path=/; Max-Age=0";
+    let cookie = "rustpress_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0";
 
     (
         StatusCode::SEE_OTHER,
         [
             (header::SET_COOKIE, cookie.to_string()),
-            (header::LOCATION, "/wp-login.php".to_string()),
+            (header::LOCATION, "/wp-login.php?loggedout=true".to_string()),
         ],
     )
         .into_response()
@@ -2863,6 +2935,7 @@ async fn lost_password_page(State(state): State<Arc<AppState>>) -> Html<String> 
     ctx.insert("site_name", &site_name);
     ctx.insert("error", &"");
     ctx.insert("success", &false);
+    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
     render_admin(&state, "admin/lost-password.html", &ctx)
 }
 
@@ -2877,6 +2950,7 @@ async fn lost_password_submit(
 
     // Always show success to avoid user enumeration
     ctx.insert("success", &true);
+    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
 
     // Look up user by login or email
     let user_login = form.user_login.trim();
@@ -2942,6 +3016,7 @@ async fn reset_password_page(
     ctx.insert("error", &"");
     ctx.insert("success", &false);
     ctx.insert("invalid_token", &false);
+    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
 
     if key.is_empty() || login.is_empty() {
         ctx.insert("invalid_token", &true);
@@ -2981,6 +3056,7 @@ async fn reset_password_submit(
     ctx.insert("invalid_token", &false);
     ctx.insert("rp_key", &form.rp_key);
     ctx.insert("rp_login", &form.rp_login);
+    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
 
     // Validate passwords match
     if form.new_password != form.confirm_password {
@@ -4076,4 +4152,368 @@ fn extract_client_ip_from_headers(headers: &HeaderMap) -> String {
                 .map(|s| s.to_string())
         })
         .unwrap_or_else(|| "unknown".to_string())
+}
+
+// --- POST /wp-admin/post.php and /wp-admin/post-new.php ---
+
+async fn post_submit(
+    State(state): State<Arc<AppState>>,
+    Extension(session): Extension<Session>,
+    Form(form): Form<PostSubmitForm>,
+) -> Response {
+    let now = chrono::Utc::now().naive_utc();
+    let post_type = form.post_type.as_deref().unwrap_or("post");
+    let status = form.post_status.as_deref().unwrap_or("draft");
+    let title = form.post_title.as_deref().unwrap_or("");
+    let content = form.post_content.as_deref().unwrap_or("");
+    let excerpt = form.post_excerpt.as_deref().unwrap_or("");
+    let slug = form
+        .post_name
+        .clone()
+        .unwrap_or_else(|| rustpress_core::slugify(title));
+
+    if let Some(post_id) = form.post_id.filter(|&id| id > 0) {
+        // Update existing post
+        let post = wp_posts::Entity::find_by_id(post_id)
+            .one(&state.db)
+            .await
+            .ok()
+            .flatten();
+        if let Some(p) = post {
+            let mut active: wp_posts::ActiveModel = p.into();
+            active.post_title = Set(title.to_string());
+            active.post_content = Set(rustpress_core::wp_kses_post(content));
+            active.post_excerpt = Set(excerpt.to_string());
+            active.post_status = Set(status.to_string());
+            active.post_name = Set(slug);
+            active.post_modified = Set(now);
+            active.post_modified_gmt = Set(now);
+            if let Some(ref cs) = form.comment_status {
+                active.comment_status = Set(cs.clone());
+            }
+            if let Some(ref ps) = form.ping_status {
+                active.ping_status = Set(ps.clone());
+            }
+            let _ = active.update(&state.db).await;
+        }
+        Redirect::to(&format!(
+            "/wp-admin/post.php?post={}&action=edit&message=1",
+            post_id
+        ))
+        .into_response()
+    } else {
+        // Create new post
+        let new_post = wp_posts::ActiveModel {
+            post_author: Set(session.user_id),
+            post_date: Set(now),
+            post_date_gmt: Set(now),
+            post_content: Set(rustpress_core::wp_kses_post(content)),
+            post_title: Set(title.to_string()),
+            post_excerpt: Set(excerpt.to_string()),
+            post_status: Set(status.to_string()),
+            comment_status: Set(form.comment_status.unwrap_or_else(|| "open".to_string())),
+            ping_status: Set(form.ping_status.unwrap_or_else(|| "open".to_string())),
+            post_password: Set(String::new()),
+            post_name: Set(slug),
+            to_ping: Set(String::new()),
+            pinged: Set(String::new()),
+            post_modified: Set(now),
+            post_modified_gmt: Set(now),
+            post_content_filtered: Set(String::new()),
+            post_parent: Set(0),
+            guid: Set(String::new()),
+            menu_order: Set(0),
+            post_type: Set(post_type.to_string()),
+            post_mime_type: Set(String::new()),
+            comment_count: Set(0),
+            ..Default::default()
+        };
+
+        match new_post.insert(&state.db).await {
+            Ok(result) => Redirect::to(&format!(
+                "/wp-admin/post.php?post={}&action=edit&message=6",
+                result.id
+            ))
+            .into_response(),
+            Err(_) => Redirect::to("/wp-admin/edit.php?message=error").into_response(),
+        }
+    }
+}
+
+// --- POST /wp-admin/edit.php (bulk actions) ---
+
+async fn bulk_action_posts(
+    State(state): State<Arc<AppState>>,
+    Extension(_session): Extension<Session>,
+    Form(form): Form<BulkActionForm>,
+) -> Response {
+    let action = form
+        .action
+        .as_deref()
+        .filter(|a| *a != "-1")
+        .or(form.action2.as_deref().filter(|a| *a != "-1"))
+        .unwrap_or("-1");
+    let post_type = form.post_type.as_deref().unwrap_or("post");
+    let post_ids = form.post.unwrap_or_default();
+
+    if action == "-1" || post_ids.is_empty() {
+        return Redirect::to(&format!("/wp-admin/edit.php?post_type={}", post_type))
+            .into_response();
+    }
+
+    match action {
+        "trash" => {
+            for id in &post_ids {
+                if let Ok(Some(p)) = wp_posts::Entity::find_by_id(*id).one(&state.db).await {
+                    let mut active: wp_posts::ActiveModel = p.into();
+                    active.post_status = Set("trash".to_string());
+                    let _ = active.update(&state.db).await;
+                }
+            }
+        }
+        "untrash" => {
+            for id in &post_ids {
+                if let Ok(Some(p)) = wp_posts::Entity::find_by_id(*id).one(&state.db).await {
+                    let mut active: wp_posts::ActiveModel = p.into();
+                    active.post_status = Set("draft".to_string());
+                    let _ = active.update(&state.db).await;
+                }
+            }
+        }
+        "delete" => {
+            for id in &post_ids {
+                let _ = wp_posts::Entity::delete_by_id(*id).exec(&state.db).await;
+            }
+        }
+        _ => {}
+    }
+
+    Redirect::to(&format!(
+        "/wp-admin/edit.php?post_type={}&message={}",
+        post_type, action
+    ))
+    .into_response()
+}
+
+// --- POST /wp-admin/admin-post.php (generic form handler) ---
+
+async fn admin_post_handler(
+    State(_state): State<Arc<AppState>>,
+    Extension(_session): Extension<Session>,
+    Form(form): Form<AdminPostForm>,
+) -> Response {
+    let action = form.action.as_deref().unwrap_or("");
+    tracing::info!("admin-post.php action={}", action);
+
+    match action {
+        "" => Redirect::to("/wp-admin/").into_response(),
+        _ => {
+            tracing::debug!("Unhandled admin-post action: {}", action);
+            Redirect::to("/wp-admin/").into_response()
+        }
+    }
+}
+
+// --- POST /wp-admin/admin-ajax.php ---
+
+async fn admin_ajax_handler(
+    State(state): State<Arc<AppState>>,
+    Extension(session): Extension<Session>,
+    Form(form): Form<AdminAjaxForm>,
+) -> Response {
+    let action = form.action.as_deref().unwrap_or("");
+
+    match action {
+        "dim-comment" | "approve_comment" => {
+            let comment_id = match form.comment_id {
+                Some(id) => id,
+                None => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(serde_json::json!({"success": false, "data": "Missing comment_id"})),
+                    )
+                        .into_response()
+                }
+            };
+
+            let comment = wp_comments::Entity::find_by_id(comment_id)
+                .one(&state.db)
+                .await
+                .ok()
+                .flatten();
+
+            match comment {
+                Some(c) => {
+                    let new_status = if c.comment_approved == "1" {
+                        "0"
+                    } else {
+                        "1"
+                    };
+                    let mut active: wp_comments::ActiveModel = c.into();
+                    active.comment_approved = Set(new_status.to_string());
+                    let _ = active.update(&state.db).await;
+
+                    Json(serde_json::json!({
+                        "success": true,
+                        "data": {"comment_id": comment_id, "status": new_status}
+                    }))
+                    .into_response()
+                }
+                None => (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"success": false, "data": "Comment not found"})),
+                )
+                    .into_response(),
+            }
+        }
+
+        "trash-comment" | "delete-comment" => {
+            let comment_id = match form.comment_id {
+                Some(id) => id,
+                None => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(serde_json::json!({"success": false, "data": "Missing comment_id"})),
+                    )
+                        .into_response()
+                }
+            };
+
+            let comment = wp_comments::Entity::find_by_id(comment_id)
+                .one(&state.db)
+                .await
+                .ok()
+                .flatten();
+
+            match comment {
+                Some(c) => {
+                    if action == "delete-comment" {
+                        let _ = wp_comments::Entity::delete_by_id(comment_id)
+                            .exec(&state.db)
+                            .await;
+                    } else {
+                        let mut active: wp_comments::ActiveModel = c.into();
+                        active.comment_approved = Set("trash".to_string());
+                        let _ = active.update(&state.db).await;
+                    }
+
+                    Json(serde_json::json!({"success": true, "data": {"comment_id": comment_id}}))
+                        .into_response()
+                }
+                None => (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"success": false, "data": "Comment not found"})),
+                )
+                    .into_response(),
+            }
+        }
+
+        "spam-comment" => {
+            let comment_id = match form.comment_id {
+                Some(id) => id,
+                None => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(serde_json::json!({"success": false, "data": "Missing comment_id"})),
+                    )
+                        .into_response()
+                }
+            };
+
+            if let Ok(Some(c)) = wp_comments::Entity::find_by_id(comment_id)
+                .one(&state.db)
+                .await
+            {
+                let mut active: wp_comments::ActiveModel = c.into();
+                active.comment_approved = Set("spam".to_string());
+                let _ = active.update(&state.db).await;
+            }
+
+            Json(serde_json::json!({"success": true, "data": {"comment_id": comment_id}}))
+                .into_response()
+        }
+
+        "replyto-comment" => {
+            let post_id = match form.comment_post_id {
+                Some(id) => id,
+                None => {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(
+                            serde_json::json!({"success": false, "data": "Missing comment_post_id"}),
+                        ),
+                    )
+                        .into_response()
+                }
+            };
+            let content = form.content.as_deref().unwrap_or("");
+            if content.is_empty() {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({"success": false, "data": "Empty reply"})),
+                )
+                    .into_response();
+            }
+
+            let user = wp_users::Entity::find_by_id(session.user_id)
+                .one(&state.db)
+                .await
+                .ok()
+                .flatten();
+            let (author, author_email) = match user {
+                Some(ref u) => (u.display_name.clone(), u.user_email.clone()),
+                None => (session.login.clone(), String::new()),
+            };
+
+            let now = chrono::Utc::now().naive_utc();
+            let parent_id = form.comment_id.unwrap_or(0);
+
+            let new_comment = wp_comments::ActiveModel {
+                comment_post_id: Set(post_id),
+                comment_author: Set(author),
+                comment_author_email: Set(author_email),
+                comment_author_url: Set(String::new()),
+                comment_author_ip: Set(String::new()),
+                comment_date: Set(now),
+                comment_date_gmt: Set(now),
+                comment_content: Set(content.to_string()),
+                comment_karma: Set(0),
+                comment_approved: Set("1".to_string()),
+                comment_agent: Set("RustPress".to_string()),
+                comment_type: Set("comment".to_string()),
+                comment_parent: Set(parent_id),
+                user_id: Set(session.user_id),
+                ..Default::default()
+            };
+
+            match new_comment.insert(&state.db).await {
+                Ok(result) => Json(serde_json::json!({
+                    "success": true,
+                    "data": {
+                        "comment_id": result.comment_id,
+                        "position": -1,
+                        "content": content,
+                    }
+                }))
+                .into_response(),
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"success": false, "data": e.to_string()})),
+                )
+                    .into_response(),
+            }
+        }
+
+        _ => {
+            tracing::debug!("Unhandled admin-ajax action: {}", action);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "success": false,
+                    "data": format!("Unknown action: {}", action)
+                })),
+            )
+                .into_response()
+        }
+    }
 }
