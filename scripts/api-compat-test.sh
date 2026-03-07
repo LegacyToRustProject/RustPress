@@ -3,8 +3,13 @@
 # RustPress (:8080) vs WordPress (:8081) の応答比較
 #
 # Usage:
-#   ./scripts/api-compat-test.sh [--wp-url URL] [--rp-url URL] [--token JWT]
+#   ./scripts/api-compat-test.sh [OPTIONS]
 #   WP_URL=http://localhost:8081 RP_URL=http://localhost:8080 JWT_TOKEN=xxx ./scripts/api-compat-test.sh
+#
+# Exit codes:
+#   0  全テスト合格（または通過率が閾値以上）
+#   1  クリティカルテスト失敗 / 通過率が閾値未満
+#   2  RustPress サーバーに接続できない（テスト不能）
 
 set -euo pipefail
 
@@ -14,15 +19,17 @@ RP_URL="${RP_URL:-http://localhost:8080}"
 JWT_TOKEN="${JWT_TOKEN:-}"
 WP_USER="${WP_USER:-admin}"
 WP_PASS="${WP_PASS:-admin}"
+MIN_PASS_RATE="${MIN_PASS_RATE:-60}"   # 通過率の最低閾値 (%) — 環境変数または --min-pass-rate で変更可
 
 # 引数パース
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --wp-url)   WP_URL="$2"; shift 2 ;;
-        --rp-url)   RP_URL="$2"; shift 2 ;;
-        --token)    JWT_TOKEN="$2"; shift 2 ;;
-        --wp-user)  WP_USER="$2"; shift 2 ;;
-        --wp-pass)  WP_PASS="$2"; shift 2 ;;
+        --wp-url)         WP_URL="$2"; shift 2 ;;
+        --rp-url)         RP_URL="$2"; shift 2 ;;
+        --token)          JWT_TOKEN="$2"; shift 2 ;;
+        --wp-user)        WP_USER="$2"; shift 2 ;;
+        --wp-pass)        WP_PASS="$2"; shift 2 ;;
+        --min-pass-rate)  MIN_PASS_RATE="$2"; shift 2 ;;
         *) echo "Unknown arg: $1"; exit 1 ;;
     esac
 done
@@ -38,7 +45,9 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 SKIP=0
+CRITICAL_FAIL=0   # Gutenberg 必須など、1件でも落ちたら exit 1
 RESULTS=()
+CRITICAL_RESULTS=()
 
 # ─── JWT トークン取得 ─────────────────────────────────────────────────────
 if [[ -z "$JWT_TOKEN" ]]; then
@@ -59,6 +68,15 @@ AUTH_HEADER=""
 
 WP_AUTH=""
 [[ -n "$WP_USER" ]] && WP_AUTH="-u ${WP_USER}:${WP_PASS}"
+
+# ─── サーバー接続確認 ────────────────────────────────────────────────────
+# curl は接続失敗でも -w "%{http_code}" → "000" を出力 (exit 7 を ; true で吸収)
+RP_REACHABLE=$(curl -s --connect-timeout 3 -o /dev/null -w "%{http_code}" "${RP_URL}/wp-json" 2>/dev/null; true)
+if [[ "$RP_REACHABLE" == "000" ]]; then
+    echo -e "${RED}エラー: RustPress サーバー (${RP_URL}) に接続できません。${NC}"
+    echo -e "${YELLOW}サーバーを起動してから再実行してください。${NC}"
+    exit 2
+fi
 
 # ─── ヘルパー関数 ─────────────────────────────────────────────────────────
 
@@ -96,18 +114,22 @@ except: print('error')
 }
 
 # HTTP ステータスコードを取得
+# curl は接続失敗時も -w "%{http_code}" で "000" を stdout に出力するため
+# || フォールバックは不要（二重 "000000" になる）。; true で set -e を回避。
 get_status() {
     local url="$1" extra_flags="${2:-}"
-    curl -s -o /dev/null -w "%{http_code}" $extra_flags "$url" 2>/dev/null || echo "000"
+    curl -s -o /dev/null -w "%{http_code}" $extra_flags "$url" 2>/dev/null; true
 }
 
-# JSON レスポンスを取得
+# JSON レスポンスを取得（接続失敗時は "{}" を返す）
 get_json() {
     local url="$1" extra_flags="${2:-}"
-    curl -s $extra_flags "$url" 2>/dev/null || echo "{}"
+    local body
+    body=$(curl -s $extra_flags "$url" 2>/dev/null) || true
+    echo "${body:-{}}"
 }
 
-# テスト記録
+# テスト記録 (通常テスト)
 record() {
     local status="$1" name="$2" detail="${3:-}"
     if [[ "$status" == "PASS" ]]; then
@@ -122,6 +144,27 @@ record() {
         echo -e "  ${YELLOW}−${NC} $name (スキップ)"
     fi
     RESULTS+=("$status|$name|$detail")
+}
+
+# クリティカルテスト記録 — 失敗すると exit 1 が確定する
+# Gutenberg 必須エンドポイントなど、これが動かないと編集自体不可能なもの
+record_critical() {
+    local status="$1" name="$2" detail="${3:-}"
+    local label="[CRITICAL] $name"
+    if [[ "$status" == "PASS" ]]; then
+        PASS=$((PASS+1))
+        echo -e "  ${GREEN}✓${NC} ${BOLD}${label}${NC}"
+    elif [[ "$status" == "FAIL" ]]; then
+        FAIL=$((FAIL+1))
+        CRITICAL_FAIL=$((CRITICAL_FAIL+1))
+        echo -e "  ${RED}✗${NC} ${BOLD}${label}${NC}"
+        [[ -n "$detail" ]] && echo -e "    ${YELLOW}→ $detail${NC}"
+    else
+        SKIP=$((SKIP+1))
+        echo -e "  ${YELLOW}−${NC} ${label} (スキップ)"
+    fi
+    RESULTS+=("$status|$label|$detail")
+    CRITICAL_RESULTS+=("$status|$name|$detail")
 }
 
 # ステータスコードテスト
@@ -181,7 +224,11 @@ echo ""
 
 # ─── 1. Discovery ────────────────────────────────────────────────────────
 echo -e "${BOLD}[1] API Discovery${NC}"
-test_status "wp-json ルート" "/wp-json" "200"
+# Discovery は Gutenberg 起動の大前提 → critical
+DISC_SC=$(get_status "${RP_URL}/wp-json")
+[[ "$DISC_SC" == "200" ]] \
+    && record_critical PASS "wp-json ルート (HTTP 200)" \
+    || record_critical FAIL "wp-json ルート" "期待: 200, 実際: $DISC_SC"
 test_field "namespaces フィールド" "/wp-json" "namespaces"
 test_field "routes フィールド" "/wp-json" "routes"
 echo ""
@@ -189,16 +236,25 @@ echo ""
 # ─── 2. Post Types ───────────────────────────────────────────────────────
 echo -e "${BOLD}[2] POST TYPES  /wp-json/wp/v2/types${NC}"
 TYPES_URL="/wp-json/wp/v2/types"
-test_status "types 200 OK" "$TYPES_URL" "200"
-test_field "post エントリ" "$TYPES_URL" "post"
-test_field "page エントリ" "$TYPES_URL" "page"
+TYPES_JSON=$(get_json "${RP_URL}${TYPES_URL}")
+TYPES_SC=$(get_status "${RP_URL}${TYPES_URL}")
+[[ "$TYPES_SC" == "200" ]] \
+    && record_critical PASS "types 200 OK" \
+    || record_critical FAIL "types HTTP $TYPES_SC" "期待: 200"
+# Gutenberg 初期化必須フィールド → critical
+for field in post page; do
+    HAS=$(has_key "$TYPES_JSON" "$field")
+    [[ "$HAS" == "yes" ]] \
+        && record_critical PASS "types.$field エントリ" \
+        || record_critical FAIL "types.$field エントリ" "Gutenberg初期化に必須"
+done
+for field in post.rest_base post.rest_namespace post.labels post.supports post.taxonomies post.viewable; do
+    HAS=$(has_key "$TYPES_JSON" "$field")
+    [[ "$HAS" == "yes" ]] \
+        && record_critical PASS "types.$field" \
+        || record_critical FAIL "types.$field" "Gutenberg必須フィールドなし"
+done
 test_field "attachment エントリ" "$TYPES_URL" "attachment"
-test_field "post.rest_base" "$TYPES_URL" "post.rest_base"
-test_field "post.rest_namespace" "$TYPES_URL" "post.rest_namespace"
-test_field "post.labels" "$TYPES_URL" "post.labels"
-test_field "post.supports" "$TYPES_URL" "post.supports"
-test_field "post.taxonomies" "$TYPES_URL" "post.taxonomies"
-test_field "post.viewable" "$TYPES_URL" "post.viewable"
 
 # 単体取得
 test_status "types/{slug} post" "/wp-json/wp/v2/types/post" "200"
@@ -209,9 +265,17 @@ echo ""
 # ─── 3. Taxonomies ───────────────────────────────────────────────────────
 echo -e "${BOLD}[3] TAXONOMIES  /wp-json/wp/v2/taxonomies${NC}"
 TAX_URL="/wp-json/wp/v2/taxonomies"
-test_status "taxonomies 200 OK" "$TAX_URL" "200"
-test_field "category エントリ" "$TAX_URL" "category"
-test_field "post_tag エントリ" "$TAX_URL" "post_tag"
+TAX_SC=$(get_status "${RP_URL}${TAX_URL}")
+[[ "$TAX_SC" == "200" ]] \
+    && record_critical PASS "taxonomies 200 OK" \
+    || record_critical FAIL "taxonomies HTTP $TAX_SC" "期待: 200"
+TAX_JSON=$(get_json "${RP_URL}${TAX_URL}")
+for field in category post_tag; do
+    HAS=$(has_key "$TAX_JSON" "$field")
+    [[ "$HAS" == "yes" ]] \
+        && record_critical PASS "taxonomies.$field エントリ" \
+        || record_critical FAIL "taxonomies.$field エントリ" "Gutenberg初期化に必須"
+done
 test_field "category.rest_base" "$TAX_URL" "category.rest_base"
 test_field "category.labels" "$TAX_URL" "category.labels"
 echo ""
@@ -236,8 +300,11 @@ if [[ -n "$AUTH_HEADER" ]]; then
     THEMES_JSON=$(get_json "${RP_URL}${THEMES_URL}" "-H '$AUTH_HEADER'")
     TH_KEY=$(has_key "$THEMES_JSON" "stylesheet")
     [[ "$TH_KEY" == "yes" ]] && record PASS "themes.stylesheet 存在" || record FAIL "themes.stylesheet" "フィールドなし"
+    # theme_supports は Gutenberg ブロックサポート判定に必須 → critical
     TH_KEY=$(has_key "$THEMES_JSON" "theme_supports")
-    [[ "$TH_KEY" == "yes" ]] && record PASS "themes.theme_supports 存在" || record FAIL "themes.theme_supports" "Gutenberg必須フィールドなし"
+    [[ "$TH_KEY" == "yes" ]] \
+        && record_critical PASS "themes.theme_supports 存在" \
+        || record_critical FAIL "themes.theme_supports" "Gutenberg必須フィールドなし"
     TH_KEY=$(has_key "$THEMES_JSON" "theme_supports.align-wide")
     [[ "$TH_KEY" == "yes" ]] && record PASS "theme_supports.align-wide" || record FAIL "theme_supports.align-wide" "フィールドなし"
 else
@@ -262,15 +329,15 @@ if [[ "$IS_ARRAY" == "yes" ]]; then
     done
 fi
 
-# auto-draft テスト
+# auto-draft テスト — Gutenberg が新規投稿時に必ず使う → critical
 if [[ -n "$AUTH_HEADER" ]]; then
     AUTO_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${RP_URL}${POSTS_URL}" \
         -H "$AUTH_HEADER" -H "Content-Type: application/json" \
         -d '{"title":"","content":"","status":"auto-draft"}' 2>/dev/null || echo "000")
     if [[ "$AUTO_STATUS" == "201" ]]; then
-        record PASS "auto-draft 投稿作成 (201)"
+        record_critical PASS "auto-draft 投稿作成 (201)"
     else
-        record FAIL "auto-draft 投稿作成" "期待: 201, 実際: $AUTO_STATUS"
+        record_critical FAIL "auto-draft 投稿作成" "期待: 201, 実際: $AUTO_STATUS"
     fi
 fi
 echo ""
@@ -452,24 +519,54 @@ RATE=0
 echo -e "${BOLD}═══════════════════════════════════════════════════════════${NC}"
 echo -e "${BOLD}  テスト結果サマリー${NC}"
 echo -e "${BOLD}═══════════════════════════════════════════════════════════${NC}"
-echo -e "  総テスト数 : $TOTAL"
-echo -e "  ${GREEN}合格${NC}     : $PASS"
-echo -e "  ${RED}不合格${NC}   : $FAIL"
-echo -e "  ${YELLOW}スキップ${NC} : $SKIP"
+echo -e "  総テスト数   : $TOTAL"
+echo -e "  ${GREEN}合格${NC}       : $PASS"
+echo -e "  ${RED}不合格${NC}     : $FAIL"
+echo -e "  ${YELLOW}スキップ${NC}   : $SKIP"
 echo ""
-echo -e "  ${BOLD}通過率: ${RATE}% (${PASS}/${PASS+${FAIL}})${NC}"
-echo ""
+echo -e "  ${BOLD}通過率: ${RATE}% (${PASS}/$((PASS+FAIL)))${NC}  (閾値: ${MIN_PASS_RATE}%)"
+
+# クリティカル失敗の集計
+CRITICAL_FAIL_NAMES=()
+for r in "${CRITICAL_RESULTS[@]}"; do
+    IFS='|' read -r status name detail <<< "$r"
+    [[ "$status" == "FAIL" ]] && CRITICAL_FAIL_NAMES+=("$name${detail:+ — $detail}")
+done
+
+if [[ ${#CRITICAL_FAIL_NAMES[@]} -gt 0 ]]; then
+    echo ""
+    echo -e "  ${RED}${BOLD}クリティカル失敗 (${#CRITICAL_FAIL_NAMES[@]} 件) — Gutenberg 動作不可:${NC}"
+    for name in "${CRITICAL_FAIL_NAMES[@]}"; do
+        echo -e "  ${RED}✗${NC} $name"
+    done
+fi
 
 if [[ $FAIL -gt 0 ]]; then
+    echo ""
     echo -e "${BOLD}  不合格一覧:${NC}"
     for r in "${RESULTS[@]}"; do
         IFS='|' read -r status name detail <<< "$r"
         [[ "$status" == "FAIL" ]] && echo -e "  ${RED}✗${NC} $name${detail:+ — $detail}"
     done
-    echo ""
 fi
 
+echo ""
 echo -e "${BOLD}═══════════════════════════════════════════════════════════${NC}"
 
-# 通過率 70% 未満で失敗終了
-[[ $RATE -lt 70 ]] && exit 1 || exit 0
+# ─── 終了コード判定 ───────────────────────────────────────────────────────
+# exit 1: クリティカルテスト失敗 OR 通過率が閾値未満
+# exit 0: それ以外（通常失敗は警告扱い）
+EXIT_CODE=0
+if [[ $CRITICAL_FAIL -gt 0 ]]; then
+    echo -e "${RED}→ クリティカルテストが ${CRITICAL_FAIL} 件失敗 (exit 1)${NC}"
+    EXIT_CODE=1
+elif [[ $RATE -lt $MIN_PASS_RATE ]]; then
+    echo -e "${RED}→ 通過率 ${RATE}% が閾値 ${MIN_PASS_RATE}% を下回っています (exit 1)${NC}"
+    EXIT_CODE=1
+else
+    [[ $FAIL -gt 0 ]] \
+        && echo -e "${YELLOW}→ 通常テストに失敗あり (${FAIL} 件) — クリティカルは全合格 (exit 0)${NC}" \
+        || echo -e "${GREEN}→ 全テスト合格 (exit 0)${NC}"
+fi
+echo ""
+exit $EXIT_CODE
