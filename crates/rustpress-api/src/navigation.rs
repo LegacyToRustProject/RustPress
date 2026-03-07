@@ -15,7 +15,8 @@ use serde_json::Value;
 use rustpress_db::entities::wp_posts;
 
 use crate::common::{
-    filter_post_context, pagination_headers, post_links, slugify, RestContext, WpError,
+    envelope_response, filter_post_context, pagination_headers_with_link, post_links, slugify,
+    RestContext, WpError,
 };
 use crate::posts::WpRendered;
 use crate::ApiState;
@@ -51,6 +52,7 @@ pub struct ListNavigationQuery {
     pub context: Option<String>,
     pub _fields: Option<String>,
     pub _embed: Option<String>,
+    pub _envelope: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -224,8 +226,15 @@ async fn list_navigation(
         }
     }
 
-    let headers = pagination_headers(total, total_pages);
-    Ok((headers, Json(Value::Array(json_items))))
+    let base_url = format!("{}/wp-json/wp/v2/navigation", state.site_url);
+    let headers = pagination_headers_with_link(total, total_pages, page, &base_url);
+
+    let body = Value::Array(json_items);
+    if params._envelope.is_some() {
+        Ok(Json(envelope_response(200, &headers, body)).into_response())
+    } else {
+        Ok((headers, Json(body)).into_response())
+    }
 }
 
 async fn get_navigation(

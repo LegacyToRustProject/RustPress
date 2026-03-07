@@ -127,6 +127,12 @@ enum MigrateAction {
     Plugins,
     /// Check SEO impact (permalink structure, meta tags)
     SeoAudit,
+    /// Rollback: drop RustPress-created tables (safe — never touches WordPress core tables)
+    Rollback {
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -1681,6 +1687,50 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
 
             println!();
             println!("SEO audit complete.");
+        }
+        Some(MigrateAction::Rollback { yes }) => {
+            // RustPress operates in SKIP_MIGRATIONS mode — it reads WordPress tables directly.
+            // This rollback only drops tables that RustPress itself may have created
+            // (e.g. via `db migrate`), NEVER the WordPress core tables.
+            let rustpress_only_tables = [
+                "rustpress_sessions",
+                "rustpress_cache",
+                "rustpress_migrations",
+            ];
+
+            if !yes {
+                println!("WARNING: This will drop the following RustPress-specific tables:");
+                for t in &rustpress_only_tables {
+                    println!("  - {}", t);
+                }
+                println!();
+                println!("WordPress core tables (wp_posts, wp_options, etc.) are NEVER touched.");
+                println!("Pass --yes to confirm.");
+                return Ok(());
+            }
+
+            let db = rustpress_db::connection::connect(&db_url).await?;
+            let mut dropped = 0;
+            for table in &rustpress_only_tables {
+                let sql = format!("DROP TABLE IF EXISTS `{}`", table);
+                match db
+                    .execute(Statement::from_string(sea_orm::DatabaseBackend::MySql, sql))
+                    .await
+                {
+                    Ok(_) => {
+                        println!("  Dropped: {}", table);
+                        dropped += 1;
+                    }
+                    Err(e) => {
+                        println!("  Skipped: {} ({})", table, e);
+                    }
+                }
+            }
+            println!();
+            println!("Rollback complete. {} tables dropped.", dropped);
+            println!(
+                "WordPress core tables are intact — you can switch back to WordPress at any time."
+            );
         }
     }
 
