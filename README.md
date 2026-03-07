@@ -112,6 +112,10 @@ RustPress site — 100x faster, structurally secure, single binary
 
 800 million WordPress sites deserve a path forward. Not just the ones with dedicated engineering teams — **all of them**, including the forgotten blogs, the small business sites, the nonprofit pages that no one has updated in three years but are still serving real visitors.
 
+### We Won't Abandon Anyone
+
+**Security patches for every version. Forever.** Why is this possible? Because AI-driven development reduces the marginal cost of maintenance to near zero. Traditional open-source projects are forced to drop support for old versions — the human labor cost is too high. RustPress breaks this constraint. When AI can read the diff between WordPress versions and generate the corresponding Rust patches, "end of life" becomes a choice, not a necessity. We choose not to abandon anyone.
+
 ---
 
 ## Performance
