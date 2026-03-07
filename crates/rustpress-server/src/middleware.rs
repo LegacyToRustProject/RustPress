@@ -278,3 +278,72 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
 
     response
 }
+
+/// Middleware: WAF (Web Application Firewall) check on incoming requests.
+/// Blocks requests matching malicious patterns (SQL injection, XSS, path traversal, etc.).
+pub async fn waf_check(
+    State(state): State<Arc<AppState>>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let method = request.method().to_string();
+    let path = request.uri().path().to_string();
+    let query = request.uri().query().unwrap_or("").to_string();
+
+    // Collect headers for WAF inspection
+    let header_map: std::collections::HashMap<String, String> = request
+        .headers()
+        .iter()
+        .filter_map(|(k, v)| {
+            v.to_str()
+                .ok()
+                .map(|val| (k.to_string(), val.to_string()))
+        })
+        .collect();
+
+    let waf = state.waf.read().await;
+    let result = waf.check_request(&method, &path, &query, "", &header_map);
+    drop(waf);
+
+    match result {
+        rustpress_security::WafResult::Block { rule_id, reason } => {
+            tracing::warn!(rule_id, reason, path, "WAF blocked request");
+            (StatusCode::FORBIDDEN, "Forbidden").into_response()
+        }
+        _ => next.run(request).await,
+    }
+}
+
+/// Middleware: rate limiting based on client IP and endpoint category.
+pub async fn rate_limit(
+    State(state): State<Arc<AppState>>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let ip = request
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.split(',').next().unwrap_or("unknown").trim().to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+
+    let path = request.uri().path().to_string();
+
+    let mut limiter = state.rate_limiter.write().await;
+    let result = limiter.check(&ip, &path);
+    drop(limiter);
+
+    match result {
+        rustpress_security::RateLimitResult::Limited { retry_after } => {
+            tracing::warn!(ip, path, retry_after, "Rate limited");
+            let mut response =
+                (StatusCode::TOO_MANY_REQUESTS, "Rate limit exceeded").into_response();
+            response.headers_mut().insert(
+                "Retry-After",
+                HeaderValue::from_str(&retry_after.to_string()).unwrap(),
+            );
+            response
+        }
+        rustpress_security::RateLimitResult::Allowed { .. } => next.run(request).await,
+    }
+}

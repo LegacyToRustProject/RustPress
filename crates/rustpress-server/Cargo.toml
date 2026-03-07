@@ -22,7 +22,15 @@ rustpress-plugins = { workspace = true }
 rustpress-cache = { workspace = true }
 rustpress-cron = { workspace = true }
 rustpress-migrate = { workspace = true }
+rustpress-security = { workspace = true }
+rustpress-blocks = { workspace = true }
+rustpress-seo = { workspace = true }
+rustpress-i18n = { workspace = true }
+rustpress-forms = { workspace = true }
+rustpress-fields = { workspace = true }
+rustpress-commerce = { workspace = true }
 sea-orm = { workspace = true }
+regex = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 tower-http = { workspace = true }

@@ -515,7 +515,7 @@ pub fn apply_content_filters(content: &str) -> String {
 ///
 /// WordPress uses this to skip wpautop for block editor content,
 /// since blocks already contain properly structured HTML.
-fn has_blocks(content: &str) -> bool {
+pub fn has_blocks(content: &str) -> bool {
     content.contains("<!-- wp:")
 }
 

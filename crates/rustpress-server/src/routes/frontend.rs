@@ -102,8 +102,6 @@ pub fn routes() -> Router<Arc<AppState>> {
         .route("/", get(front_page_or_query))
         .route("/feed", get(rss_feed))
         .route("/feed/", get(rss_feed))
-        .route("/sitemap.xml", get(sitemap_xml))
-        .route("/robots.txt", get(robots_txt))
         .route("/page/{num}", get(paginated_home))
         .route("/page/{num}/", get(paginated_home))
         .route("/search", get(search_page))
@@ -219,6 +217,9 @@ async fn build_base_context(state: &AppState) -> tera::Context {
         )
     };
     ctx.insert("footer_widgets", &footer_widgets_html);
+
+    // Default empty SEO meta tags (overridden per-page)
+    ctx.insert("seo_meta_tags", &"");
 
     // Load published pages for navigation fallback (wp-block-page-list)
     if header_links.is_empty() {
@@ -631,6 +632,30 @@ async fn single_post_by_slug(
             drop(rewrite);
             let mut context = build_base_context(&state).await;
             insert_post_context_full(&mut context, &data, Some(&state.shortcodes), &state.hooks);
+
+            // If content has Gutenberg blocks, render them with the block renderer
+            if rustpress_themes::formatting::has_blocks(&p.post_content) {
+                let blocks = rustpress_blocks::parse_blocks(&p.post_content);
+                let rendered = state.block_renderer.render_blocks(&blocks);
+                context.insert("the_content", &rendered);
+            }
+
+            // Generate SEO meta tags for this post
+            let site_name = state.options.get_blogname().await.unwrap_or_default();
+            let seo_meta = rustpress_seo::SeoMeta {
+                title: Some(rustpress_seo::generate_title(&p.post_title, &site_name, "-")),
+                description: Some(rustpress_seo::auto_generate_description(&p.post_content, 160)),
+                canonical: Some(format!("{}/{}", state.site_url, p.post_name)),
+                robots: Some("index, follow".to_string()),
+                og_title: Some(p.post_title.clone()),
+                og_description: Some(rustpress_seo::auto_generate_description(&p.post_content, 200)),
+                og_url: Some(format!("{}/{}", state.site_url, p.post_name)),
+                og_type: Some(if post_type == "page" { "website".to_string() } else { "article".to_string() }),
+                og_site_name: Some(site_name),
+                twitter_card: Some("summary_large_image".to_string()),
+                ..Default::default()
+            };
+            context.insert("seo_meta_tags", &rustpress_seo::generate_meta_tags(&seo_meta));
 
             // Load featured image
             let thumb_meta = wp_postmeta::Entity::find()
@@ -1173,87 +1198,6 @@ async fn submit_comment(
     let _ = active_post.update(&state.db).await;
 
     Redirect::to(&format!("{}#comments", redirect_url)).into_response()
-}
-
-// ---- XML Sitemap ----
-
-async fn sitemap_xml(State(state): State<Arc<AppState>>) -> Response {
-    let site_url = &state.site_url;
-
-    let posts = wp_posts::Entity::find()
-        .filter(wp_posts::Column::PostStatus.eq("publish"))
-        .filter(
-            sea_orm::Condition::any()
-                .add(wp_posts::Column::PostType.eq("post"))
-                .add(wp_posts::Column::PostType.eq("page")),
-        )
-        .order_by_desc(wp_posts::Column::PostModified)
-        .limit(1000)
-        .all(&state.db)
-        .await
-        .unwrap_or_default();
-
-    let mut urls = String::new();
-
-    // Homepage
-    urls.push_str(&format!(
-        r#"  <url>
-    <loc>{}/</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-"#,
-        site_url
-    ));
-
-    for p in &posts {
-        let lastmod = p.post_modified_gmt.format("%Y-%m-%dT%H:%M:%S+00:00");
-        let priority = if p.post_type == "page" {
-            "0.8"
-        } else {
-            "0.6"
-        };
-        urls.push_str(&format!(
-            r#"  <url>
-    <loc>{}/{}</loc>
-    <lastmod>{}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>{}</priority>
-  </url>
-"#,
-            site_url, p.post_name, lastmod, priority
-        ));
-    }
-
-    let xml = format!(
-        r#"<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-{}</urlset>"#,
-        urls
-    );
-
-    (
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "application/xml; charset=UTF-8")],
-        xml,
-    )
-        .into_response()
-}
-
-// ---- robots.txt ----
-
-async fn robots_txt(State(state): State<Arc<AppState>>) -> Response {
-    let site_url = &state.site_url;
-    let txt = format!(
-        "User-agent: *\nAllow: /\n\nSitemap: {}/sitemap.xml\n",
-        site_url
-    );
-    (
-        StatusCode::OK,
-        [(header::CONTENT_TYPE, "text/plain; charset=UTF-8")],
-        txt,
-    )
-        .into_response()
 }
 
 // ---- Date-based Archives ----

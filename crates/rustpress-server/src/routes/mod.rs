@@ -3,9 +3,12 @@ use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 
 mod auth;
+pub mod commerce;
+pub mod forms;
 mod frontend;
 mod health;
 mod posts;
+pub mod seo;
 mod users;
 pub mod wp_admin;
 pub mod xmlrpc;
@@ -29,6 +32,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .merge(auth::routes())
         .with_state(state.clone());
 
+    // Commerce routes (/shop/*, /cart/*, /checkout/*)
+    let commerce_router = commerce::routes(state.clone());
+
+    // Form submission routes (/forms/*)
+    let forms_router = forms::routes(state.clone());
+
+    // SEO routes (sitemap.xml, robots.txt)
+    let seo_router = seo::routes(state.clone());
+
     // Frontend routes (includes /{slug} catch-all, must come last)
     let frontend_router = Router::new()
         .merge(frontend::routes())
@@ -37,6 +49,9 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     api_router
         .merge(admin_html)
         .merge(xmlrpc_router)
+        .merge(commerce_router)
+        .merge(forms_router)
+        .merge(seo_router)
         .merge(frontend_router)
         .layer(TraceLayer::new_for_http())
 }

@@ -18,12 +18,16 @@ pub mod widgets;
 
 use rustpress_api::ApiState;
 use rustpress_auth::{JwtManager, SessionManager};
-use rustpress_cache::{ObjectCache, PageCache, TransientCache};
+use rustpress_cache::{ObjectCache, PageCache, RedisCache, TransientCache};
+use rustpress_commerce::{CartManager, OrderManager, ProductCatalog};
 use rustpress_core::hooks::HookRegistry;
 use rustpress_core::nonce::NonceManager;
 use rustpress_cron::CronManager;
 use rustpress_db::{connection, options::OptionsManager};
+use rustpress_fields::{FieldGroupRegistry, FieldStorage};
+use rustpress_forms::SubmissionStore;
 use rustpress_plugins::{PluginLoader, PluginRegistry};
+use rustpress_security::{LoginProtection, RateLimiter, WafEngine};
 
 use state::AppState;
 
@@ -145,6 +149,40 @@ async fn main() -> Result<()> {
     // Initialize cron system (before AppState so it can be stored in state)
     let cron = Arc::new(CronManager::new());
 
+    // Initialize security subsystems
+    let waf = Arc::new(RwLock::new(WafEngine::with_default_rules()));
+    let rate_limiter = Arc::new(RwLock::new(RateLimiter::new()));
+    let login_protection = Arc::new(RwLock::new(LoginProtection::new()));
+    info!("Security subsystems initialized (WAF, rate limiter, login protection)");
+
+    // Initialize block renderer with all core WordPress blocks
+    let block_renderer = Arc::new(rustpress_blocks::create_default_renderer());
+    info!("Block renderer initialized with core blocks");
+
+    // Initialize Redis cache (in-memory fallback if no REDIS_URL configured)
+    let redis_url = std::env::var("REDIS_URL").ok();
+    let redis_cache = Arc::new(RedisCache::new(redis_url.clone()));
+    if redis_url.is_some() {
+        if let Err(e) = redis_cache.connect().await {
+            tracing::warn!("Redis connection failed, using in-memory fallback: {}", e);
+        }
+    }
+
+    // Initialize custom fields (ACF-compatible)
+    let field_registry = Arc::new(RwLock::new(FieldGroupRegistry::new()));
+    let field_storage = Arc::new(RwLock::new(FieldStorage::new()));
+    info!("Custom fields subsystem initialized");
+
+    // Initialize forms subsystem
+    let form_submissions = Arc::new(SubmissionStore::new());
+    info!("Forms subsystem initialized");
+
+    // Initialize commerce subsystem
+    let product_catalog = Arc::new(RwLock::new(ProductCatalog::new()));
+    let cart_manager = Arc::new(RwLock::new(CartManager::new()));
+    let order_manager = Arc::new(RwLock::new(OrderManager::new()));
+    info!("Commerce subsystem initialized");
+
     // Build application state
     let state = Arc::new(AppState {
         db: db.clone(),
@@ -164,6 +202,17 @@ async fn main() -> Result<()> {
         rewrite_rules: Arc::new(RwLock::new(rewrite_rules)),
         shortcodes,
         cron: cron.clone(),
+        waf,
+        rate_limiter,
+        login_protection,
+        block_renderer,
+        redis_cache,
+        field_registry,
+        field_storage,
+        form_submissions,
+        product_catalog,
+        cart_manager,
+        order_manager,
     });
 
     // Register session cleanup cron job (every hour)
@@ -305,8 +354,16 @@ async fn main() -> Result<()> {
         tower_http::services::ServeDir::new(&uploads_dir),
     );
 
-    // Apply global middleware: security headers + gzip compression
+    // Apply global middleware: WAF + rate limiter + security headers + compression
     app = app
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::waf_check,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::rate_limit,
+        ))
         .layer(axum::middleware::from_fn(
             middleware::security_headers,
         ))
@@ -323,6 +380,7 @@ async fn main() -> Result<()> {
     info!("  API:    http://{}/api/posts", addr);
     info!("  REST:   http://{}/wp-json/wp/v2/posts", addr);
     info!("  Health: http://{}/health", addr);
+    info!("  Shop:   http://{}/shop", addr);
 
     axum::serve(listener, app).await?;
 
