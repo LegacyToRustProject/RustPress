@@ -12,4 +12,4 @@ pub use formatting::{
     apply_title_filters_with_hooks, wpautop, wptexturize,
 };
 pub use hierarchy::{PageType, TemplateHierarchy};
-pub use wp_head::{wp_footer, wp_head};
+pub use wp_head::{wp_footer, wp_head, AssetManager};

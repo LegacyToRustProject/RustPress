@@ -1,0 +1,78 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ __( key="Reading Settings") }}{% endblock %}
+
+{% block content %}
+<h1>{{ __( key="Reading Settings") }}</h1>
+
+{% if saved %}
+<div class="notice notice-success">{{ __( key="Settings saved.") }}</div>
+{% endif %}
+
+<form method="post" action="/wp-admin/options-reading.php">
+    <table class="form-table">
+        <tr>
+            <th>{{ __( key="Your homepage displays") }}</th>
+            <td>
+                <fieldset>
+                    <p>
+                        <label>
+                            <input type="radio" name="show_on_front" value="posts" {% if show_on_front == "posts" %}checked{% endif %}>
+                            {{ __( key="Your latest posts") }}
+                        </label>
+                    </p>
+                    <p>
+                        <label>
+                            <input type="radio" name="show_on_front" value="page" {% if show_on_front == "page" %}checked{% endif %}>
+                            {{ __( key="A static page") }}
+                        </label>
+                    </p>
+                    <div style="margin-left:1.5rem;margin-top:0.5rem">
+                        <p>
+                            <label for="page_on_front">{{ __( key="Homepage:") }}
+                                <select id="page_on_front" name="page_on_front" style="max-width:300px">
+                                    <option value="0">{{ __( key="&mdash; Select &mdash;") }}</option>
+                                    {% for page in pages %}
+                                    <option value="{{ page.id }}" {% if page.id == page_on_front %}selected{% endif %}>{{ page.post_title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        </p>
+                        <p>
+                            <label for="page_for_posts">{{ __( key="Posts page:") }}
+                                <select id="page_for_posts" name="page_for_posts" style="max-width:300px">
+                                    <option value="0">{{ __( key="&mdash; Select &mdash;") }}</option>
+                                    {% for page in pages %}
+                                    <option value="{{ page.id }}" {% if page.id == page_for_posts %}selected{% endif %}>{{ page.post_title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </label>
+                        </p>
+                    </div>
+                </fieldset>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="posts_per_page">{{ __( key="Blog pages show at most") }}</label></th>
+            <td>
+                <input type="number" id="posts_per_page" name="posts_per_page" value="{{ posts_per_page }}" class="regular-text" style="max-width:80px" min="1" max="100">
+                {{ __( key="posts") }}
+            </td>
+        </tr>
+        <tr>
+            <th>{{ __( key="Search engine visibility") }}</th>
+            <td>
+                <label>
+                    <input type="checkbox" name="blog_public" value="0" {% if blog_public == "0" %}checked{% endif %}>
+                    {{ __( key="Discourage search engines from indexing this site") }}
+                </label>
+                <p style="color:#646970;font-size:13px;margin-top:0.25rem">{{ __( key="It is up to search engines to honor this request.") }}</p>
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top:1rem">
+        <button type="submit" class="button button-primary">{{ __( key="Save Changes") }}</button>
+    </div>
+</form>
+{% endblock %}

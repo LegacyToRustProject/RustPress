@@ -141,24 +141,70 @@ async fn build_base_context(state: &AppState) -> tera::Context {
         &serde_json::json!({"site_url": &state.site_url}),
     );
 
-    // Load navigation menu links
-    let header_menu_text = state
-        .options
-        .get_option("nav_menu_header")
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_default();
-    let footer_menu_text = state
-        .options
-        .get_option("nav_menu_footer")
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+    // Load navigation menus from WordPress nav_menu system
+    let menu_locations = crate::nav_menu::get_menu_locations(&state.options).await;
+    let mut header_links: Vec<serde_json::Value> = Vec::new();
 
-    let header_links: Vec<serde_json::Value> = parse_menu_text(&header_menu_text);
-    let footer_links: Vec<serde_json::Value> = parse_menu_text(&footer_menu_text);
+    // Try WordPress nav_menu locations first
+    if let Some(&menu_id) = menu_locations
+        .get("primary")
+        .or(menu_locations.get("header"))
+    {
+        if let Some(menu) = crate::nav_menu::load_menu(&state.db, menu_id).await {
+            header_links = menu
+                .items
+                .iter()
+                .map(|item| {
+                    serde_json::json!({
+                        "label": item.title,
+                        "url": item.url,
+                    })
+                })
+                .collect();
+        }
+    }
+
+    // Fallback to legacy nav_menu_header option
+    if header_links.is_empty() {
+        let header_menu_text = state
+            .options
+            .get_option("nav_menu_header")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        header_links = parse_menu_text(&header_menu_text);
+    }
+
+    let mut footer_links: Vec<serde_json::Value> = Vec::new();
+    if let Some(&menu_id) = menu_locations
+        .get("footer")
+        .or(menu_locations.get("secondary"))
+    {
+        if let Some(menu) = crate::nav_menu::load_menu(&state.db, menu_id).await {
+            footer_links = menu
+                .items
+                .iter()
+                .map(|item| {
+                    serde_json::json!({
+                        "label": item.title,
+                        "url": item.url,
+                    })
+                })
+                .collect();
+        }
+    }
+    if footer_links.is_empty() {
+        let footer_menu_text = state
+            .options
+            .get_option("nav_menu_footer")
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or_default();
+        footer_links = parse_menu_text(&footer_menu_text);
+    }
+
     ctx.insert("header_menu", &header_links);
     ctx.insert("footer_menu", &footer_links);
 
@@ -279,15 +325,74 @@ async fn get_posts_page(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
 
     let rewrite = state.rewrite_rules.read().await;
-    let posts: Vec<PostTemplateData> = models
+    let mut posts: Vec<PostTemplateData> = models
         .iter()
         .map(|m| PostTemplateData::from_model_with_rewrite(m, &state.site_url, &rewrite))
         .collect();
     drop(rewrite);
 
+    // Bulk-load featured images
+    load_featured_images(&state.db, &mut posts).await;
+
     let pagination = PaginationData::new(page, total_pages, total);
 
     Ok((posts, pagination))
+}
+
+/// Bulk-load featured image URLs for a list of posts.
+///
+/// Queries `_thumbnail_id` from wp_postmeta, then resolves attachment GUIDs.
+/// Populates `featured_image_url` on each matching post in-place.
+async fn load_featured_images(db: &sea_orm::DatabaseConnection, posts: &mut [PostTemplateData]) {
+    if posts.is_empty() {
+        return;
+    }
+
+    let post_ids: Vec<u64> = posts.iter().map(|p| p.id).collect();
+
+    // Get all _thumbnail_id meta for these posts
+    let thumb_metas = wp_postmeta::Entity::find()
+        .filter(wp_postmeta::Column::PostId.is_in(post_ids))
+        .filter(wp_postmeta::Column::MetaKey.eq("_thumbnail_id"))
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    // Map post_id -> attachment_id
+    let mut post_to_attachment: std::collections::HashMap<u64, u64> =
+        std::collections::HashMap::new();
+    for meta in &thumb_metas {
+        if let Some(ref val) = meta.meta_value {
+            if let Ok(att_id) = val.parse::<u64>() {
+                post_to_attachment.insert(meta.post_id, att_id);
+            }
+        }
+    }
+
+    if post_to_attachment.is_empty() {
+        return;
+    }
+
+    // Load all attachment posts in one query
+    let att_ids: Vec<u64> = post_to_attachment.values().copied().collect();
+    let attachments = wp_posts::Entity::find()
+        .filter(wp_posts::Column::Id.is_in(att_ids))
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    // Map attachment_id -> guid
+    let att_guids: std::collections::HashMap<u64, String> =
+        attachments.into_iter().map(|a| (a.id, a.guid)).collect();
+
+    // Populate featured_image_url on posts
+    for post in posts.iter_mut() {
+        if let Some(att_id) = post_to_attachment.get(&post.id) {
+            if let Some(url) = att_guids.get(att_id) {
+                post.featured_image_url = url.clone();
+            }
+        }
+    }
 }
 
 async fn front_page(

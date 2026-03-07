@@ -703,6 +703,70 @@ fn extract_css_declarations(props: &Value) -> Vec<String> {
     if let Some(bw) = props.pointer("/border/width").and_then(|v| v.as_str()) {
         decls.push(format!("border-width: {}", bw));
     }
+    if let Some(bs) = props.pointer("/border/style").and_then(|v| v.as_str()) {
+        decls.push(format!("border-style: {}", bs));
+    }
+    // Individual side borders
+    for side in &["top", "right", "bottom", "left"] {
+        if let Some(border_side) = props.pointer(&format!("/border/{}", side)) {
+            if let Some(obj) = border_side.as_object() {
+                let mut parts = Vec::new();
+                if let Some(w) = obj.get("width").and_then(|v| v.as_str()) {
+                    parts.push(w.to_string());
+                }
+                if let Some(s) = obj.get("style").and_then(|v| v.as_str()) {
+                    parts.push(s.to_string());
+                }
+                if let Some(c) = obj.get("color").and_then(|v| v.as_str()) {
+                    parts.push(resolve_var_ref(c));
+                }
+                if !parts.is_empty() {
+                    decls.push(format!("border-{}: {}", side, parts.join(" ")));
+                }
+            }
+        }
+    }
+
+    // Margin left/right
+    if let Some(ml) = props
+        .pointer("/spacing/margin/left")
+        .and_then(|v| v.as_str())
+    {
+        decls.push(format!("margin-left: {}", resolve_var_ref(ml)));
+    }
+    if let Some(mr) = props
+        .pointer("/spacing/margin/right")
+        .and_then(|v| v.as_str())
+    {
+        decls.push(format!("margin-right: {}", resolve_var_ref(mr)));
+    }
+
+    // Outline
+    if let Some(oc) = props.pointer("/outline/color").and_then(|v| v.as_str()) {
+        decls.push(format!("outline-color: {}", resolve_var_ref(oc)));
+    }
+    if let Some(ow) = props.pointer("/outline/width").and_then(|v| v.as_str()) {
+        decls.push(format!("outline-width: {}", ow));
+    }
+    if let Some(os) = props.pointer("/outline/style").and_then(|v| v.as_str()) {
+        decls.push(format!("outline-style: {}", os));
+    }
+    if let Some(oo) = props.pointer("/outline/offset").and_then(|v| v.as_str()) {
+        decls.push(format!("outline-offset: {}", oo));
+    }
+
+    // Dimensions
+    if let Some(mh) = props
+        .pointer("/dimensions/minHeight")
+        .and_then(|v| v.as_str())
+    {
+        decls.push(format!("min-height: {}", resolve_var_ref(mh)));
+    }
+
+    // Shadow
+    if let Some(shadow) = props.pointer("/shadow").and_then(|v| v.as_str()) {
+        decls.push(format!("box-shadow: {}", resolve_var_ref(shadow)));
+    }
 
     decls
 }

@@ -1,0 +1,155 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Themes{% endblock %}
+
+{% block head %}
+<style>
+    .theme-browser {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    .theme-card {
+        background: #fff;
+        border: 1px solid #c3c4c7;
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        transition: box-shadow 0.15s;
+    }
+    .theme-card:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+    .theme-card.active-theme {
+        border-color: #2271b1;
+        border-width: 2px;
+    }
+    .theme-screenshot {
+        width: 100%;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+    }
+    .theme-screenshot .theme-name-overlay {
+        position: relative;
+        z-index: 2;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        padding: 0 1rem;
+        text-align: center;
+    }
+    .active-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #00a32a;
+        color: #fff;
+        padding: 0.2rem 0.6rem;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: 600;
+        z-index: 3;
+    }
+    .theme-info {
+        padding: 1rem;
+    }
+    .theme-info h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        color: #1d2327;
+    }
+    .theme-info .theme-version {
+        font-size: 12px;
+        color: #646970;
+        margin-bottom: 0.5rem;
+    }
+    .theme-info .theme-author {
+        font-size: 13px;
+        color: #646970;
+        margin-bottom: 0.5rem;
+    }
+    .theme-info .theme-description {
+        font-size: 13px;
+        color: #3c434a;
+        line-height: 1.5;
+        margin-bottom: 0.75rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .theme-actions {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid #f0f0f1;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .theme-actions .active-label {
+        color: #00a32a;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    .theme-count {
+        font-size: 13px;
+        color: #646970;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Themes</h1>
+
+{% if activated %}
+<div class="notice notice-success">New theme activated.</div>
+{% endif %}
+
+{% if error %}
+<div class="notice notice-error">{{ error }}</div>
+{% endif %}
+
+<p class="theme-count">
+    {% if themes %}
+        {{ themes | length }} theme{{ themes | length | pluralize }} installed
+    {% else %}
+        No themes found.
+    {% endif %}
+</p>
+
+<div class="theme-browser">
+    {% for theme in themes %}
+    <div class="theme-card {% if theme.active %}active-theme{% endif %}">
+        <div class="theme-screenshot" style="background: {% if loop.index0 == 0 %}linear-gradient(135deg, #2271b1, #135e96){% elif loop.index0 == 1 %}linear-gradient(135deg, #00a32a, #007017){% elif loop.index0 == 2 %}linear-gradient(135deg, #8c5e58, #6e4a45){% elif loop.index0 == 3 %}linear-gradient(135deg, #9b59b6, #8e44ad){% elif loop.index0 == 4 %}linear-gradient(135deg, #e67e22, #d35400){% else %}linear-gradient(135deg, #34495e, #2c3e50){% endif %};">
+            {% if theme.active %}
+            <span class="active-badge">Active</span>
+            {% endif %}
+            <span class="theme-name-overlay">{{ theme.name }}</span>
+        </div>
+        <div class="theme-info">
+            <h3>{{ theme.name }}</h3>
+            <div class="theme-version">Version {{ theme.version }}</div>
+            <div class="theme-author">By {{ theme.author }}</div>
+            <div class="theme-description">{{ theme.description }}</div>
+        </div>
+        <div class="theme-actions">
+            {% if theme.active %}
+                <span class="active-label">Active Theme</span>
+                <a href="/wp-admin/options-general.php" class="button button-secondary" style="margin-left:auto;">Customize</a>
+            {% else %}
+                <form method="post" action="/wp-admin/themes.php?action=activate&theme={{ theme.slug }}" style="margin:0;">
+                    <button type="submit" class="button button-primary">Activate</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

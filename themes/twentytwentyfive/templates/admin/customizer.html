@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customize &mdash; {{ site_name | default(value="RustPress") }}</title>
+    <link rel="stylesheet" href="/static/fonts/dashicons.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background: #191e23;
+            color: #f0f0f1;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top bar */
+        .customizer-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 46px;
+            background: #1d2327;
+            border-bottom: 1px solid #2c3338;
+            padding: 0 12px;
+            z-index: 100;
+        }
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .topbar-left .close-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: none;
+            border: none;
+            color: #f0f0f1;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 18px;
+            text-decoration: none;
+        }
+        .topbar-left .close-btn:hover { background: #2c3338; }
+        .topbar-title { font-size: 14px; font-weight: 600; }
+
+        .topbar-center {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .device-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: none;
+            border: 1px solid transparent;
+            color: #a7aaad;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 18px;
+        }
+        .device-btn:hover { color: #f0f0f1; }
+        .device-btn.active { color: #72aee6; border-color: #72aee6; }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-publish {
+            background: #2271b1;
+            color: #fff;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-publish:hover { background: #135e96; }
+        .btn-publish:disabled { opacity: 0.6; cursor: default; }
+        .btn-publish.saved { background: #00a32a; }
+
+        /* Main layout */
+        .customizer-main {
+            display: flex;
+            height: calc(100vh - 46px);
+        }
+
+        /* Sidebar */
+        .customizer-sidebar {
+            width: 300px;
+            min-width: 300px;
+            background: #23282d;
+            overflow-y: auto;
+            border-right: 1px solid #2c3338;
+        }
+
+        /* Sections */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #2c3338;
+            border-bottom: 1px solid #3c434a;
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .section-header:hover { background: #32373c; }
+        .section-header .chevron {
+            transition: transform 0.2s;
+            font-size: 16px;
+        }
+        .section-header.collapsed .chevron { transform: rotate(-90deg); }
+        .section-body {
+            padding: 12px 16px;
+            border-bottom: 1px solid #3c434a;
+            display: block;
+        }
+        .section-body.hidden { display: none; }
+
+        /* Form controls */
+        .control-group {
+            margin-bottom: 12px;
+        }
+        .control-group:last-child { margin-bottom: 0; }
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #a7aaad;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .control-group input[type="text"],
+        .control-group input[type="url"],
+        .control-group textarea,
+        .control-group select {
+            width: 100%;
+            padding: 6px 8px;
+            background: #1d2327;
+            border: 1px solid #3c434a;
+            color: #f0f0f1;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        .control-group input:focus,
+        .control-group textarea:focus,
+        .control-group select:focus {
+            border-color: #72aee6;
+            outline: none;
+            box-shadow: 0 0 0 1px #72aee6;
+        }
+        .control-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .control-group textarea.code-editor {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 12px;
+            min-height: 120px;
+            tab-size: 2;
+        }
+        .control-group input[type="color"] {
+            width: 48px;
+            height: 32px;
+            padding: 2px;
+            background: #1d2327;
+            border: 1px solid #3c434a;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .color-row .color-hex {
+            width: 80px;
+            padding: 6px 8px;
+            background: #1d2327;
+            border: 1px solid #3c434a;
+            color: #f0f0f1;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        /* Radio / Checkbox */
+        .radio-group, .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #f0f0f1;
+            cursor: pointer;
+            font-weight: 400;
+        }
+        .radio-group input, .checkbox-group input {
+            accent-color: #72aee6;
+        }
+
+        .upload-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 64px;
+            height: 64px;
+            border: 2px dashed #3c434a;
+            border-radius: 4px;
+            color: #a7aaad;
+            font-size: 11px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .upload-placeholder:hover { border-color: #72aee6; color: #72aee6; }
+
+        .conditional-select {
+            margin-top: 8px;
+        }
+        .conditional-select.hidden { display: none; }
+
+        /* Preview area */
+        .customizer-preview {
+            flex: 1;
+            background: #f0f0f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: padding 0.3s ease;
+        }
+        .customizer-preview.tablet-mode {
+            padding: 20px;
+        }
+        .customizer-preview.mobile-mode {
+            padding: 20px;
+        }
+        .preview-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+            transition: width 0.3s ease, max-width 0.3s ease;
+        }
+        .tablet-mode .preview-iframe {
+            max-width: 768px;
+            border-radius: 8px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+        .mobile-mode .preview-iframe {
+            max-width: 375px;
+            border-radius: 8px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+
+        /* Notification */
+        .save-notice {
+            position: fixed;
+            top: 56px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #00a32a;
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .save-notice.visible { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="save-notice" id="saveNotice">Settings published successfully.</div>
+
+    <!-- Top Bar -->
+    <div class="customizer-topbar">
+        <div class="topbar-left">
+            <a href="/wp-admin/themes.php" class="close-btn" title="Close">
+                <span class="dashicons dashicons-no-alt"></span>
+            </a>
+            <span class="topbar-title">Customizer</span>
+        </div>
+        <div class="topbar-center">
+            <button class="device-btn active" data-device="desktop" title="Desktop">
+                <span class="dashicons dashicons-desktop"></span>
+            </button>
+            <button class="device-btn" data-device="tablet" title="Tablet">
+                <span class="dashicons dashicons-tablet"></span>
+            </button>
+            <button class="device-btn" data-device="mobile" title="Mobile">
+                <span class="dashicons dashicons-smartphone"></span>
+            </button>
+        </div>
+        <div class="topbar-right">
+            <button class="btn-publish" id="btnPublish" type="button">Publish</button>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="customizer-main">
+        <!-- Sidebar -->
+        <div class="customizer-sidebar">
+
+            <!-- Site Identity -->
+            <div class="customizer-section" data-section="site-identity">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>Site Identity</span>
+                    <span class="dashicons dashicons-arrow-down-alt2 chevron"></span>
+                </div>
+                <div class="section-body">
+                    <div class="control-group">
+                        <label for="opt-blogname">Site Title</label>
+                        <input type="text" id="opt-blogname" name="blogname" value="{{ blogname }}" data-preview="blogname">
+                    </div>
+                    <div class="control-group">
+                        <label for="opt-blogdescription">Tagline</label>
+                        <input type="text" id="opt-blogdescription" name="blogdescription" value="{{ blogdescription }}" data-preview="blogdescription">
+                    </div>
+                    <div class="control-group">
+                        <label>Site Icon</label>
+                        <div class="upload-placeholder" title="Upload site icon">
+                            <span>512x512<br>icon</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors -->
+            <div class="customizer-section" data-section="colors">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>Colors</span>
+                    <span class="dashicons dashicons-arrow-down-alt2 chevron"></span>
+                </div>
+                <div class="section-body">
+                    <div class="control-group">
+                        <label>Primary Color</label>
+                        <div class="color-row">
+                            <input type="color" id="opt-primary_color" name="primary_color" value="{{ primary_color }}" data-preview="primary_color">
+                            <input type="text" class="color-hex" id="hex-primary_color" value="{{ primary_color }}" maxlength="7">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Secondary Color</label>
+                        <div class="color-row">
+                            <input type="color" id="opt-secondary_color" name="secondary_color" value="{{ secondary_color }}" data-preview="secondary_color">
+                            <input type="text" class="color-hex" id="hex-secondary_color" value="{{ secondary_color }}" maxlength="7">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Background Color</label>
+                        <div class="color-row">
+                            <input type="color" id="opt-background_color" name="background_color" value="{{ background_color }}" data-preview="background_color">
+                            <input type="text" class="color-hex" id="hex-background_color" value="{{ background_color }}" maxlength="7">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typography -->
+            <div class="customizer-section" data-section="typography">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>Typography</span>
+                    <span class="dashicons dashicons-arrow-down-alt2 chevron"></span>
+                </div>
+                <div class="section-body">
+                    <div class="control-group">
+                        <label for="opt-heading_font">Heading Font</label>
+                        <select id="opt-heading_font" name="heading_font" data-preview="heading_font">
+                            <option value="system-ui" {% if heading_font == "system-ui" %}selected{% endif %}>System Default</option>
+                            <option value="'Georgia', serif" {% if heading_font == "'Georgia', serif" %}selected{% endif %}>Georgia</option>
+                            <option value="'Palatino Linotype', serif" {% if heading_font == "'Palatino Linotype', serif" %}selected{% endif %}>Palatino</option>
+                            <option value="'Times New Roman', serif" {% if heading_font == "'Times New Roman', serif" %}selected{% endif %}>Times New Roman</option>
+                            <option value="'Arial', sans-serif" {% if heading_font == "'Arial', sans-serif" %}selected{% endif %}>Arial</option>
+                            <option value="'Helvetica Neue', sans-serif" {% if heading_font == "'Helvetica Neue', sans-serif" %}selected{% endif %}>Helvetica Neue</option>
+                            <option value="'Trebuchet MS', sans-serif" {% if heading_font == "'Trebuchet MS', sans-serif" %}selected{% endif %}>Trebuchet MS</option>
+                            <option value="'Verdana', sans-serif" {% if heading_font == "'Verdana', sans-serif" %}selected{% endif %}>Verdana</option>
+                            <option value="'Courier New', monospace" {% if heading_font == "'Courier New', monospace" %}selected{% endif %}>Courier New</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="opt-body_font">Body Font</label>
+                        <select id="opt-body_font" name="body_font" data-preview="body_font">
+                            <option value="system-ui" {% if body_font == "system-ui" %}selected{% endif %}>System Default</option>
+                            <option value="'Georgia', serif" {% if body_font == "'Georgia', serif" %}selected{% endif %}>Georgia</option>
+                            <option value="'Palatino Linotype', serif" {% if body_font == "'Palatino Linotype', serif" %}selected{% endif %}>Palatino</option>
+                            <option value="'Times New Roman', serif" {% if body_font == "'Times New Roman', serif" %}selected{% endif %}>Times New Roman</option>
+                            <option value="'Arial', sans-serif" {% if body_font == "'Arial', sans-serif" %}selected{% endif %}>Arial</option>
+                            <option value="'Helvetica Neue', sans-serif" {% if body_font == "'Helvetica Neue', sans-serif" %}selected{% endif %}>Helvetica Neue</option>
+                            <option value="'Trebuchet MS', sans-serif" {% if body_font == "'Trebuchet MS', sans-serif" %}selected{% endif %}>Trebuchet MS</option>
+                            <option value="'Verdana', sans-serif" {% if body_font == "'Verdana', sans-serif" %}selected{% endif %}>Verdana</option>
+                            <option value="'Courier New', monospace" {% if body_font == "'Courier New', monospace" %}selected{% endif %}>Courier New</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header -->
+            <div class="customizer-section" data-section="header">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>Header</span>
+                    <span class="dashicons dashicons-arrow-down-alt2 chevron"></span>
+                </div>
+                <div class="section-body">
+                    <div class="control-group">
+                        <label>Header Layout</label>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" name="header_layout" value="default" {% if header_layout != "centered" %}checked{% endif %} data-preview="header_layout">
+                                Default
+                            </label>
+                            <label>
+                                <input type="radio" name="header_layout" value="centered" {% if header_layout == "centered" %}checked{% endif %} data-preview="header_layout">
+                                Centered
+                            </label>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" name="show_search" value="1" {% if show_search == "1" %}checked{% endif %} data-preview="show_search">
+                                Show Search in Header
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="customizer-section" data-section="footer">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>Footer</span>
+                    <span class="dashicons dashicons-arrow-down-alt2 chevron"></span>
+                </div>
+                <div class="section-body">
+                    <div class="control-group">
+                        <label for="opt-footer_text">Footer Text</label>
+                        <textarea id="opt-footer_text" name="footer_text" data-preview="footer_text">{{ footer_text }}</textarea>
+                    </div>
+                    <div class="control-group">
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" name="show_credit" value="1" {% if show_credit == "1" %}checked{% endif %} data-preview="show_credit">
+                                Show "Powered by RustPress" Credit
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Homepage Settings -->
+            <div class="customizer-section" data-section="homepage">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>Homepage Settings</span>
+                    <span class="dashicons dashicons-arrow-down-alt2 chevron"></span>
+                </div>
+                <div class="section-body">
+                    <div class="control-group">
+                        <label>Your homepage displays</label>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" name="show_on_front" value="posts" {% if show_on_front != "page" %}checked{% endif %} data-preview="show_on_front">
+                                Your latest posts
+                            </label>
+                            <label>
+                                <input type="radio" name="show_on_front" value="page" {% if show_on_front == "page" %}checked{% endif %} data-preview="show_on_front">
+                                A static page
+                            </label>
+                        </div>
+                    </div>
+                    <div class="conditional-select {% if show_on_front != 'page' %}hidden{% endif %}" id="static-page-options">
+                        <div class="control-group">
+                            <label for="opt-page_on_front">Homepage</label>
+                            <select id="opt-page_on_front" name="page_on_front">
+                                <option value="0">-- Select --</option>
+                                {% for page in pages %}
+                                <option value="{{ page.id }}" {% if page.id == page_on_front %}selected{% endif %}>{{ page.post_title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="opt-page_for_posts">Posts page</label>
+                            <select id="opt-page_for_posts" name="page_for_posts">
+                                <option value="0">-- Select --</option>
+                                {% for page in pages %}
+                                <option value="{{ page.id }}" {% if page.id == page_for_posts %}selected{% endif %}>{{ page.post_title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom CSS -->
+            <div class="customizer-section" data-section="custom-css">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>Custom CSS</span>
+                    <span class="dashicons dashicons-arrow-down-alt2 chevron"></span>
+                </div>
+                <div class="section-body">
+                    <div class="control-group">
+                        <label for="opt-custom_css">Additional CSS</label>
+                        <textarea id="opt-custom_css" name="custom_css" class="code-editor" data-preview="custom_css" spellcheck="false">{{ custom_css }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Preview -->
+        <div class="customizer-preview" id="previewContainer">
+            <iframe id="previewFrame" class="preview-iframe" src="/"></iframe>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        'use strict';
+
+        // ---- Section toggle ----
+        window.toggleSection = function(header) {
+            header.classList.toggle('collapsed');
+            const body = header.nextElementSibling;
+            body.classList.toggle('hidden');
+        };
+
+        // ---- Device preview ----
+        const deviceBtns = document.querySelectorAll('.device-btn');
+        const previewContainer = document.getElementById('previewContainer');
+
+        deviceBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                deviceBtns.forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                const device = btn.getAttribute('data-device');
+                previewContainer.classList.remove('tablet-mode', 'mobile-mode');
+                if (device === 'tablet') previewContainer.classList.add('tablet-mode');
+                else if (device === 'mobile') previewContainer.classList.add('mobile-mode');
+            });
+        });
+
+        // ---- Debounce utility ----
+        function debounce(fn, delay) {
+            var timer;
+            return function() {
+                var ctx = this, args = arguments;
+                clearTimeout(timer);
+                timer = setTimeout(function() { fn.apply(ctx, args); }, delay);
+            };
+        }
+
+        // ---- Live preview via style injection ----
+        var previewFrame = document.getElementById('previewFrame');
+
+        function getIframeDoc() {
+            try {
+                return previewFrame.contentDocument || previewFrame.contentWindow.document;
+            } catch(e) {
+                return null;
+            }
+        }
+
+        function ensurePreviewStyle() {
+            var doc = getIframeDoc();
+            if (!doc) return null;
+            var style = doc.getElementById('customizer-live-css');
+            if (!style) {
+                style = doc.createElement('style');
+                style.id = 'customizer-live-css';
+                doc.head.appendChild(style);
+            }
+            return style;
+        }
+
+        function buildLiveCSS() {
+            var primaryColor = document.getElementById('opt-primary_color').value;
+            var secondaryColor = document.getElementById('opt-secondary_color').value;
+            var bgColor = document.getElementById('opt-background_color').value;
+            var headingFont = document.getElementById('opt-heading_font').value;
+            var bodyFont = document.getElementById('opt-body_font').value;
+            var customCSS = document.getElementById('opt-custom_css').value;
+
+            var css = ':root {\n';
+            css += '  --wp--preset--color--primary: ' + primaryColor + ';\n';
+            css += '  --wp--preset--color--secondary: ' + secondaryColor + ';\n';
+            css += '  --wp--preset--color--background: ' + bgColor + ';\n';
+            css += '  --wp--preset--font-family--heading: ' + headingFont + ';\n';
+            css += '  --wp--preset--font-family--body: ' + bodyFont + ';\n';
+            css += '}\n';
+            css += 'body { background-color: ' + bgColor + '; font-family: ' + bodyFont + '; }\n';
+            css += 'h1, h2, h3, h4, h5, h6 { font-family: ' + headingFont + '; }\n';
+            css += 'a { color: ' + primaryColor + '; }\n';
+            css += '\n/* Custom CSS */\n' + customCSS;
+            return css;
+        }
+
+        var updatePreview = debounce(function() {
+            var style = ensurePreviewStyle();
+            if (style) {
+                style.textContent = buildLiveCSS();
+            }
+        }, 300);
+
+        // ---- Sync color pickers with hex inputs ----
+        function syncColorInputs(colorId) {
+            var colorInput = document.getElementById('opt-' + colorId);
+            var hexInput = document.getElementById('hex-' + colorId);
+            if (!colorInput || !hexInput) return;
+
+            colorInput.addEventListener('input', function() {
+                hexInput.value = colorInput.value;
+                updatePreview();
+            });
+            hexInput.addEventListener('input', function() {
+                if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value)) {
+                    colorInput.value = hexInput.value;
+                    updatePreview();
+                }
+            });
+        }
+
+        syncColorInputs('primary_color');
+        syncColorInputs('secondary_color');
+        syncColorInputs('background_color');
+
+        // ---- Bind all preview-enabled inputs ----
+        document.querySelectorAll('[data-preview]').forEach(function(el) {
+            var eventType = (el.tagName === 'SELECT' || el.type === 'radio' || el.type === 'checkbox') ? 'change' : 'input';
+            el.addEventListener(eventType, updatePreview);
+        });
+
+        // ---- Homepage settings conditional ----
+        var showOnFrontRadios = document.querySelectorAll('input[name="show_on_front"]');
+        var staticPageOptions = document.getElementById('static-page-options');
+
+        showOnFrontRadios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                if (radio.value === 'page') {
+                    staticPageOptions.classList.remove('hidden');
+                } else {
+                    staticPageOptions.classList.add('hidden');
+                }
+            });
+        });
+
+        // ---- Apply styles once iframe loads ----
+        previewFrame.addEventListener('load', function() {
+            updatePreview();
+        });
+
+        // ---- Publish (save) ----
+        var btnPublish = document.getElementById('btnPublish');
+        var saveNotice = document.getElementById('saveNotice');
+
+        btnPublish.addEventListener('click', function() {
+            btnPublish.disabled = true;
+            btnPublish.textContent = 'Publishing...';
+
+            var formData = new URLSearchParams();
+
+            // Text inputs
+            formData.set('blogname', document.getElementById('opt-blogname').value);
+            formData.set('blogdescription', document.getElementById('opt-blogdescription').value);
+
+            // Colors
+            formData.set('primary_color', document.getElementById('opt-primary_color').value);
+            formData.set('secondary_color', document.getElementById('opt-secondary_color').value);
+            formData.set('background_color', document.getElementById('opt-background_color').value);
+
+            // Typography
+            formData.set('heading_font', document.getElementById('opt-heading_font').value);
+            formData.set('body_font', document.getElementById('opt-body_font').value);
+
+            // Header
+            var headerLayout = document.querySelector('input[name="header_layout"]:checked');
+            formData.set('header_layout', headerLayout ? headerLayout.value : 'default');
+            var showSearch = document.querySelector('input[name="show_search"]');
+            formData.set('show_search', showSearch && showSearch.checked ? '1' : '0');
+
+            // Footer
+            formData.set('footer_text', document.getElementById('opt-footer_text').value);
+            var showCredit = document.querySelector('input[name="show_credit"]');
+            formData.set('show_credit', showCredit && showCredit.checked ? '1' : '0');
+
+            // Homepage Settings
+            var showOnFront = document.querySelector('input[name="show_on_front"]:checked');
+            formData.set('show_on_front', showOnFront ? showOnFront.value : 'posts');
+            formData.set('page_on_front', document.getElementById('opt-page_on_front').value);
+            formData.set('page_for_posts', document.getElementById('opt-page_for_posts').value);
+
+            // Custom CSS
+            formData.set('custom_css', document.getElementById('opt-custom_css').value);
+
+            fetch('/wp-admin/customizer-save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData.toString(),
+                credentials: 'same-origin'
+            })
+            .then(function(resp) {
+                if (resp.ok) {
+                    btnPublish.textContent = 'Published';
+                    btnPublish.classList.add('saved');
+                    saveNotice.classList.add('visible');
+                    setTimeout(function() {
+                        saveNotice.classList.remove('visible');
+                        btnPublish.textContent = 'Publish';
+                        btnPublish.classList.remove('saved');
+                        btnPublish.disabled = false;
+                    }, 2000);
+                    // Reload iframe to reflect saved changes
+                    previewFrame.src = previewFrame.src;
+                } else {
+                    btnPublish.textContent = 'Error - Retry';
+                    btnPublish.disabled = false;
+                }
+            })
+            .catch(function() {
+                btnPublish.textContent = 'Error - Retry';
+                btnPublish.disabled = false;
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

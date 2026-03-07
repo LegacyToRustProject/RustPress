@@ -1,0 +1,164 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Custom Fields{% endblock %}
+
+{% block content %}
+<h1>Custom Fields <a href="#" class="add-new-btn" id="add-field-group-btn">Add New Field Group</a></h1>
+
+{% if notice_message is defined and notice_message %}
+<div class="notice notice-{{ notice_type | default(value='success') }}">
+    <p>{{ notice_message }}</p>
+</div>
+{% endif %}
+
+<table class="wp-list-table">
+    <thead>
+        <tr>
+            <th style="width:30%">Title</th>
+            <th style="width:15%">Key</th>
+            <th style="width:10%">Fields</th>
+            <th style="width:20%">Location Rules</th>
+            <th style="width:10%">Status</th>
+            <th style="width:15%">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if field_groups is defined and field_groups | length > 0 %}
+        {% for group in field_groups %}
+        <tr>
+            <td class="column-title">
+                <strong><a href="/wp-admin/post.php?post={{ group.id }}&action=edit">{{ group.title }}</a></strong>
+            </td>
+            <td><code style="font-size:12px">{{ group.key }}</code></td>
+            <td>{{ group.field_count }}</td>
+            <td>
+                {% for rule in group.location_rules %}
+                <span style="background:#f0f0f1;padding:0.1rem 0.4rem;border-radius:3px;font-size:12px;margin-right:0.25rem">{{ rule }}</span>
+                {% endfor %}
+            </td>
+            <td>
+                {% if group.active %}
+                <span style="color:#00a32a;font-size:13px">Active</span>
+                {% else %}
+                <span style="color:#646970;font-size:13px">Inactive</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="/wp-admin/post.php?post={{ group.id }}&action=edit" style="font-size:13px">Edit</a> |
+                <a href="#" class="delete-field-group" data-id="{{ group.id }}" style="font-size:13px;color:#b32d2e">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="6" style="text-align:center;padding:2rem;color:#646970">
+                No field groups found. Create your first field group to start adding custom fields to posts and pages.
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<!-- Inline field group creator -->
+<div id="new-field-group-form" style="display:none;margin-top:1.5rem">
+    <div class="widget">
+        <div class="widget-title">New Field Group</div>
+        <div class="widget-content">
+            <form method="post" action="/wp-admin/admin-acf.php">
+                <table class="form-table">
+                    <tr>
+                        <th><label for="fg_title">Title</label></th>
+                        <td><input type="text" id="fg_title" name="fg_title" class="regular-text" required></td>
+                    </tr>
+                    <tr>
+                        <th><label for="fg_location">Show on</label></th>
+                        <td>
+                            <select id="fg_location" name="fg_location" class="regular-text" style="max-width:250px">
+                                <option value="post">Posts</option>
+                                <option value="page">Pages</option>
+                                <option value="product">Products</option>
+                                <option value="all">All Post Types</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Fields</th>
+                        <td>
+                            <div id="field-list">
+                                <div class="field-row" style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+                                    <input type="text" name="field_label[]" placeholder="Label" class="regular-text" style="flex:1">
+                                    <select name="field_type[]" style="width:120px">
+                                        <option value="text">Text</option>
+                                        <option value="textarea">Textarea</option>
+                                        <option value="number">Number</option>
+                                        <option value="email">Email</option>
+                                        <option value="url">URL</option>
+                                        <option value="image">Image</option>
+                                        <option value="select">Select</option>
+                                        <option value="true_false">True/False</option>
+                                        <option value="wysiwyg">WYSIWYG</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="button" id="add-field-btn" class="button button-secondary" style="font-size:12px;margin-top:0.25rem">+ Add Field</button>
+                        </td>
+                    </tr>
+                </table>
+                <div style="margin-top:1rem">
+                    <button type="submit" class="button button-primary">Create Field Group</button>
+                    <button type="button" class="button button-secondary" id="cancel-field-group-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var addBtn = document.getElementById('add-field-group-btn');
+    var form = document.getElementById('new-field-group-form');
+    var cancelBtn = document.getElementById('cancel-field-group-btn');
+    var addFieldBtn = document.getElementById('add-field-btn');
+
+    if (addBtn && form) {
+        addBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+    if (cancelBtn && form) {
+        cancelBtn.addEventListener('click', function() { form.style.display = 'none'; });
+    }
+    if (addFieldBtn) {
+        addFieldBtn.addEventListener('click', function() {
+            var list = document.getElementById('field-list');
+            var row = document.createElement('div');
+            row.className = 'field-row';
+            row.style = 'display:flex;gap:0.5rem;margin-bottom:0.5rem';
+            row.innerHTML = '<input type="text" name="field_label[]" placeholder="Label" class="regular-text" style="flex:1">' +
+                '<select name="field_type[]" style="width:120px">' +
+                '<option value="text">Text</option><option value="textarea">Textarea</option>' +
+                '<option value="number">Number</option><option value="email">Email</option>' +
+                '<option value="url">URL</option><option value="image">Image</option>' +
+                '<option value="select">Select</option><option value="true_false">True/False</option>' +
+                '<option value="wysiwyg">WYSIWYG</option></select>' +
+                '<button type="button" onclick="this.parentElement.remove()" style="color:#b32d2e;border:none;background:none;cursor:pointer;font-size:16px">&times;</button>';
+            list.appendChild(row);
+        });
+    }
+
+    document.querySelectorAll('.delete-field-group').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!confirm('Delete this field group?')) return;
+            var id = this.getAttribute('data-id');
+            RustPressAdmin.deletePost(id).then(function() {
+                window.location.reload();
+            }).catch(function(err) { alert('Error: ' + err.message); });
+        });
+    });
+})();
+</script>
+{% endblock %}

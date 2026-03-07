@@ -1,0 +1,52 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ __( key="General Settings") }}{% endblock %}
+
+{% block content %}
+<h1>{{ __( key="General Settings") }}</h1>
+
+{% if saved %}
+<div class="notice notice-success">{{ __( key="Settings saved.") }}</div>
+{% endif %}
+
+<form method="post" action="/wp-admin/options-general.php">
+    <table class="form-table">
+        <tr>
+            <th><label for="blogname">{{ __( key="Site Title") }}</label></th>
+            <td><input type="text" id="blogname" name="blogname" value="{{ blogname }}" class="regular-text"></td>
+        </tr>
+        <tr>
+            <th><label for="blogdescription">{{ __( key="Tagline") }}</label></th>
+            <td>
+                <input type="text" id="blogdescription" name="blogdescription" value="{{ blogdescription }}" class="regular-text">
+                <p style="color:#646970;font-size:13px;margin-top:0.25rem">{{ __( key="In a few words, explain what this site is about.") }}</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="siteurl">{{ __( key="Site Address (URL)") }}</label></th>
+            <td>
+                <input type="text" id="siteurl" value="{{ siteurl }}" class="regular-text" disabled>
+                <p style="color:#646970;font-size:13px;margin-top:0.25rem">{{ __( key="Configured via SITE_URL environment variable.") }}</p>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="WPLANG">{{ __( key="Site Language") }}</label></th>
+            <td>
+                <select id="WPLANG" name="WPLANG" class="regular-text" style="max-width:300px">
+                    {% for locale in available_locales %}
+                    <option value="{{ locale.code }}" {% if locale.code == current_locale %}selected{% endif %}>{{ locale.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="posts_per_page">{{ __( key="Posts Per Page") }}</label></th>
+            <td><input type="number" id="posts_per_page" name="posts_per_page" value="{{ posts_per_page }}" class="regular-text" style="max-width:80px" min="1" max="100"></td>
+        </tr>
+    </table>
+
+    <div style="margin-top:1rem">
+        <button type="submit" class="button button-primary">{{ __( key="Save Changes") }}</button>
+    </div>
+</form>
+{% endblock %}

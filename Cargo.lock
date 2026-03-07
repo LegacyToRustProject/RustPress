@@ -3899,10 +3899,12 @@ name = "rustpress-core"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "hmac",
  "lettre",
  "regex",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror 2.0.18",
  "tracing",
 ]

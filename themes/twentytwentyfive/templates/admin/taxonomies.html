@@ -1,0 +1,106 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ taxonomy_label }}{% endblock %}
+
+{% block content %}
+<h1>{{ taxonomy_label }}</h1>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:2rem;margin-top:1rem">
+    <!-- Add New Term -->
+    <div>
+        <div class="widget">
+            <div class="widget-title">Add New {{ singular_label }}</div>
+            <div class="widget-content">
+                <form id="add-term-form">
+                    <p>
+                        <label for="term-name"><strong>Name</strong></label><br>
+                        <input id="term-name" type="text" class="regular-text" style="width:100%;max-width:100%" required>
+                    </p>
+                    <p>
+                        <label for="term-slug"><strong>Slug</strong></label><br>
+                        <input id="term-slug" type="text" class="regular-text" style="width:100%;max-width:100%">
+                        <span style="color:#646970;font-size:12px;display:block;margin-top:4px">Optional. Auto-generated from name if empty.</span>
+                    </p>
+                    <p>
+                        <label for="term-desc"><strong>Description</strong></label><br>
+                        <textarea id="term-desc" class="large-text" rows="3" style="width:100%"></textarea>
+                    </p>
+                    <p><button type="submit" class="button button-primary">Add New {{ singular_label }}</button></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Terms List -->
+    <div>
+        <table class="wp-list-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Slug</th>
+                    <th>Description</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody id="terms-body">
+                {% for term in terms %}
+                <tr id="term-{{ term.term_id }}">
+                    <td class="column-title">
+                        <strong>{{ term.name }}</strong>
+                        <div class="row-actions" style="visibility:visible">
+                            <a href="#" onclick="editTerm({{ term.term_id }}, '{{ term.name }}', '{{ term.slug }}'); return false;">Edit</a> |
+                            <a href="#" onclick="deleteTerm({{ term.term_id }}); return false;" class="trash">Delete</a>
+                        </div>
+                    </td>
+                    <td>{{ term.slug }}</td>
+                    <td>{{ term.description | default(value="") | truncate(length=60) }}</td>
+                    <td>{{ term.count | default(value=0) }}</td>
+                </tr>
+                {% endfor %}
+                {% if terms | length == 0 %}
+                <tr><td colspan="4" style="text-align:center;padding:2rem;color:#646970">No {{ taxonomy_label | lower }} found.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const taxonomy = '{{ taxonomy }}';
+
+document.getElementById('add-term-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('term-name').value.trim();
+    if (!name) return;
+    const slug = document.getElementById('term-slug').value.trim() || undefined;
+    const description = document.getElementById('term-desc').value.trim() || undefined;
+    try {
+        await RustPressAdmin.apiCall('POST', '/admin/terms', { name, slug, taxonomy, description });
+        location.reload();
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+});
+
+async function deleteTerm(id) {
+    if (!confirm('Delete this item? This cannot be undone.')) return;
+    try {
+        await RustPressAdmin.apiCall('DELETE', '/admin/terms/' + id);
+        document.getElementById('term-' + id).remove();
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+function editTerm(id, name, slug) {
+    const newName = prompt('Edit name:', name);
+    if (newName === null || newName.trim() === '') return;
+    const newSlug = prompt('Edit slug:', slug);
+    RustPressAdmin.apiCall('PUT', '/admin/terms/' + id, { name: newName.trim(), slug: newSlug ? newSlug.trim() : undefined })
+        .then(() => location.reload())
+        .catch(e => alert('Error: ' + e.message));
+}
+</script>
+{% endblock %}

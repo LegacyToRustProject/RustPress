@@ -1,0 +1,105 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ __( key="Dashboard") }}{% endblock %}
+
+{% block content %}
+<h1>{{ __( key="Dashboard") }}</h1>
+
+<div class="dashboard-widgets">
+    <div class="widget">
+        <div class="widget-title">{{ __( key="At a Glance") }}</div>
+        <div class="widget-content">
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <div class="stat-number">{{ post_count | default(value=0) }}</div>
+                    <div class="stat-label">{{ __( key="Posts") }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ page_count | default(value=0) }}</div>
+                    <div class="stat-label">{{ __( key="Pages") }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ user_count | default(value=0) }}</div>
+                    <div class="stat-label">{{ __( key="Users") }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ comment_count | default(value=0) }}</div>
+                    <div class="stat-label">{{ __( key="Comments") }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">{{ draft_count | default(value=0) }}</div>
+                    <div class="stat-label">{{ __( key="Drafts") }}</div>
+                </div>
+                {% if pending_comments is defined and pending_comments > 0 %}
+                <div class="stat-item">
+                    <div class="stat-number" style="color:#b32d2e">{{ pending_comments }}</div>
+                    <div class="stat-label">{{ __( key="Pending Comments") }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="widget">
+        <div class="widget-title">{{ __( key="Quick Draft") }}</div>
+        <div class="widget-content">
+            <form id="quick-draft-form">
+                <div style="margin-bottom:0.75rem">
+                    <input type="text" id="qd-title" placeholder="{{ __( key="Title") }}" class="regular-text" style="max-width:100%">
+                </div>
+                <div style="margin-bottom:0.75rem">
+                    <textarea id="qd-content" rows="3" placeholder="{{ __( key="What's on your mind?") }}" class="large-text"></textarea>
+                </div>
+                <button type="submit" class="button button-primary">{{ __( key="Save Draft") }}</button>
+            </form>
+            <div id="qd-msg" style="margin-top:0.5rem;font-size:13px"></div>
+        </div>
+    </div>
+
+    <div class="widget" style="grid-column: 1 / -1;">
+        <div class="widget-title">{{ __( key="Recent Activity") }}</div>
+        <div class="widget-content">
+            {% if recent_posts | length > 0 %}
+            <table class="wp-list-table" style="border:0">
+                <tbody>
+                {% for post in recent_posts %}
+                <tr>
+                    <td class="column-title">
+                        <a href="/wp-admin/post.php?post={{ post.id }}&action=edit">{{ post.title }}</a>
+                    </td>
+                    <td>
+                        <span class="status-badge status-{{ post.status }}">{{ post.status }}</span>
+                    </td>
+                    <td style="color:#646970">{{ post.date }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>{{ __( key="No recent activity.") }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('quick-draft-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('qd-title').value.trim();
+    const content = document.getElementById('qd-content').value.trim();
+    if (!title) return;
+    try {
+        await RustPressAdmin.createPost({ title, content, status: 'draft', post_type: 'post' });
+        document.getElementById('qd-msg').innerHTML = '<span style="color:#00a32a">{{ __( key="Draft saved!") }}</span>';
+        document.getElementById('qd-title').value = '';
+        document.getElementById('qd-content').value = '';
+        setTimeout(() => location.reload(), 1000);
+    } catch (err) {
+        document.getElementById('qd-msg').innerHTML = '<span style="color:#d63638">{{ __( key="Error:") }} ' + err.message + '</span>';
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Contact Forms{% endblock %}
+
+{% block content %}
+<h1>Contact Forms <a href="#" class="add-new-btn" id="add-form-btn">Add New</a></h1>
+
+{% if notice_message is defined and notice_message %}
+<div class="notice notice-{{ notice_type | default(value='success') }}">
+    <p>{{ notice_message }}</p>
+</div>
+{% endif %}
+
+<table class="wp-list-table">
+    <thead>
+        <tr>
+            <th style="width:5%"><input type="checkbox" id="cb-select-all"></th>
+            <th style="width:30%">Title</th>
+            <th style="width:30%">Shortcode</th>
+            <th style="width:15%">Submissions</th>
+            <th style="width:20%">Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if forms is defined and forms | length > 0 %}
+        {% for form in forms %}
+        <tr>
+            <td><input type="checkbox" value="{{ form.id }}"></td>
+            <td class="column-title">
+                <strong><a href="/wp-admin/post.php?post={{ form.id }}&action=edit">{{ form.title }}</a></strong>
+                <div class="row-actions">
+                    <a href="/wp-admin/post.php?post={{ form.id }}&action=edit">Edit</a> |
+                    <a href="#" class="delete-form" data-id="{{ form.id }}" style="color:#b32d2e">Delete</a>
+                </div>
+            </td>
+            <td>
+                <code style="font-size:12px;background:#f0f0f1;padding:0.2rem 0.5rem;border-radius:3px;cursor:pointer" class="shortcode-copy" title="Click to copy">[contact-form-7 id="{{ form.id }}" title="{{ form.title }}"]</code>
+            </td>
+            <td>{{ form.submission_count | default(value=0) }}</td>
+            <td>{{ form.date }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align:center;padding:2rem;color:#646970">
+                No contact forms found. <a href="#" id="add-form-link">Create your first form</a>.
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<!-- Form Submissions Section -->
+{% if recent_submissions is defined and recent_submissions | length > 0 %}
+<div style="margin-top:2rem">
+    <div class="widget">
+        <div class="widget-title">Recent Submissions</div>
+        <div class="widget-content">
+            <table class="wp-list-table" style="margin:0">
+                <thead>
+                    <tr>
+                        <th style="width:20%">Form</th>
+                        <th style="width:20%">From</th>
+                        <th style="width:30%">Subject</th>
+                        <th style="width:15%">Date</th>
+                        <th style="width:15%">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in recent_submissions %}
+                    <tr>
+                        <td>{{ sub.form_title }}</td>
+                        <td>{{ sub.email }}</td>
+                        <td>{{ sub.subject }}</td>
+                        <td>{{ sub.date }}</td>
+                        <td>
+                            {% if sub.read %}
+                            <span style="color:#646970;font-size:12px">Read</span>
+                            {% else %}
+                            <span style="color:#2271b1;font-weight:600;font-size:12px">New</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- New Form inline creator -->
+<div id="new-form-section" style="display:none;margin-top:1.5rem">
+    <div class="widget">
+        <div class="widget-title">New Contact Form</div>
+        <div class="widget-content">
+            <form method="post" action="/wp-admin/admin-cf7.php">
+                <table class="form-table">
+                    <tr>
+                        <th><label for="form_title">Form Title</label></th>
+                        <td><input type="text" id="form_title" name="form_title" class="regular-text" required></td>
+                    </tr>
+                    <tr>
+                        <th><label for="form_template">Form Template</label></th>
+                        <td>
+                            <textarea id="form_template" name="form_template" class="regular-text" rows="8" style="width:100%;font-family:monospace;font-size:13px">[text* your-name placeholder "Your Name"]
+[email* your-email placeholder "Email"]
+[text your-subject placeholder "Subject"]
+[textarea your-message placeholder "Message"]
+[submit "Send"]</textarea>
+                            <p style="color:#646970;font-size:13px;margin-top:0.25rem">Uses CF7 shortcode syntax. Available tags: <code>[text]</code> <code>[email]</code> <code>[textarea]</code> <code>[select]</code> <code>[submit]</code></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="form_mail_to">Send To</label></th>
+                        <td><input type="email" id="form_mail_to" name="form_mail_to" class="regular-text" placeholder="admin@example.com"></td>
+                    </tr>
+                </table>
+                <div style="margin-top:1rem">
+                    <button type="submit" class="button button-primary">Create Form</button>
+                    <button type="button" class="button button-secondary" id="cancel-form-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var addBtn = document.getElementById('add-form-btn');
+    var addLink = document.getElementById('add-form-link');
+    var section = document.getElementById('new-form-section');
+    var cancelBtn = document.getElementById('cancel-form-btn');
+
+    function toggleForm(e) {
+        if (e) e.preventDefault();
+        if (section) section.style.display = section.style.display === 'none' ? 'block' : 'none';
+    }
+
+    if (addBtn) addBtn.addEventListener('click', toggleForm);
+    if (addLink) addLink.addEventListener('click', toggleForm);
+    if (cancelBtn) cancelBtn.addEventListener('click', function() { section.style.display = 'none'; });
+
+    document.querySelectorAll('.shortcode-copy').forEach(function(el) {
+        el.addEventListener('click', function() {
+            navigator.clipboard.writeText(this.textContent).then(function() {
+                el.style.background = '#d4edda';
+                setTimeout(function() { el.style.background = '#f0f0f1'; }, 1000);
+            });
+        });
+    });
+
+    document.querySelectorAll('.delete-form').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!confirm('Delete this form?')) return;
+            var id = this.getAttribute('data-id');
+            RustPressAdmin.deletePost(id).then(function() {
+                window.location.reload();
+            }).catch(function(err) { alert('Error: ' + err.message); });
+        });
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,248 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Plugins{% endblock %}
+
+{% block content %}
+<h1>Plugins <a href="#upload-section" class="add-new-btn" id="add-new-plugin-btn">Add New Plugin</a></h1>
+
+{% if notice_message is defined and notice_message %}
+<div class="notice notice-{{ notice_type | default(value='success') }}">
+    <p>{{ notice_message }}</p>
+</div>
+{% endif %}
+
+<!-- Plugin counts -->
+<p class="plugin-count" style="font-size: 13px; color: #646970; margin-bottom: 0.5rem;">
+    Total: <strong>{{ total_count | default(value=0) }}</strong> |
+    <span style="color: #00a32a;">Active: <strong>{{ active_count | default(value=0) }}</strong></span> |
+    <span style="color: #646970;">Inactive: <strong>{{ inactive_count | default(value=0) }}</strong></span>
+</p>
+
+<!-- Filter tabs -->
+<ul class="subsubsub" id="plugin-filter-tabs">
+    <li><a href="#" class="current" data-filter="all">All <span class="count">({{ total_count | default(value=0) }})</span></a></li>
+    <li><a href="#" data-filter="active">Active <span class="count">({{ active_count | default(value=0) }})</span></a></li>
+    <li><a href="#" data-filter="inactive">Inactive <span class="count">({{ inactive_count | default(value=0) }})</span></a></li>
+</ul>
+
+<div class="clearfix"></div>
+
+<!-- Plugin List Table -->
+<table class="wp-list-table" id="plugins-table">
+    <thead>
+        <tr>
+            <th style="width: 40%;">Plugin</th>
+            <th style="width: 12%;">Version</th>
+            <th style="width: 15%;">Author</th>
+            <th style="width: 10%;">Type</th>
+            <th style="width: 10%;">Status</th>
+            <th style="width: 13%;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if plugins is defined and plugins | length > 0 %}
+        {% for plugin in plugins %}
+        <tr class="plugin-row" data-status="{{ plugin.status }}" data-name="{{ plugin.name }}">
+            <td class="column-title">
+                <strong>{{ plugin.name }}</strong>
+                <div style="font-size: 12px; color: #646970; margin-top: 0.25rem;">{{ plugin.description }}</div>
+            </td>
+            <td>{{ plugin.version }}</td>
+            <td>{{ plugin.author }}</td>
+            <td>
+                {% if plugin.plugin_type == "Wasm" %}
+                <span style="background: #d1ecf1; color: #0c5460; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 12px;">WASM</span>
+                {% else %}
+                <span style="background: #e2e3e5; color: #383d41; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 12px;">Native</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if plugin.status == "Active" %}
+                <span class="status-badge" style="background: #d4edda; color: #155724;">Active</span>
+                {% elif plugin.status == "Inactive" %}
+                <span class="status-badge" style="background: #e2e3e5; color: #646970;">Inactive</span>
+                {% else %}
+                <span class="status-badge" style="background: #f8d7da; color: #721c24;">Error</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if plugin.status == "Active" %}
+                <button class="button button-secondary plugin-toggle-btn" data-action="deactivate" data-plugin="{{ plugin.name }}" style="font-size: 12px; padding: 0.2rem 0.6rem;">Deactivate</button>
+                {% else %}
+                <button class="button button-primary plugin-toggle-btn" data-action="activate" data-plugin="{{ plugin.name }}" style="font-size: 12px; padding: 0.2rem 0.6rem;">Activate</button>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="6" style="text-align: center; padding: 2rem; color: #646970;">
+                No plugins installed. Use the &ldquo;Add New Plugin&rdquo; button above to upload a plugin.
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+<!-- Upload section -->
+<div id="upload-section" style="margin-top: 2rem; display: none;">
+    <div class="widget">
+        <div class="widget-title">Upload Plugin</div>
+        <div class="widget-content">
+            <p style="margin-bottom: 1rem; color: #646970;">
+                Upload a plugin in <code>.wasm</code> format or a directory with a <code>plugin.json</code> manifest.
+            </p>
+            <div id="plugin-upload-area" style="border: 2px dashed #c3c4c7; border-radius: 4px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s;">
+                <div style="font-size: 2rem; color: #c3c4c7; margin-bottom: 0.5rem;">&#9875;</div>
+                <p style="color: #646970; margin-bottom: 0.5rem;">Drag &amp; drop a plugin file here, or click to browse</p>
+                <input type="file" id="plugin-file-input" accept=".wasm,.json,.zip" style="display: none;">
+                <button class="button button-secondary" id="plugin-browse-btn" style="margin-top: 0.5rem;">Choose File</button>
+            </div>
+            <div id="upload-status" style="margin-top: 1rem; display: none;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Filter tabs
+    var filterTabs = document.querySelectorAll('#plugin-filter-tabs a');
+    var pluginRows = document.querySelectorAll('.plugin-row');
+
+    filterTabs.forEach(function(tab) {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            filterTabs.forEach(function(t) { t.classList.remove('current'); });
+            this.classList.add('current');
+
+            var filter = this.getAttribute('data-filter');
+            pluginRows.forEach(function(row) {
+                if (filter === 'all') {
+                    row.style.display = '';
+                } else if (filter === 'active') {
+                    row.style.display = row.getAttribute('data-status') === 'Active' ? '' : 'none';
+                } else if (filter === 'inactive') {
+                    row.style.display = row.getAttribute('data-status') !== 'Active' ? '' : 'none';
+                }
+            });
+        });
+    });
+
+    // Activate / Deactivate buttons
+    document.querySelectorAll('.plugin-toggle-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var action = this.getAttribute('data-action');
+            var pluginName = this.getAttribute('data-plugin');
+            var button = this;
+
+            button.disabled = true;
+            button.textContent = action === 'activate' ? 'Activating...' : 'Deactivating...';
+
+            fetch('/admin/plugins/' + encodeURIComponent(pluginName) + '/' + action, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+            })
+            .then(function(res) {
+                if (!res.ok) {
+                    return res.text().then(function(text) { throw new Error(text || res.statusText); });
+                }
+                return res.json();
+            })
+            .then(function() {
+                // Reload the page to reflect changes
+                window.location.reload();
+            })
+            .catch(function(err) {
+                alert('Error: ' + err.message);
+                button.disabled = false;
+                button.textContent = action === 'activate' ? 'Activate' : 'Deactivate';
+            });
+        });
+    });
+
+    // Upload section toggle
+    var addNewBtn = document.getElementById('add-new-plugin-btn');
+    var uploadSection = document.getElementById('upload-section');
+
+    if (addNewBtn && uploadSection) {
+        addNewBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (uploadSection.style.display === 'none') {
+                uploadSection.style.display = 'block';
+                uploadSection.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                uploadSection.style.display = 'none';
+            }
+        });
+    }
+
+    // File upload area
+    var uploadArea = document.getElementById('plugin-upload-area');
+    var fileInput = document.getElementById('plugin-file-input');
+    var browseBtn = document.getElementById('plugin-browse-btn');
+
+    if (browseBtn && fileInput) {
+        browseBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fileInput.click();
+        });
+    }
+
+    if (uploadArea && fileInput) {
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#2271b1';
+            uploadArea.style.background = '#f0f7ff';
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#c3c4c7';
+            uploadArea.style.background = '';
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#c3c4c7';
+            uploadArea.style.background = '';
+            if (e.dataTransfer.files.length > 0) {
+                handleUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                handleUpload(this.files[0]);
+            }
+        });
+    }
+
+    function handleUpload(file) {
+        var statusDiv = document.getElementById('upload-status');
+        if (!statusDiv) return;
+
+        statusDiv.style.display = 'block';
+        statusDiv.innerHTML = '<div class="notice notice-success"><p>File selected: <strong>' + escapeHtml(file.name) + '</strong> (' + formatBytes(file.size) + '). Plugin upload processing is not yet implemented on the server.</p></div>';
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+
+    function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+})();
+</script>
+{% endblock %}

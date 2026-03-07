@@ -1,0 +1,37 @@
+{% extends "admin/base.html" %}
+{% block title %}Site Health{% endblock %}
+{% block content %}
+<h1>Site Health</h1>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px">
+    <div class="tool-card" style="background:#fff;border:1px solid #c3c4c7;border-radius:4px;padding:16px">
+        <h2 style="margin:0 0 12px;font-size:14px;color:#1d2327">Server Information</h2>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Rust Version</td><td style="padding:6px 0;text-align:right">{{ rust_version }}</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">RustPress Version</td><td style="padding:6px 0;text-align:right">{{ rustpress_version }}</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Database</td><td style="padding:6px 0;text-align:right">{{ db_type }}</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Server</td><td style="padding:6px 0;text-align:right">Axum</td></tr>
+            <tr><td style="padding:6px 0;color:#646970">OS</td><td style="padding:6px 0;text-align:right">{{ os_info }}</td></tr>
+        </table>
+    </div>
+    <div class="tool-card" style="background:#fff;border:1px solid #c3c4c7;border-radius:4px;padding:16px">
+        <h2 style="margin:0 0 12px;font-size:14px;color:#1d2327">Content Statistics</h2>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Posts</td><td style="padding:6px 0;text-align:right">{{ post_count }}</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Pages</td><td style="padding:6px 0;text-align:right">{{ page_count }}</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Comments</td><td style="padding:6px 0;text-align:right">{{ comment_count }}</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Users</td><td style="padding:6px 0;text-align:right">{{ user_count }}</td></tr>
+            <tr><td style="padding:6px 0;color:#646970">Media</td><td style="padding:6px 0;text-align:right">{{ media_count }}</td></tr>
+        </table>
+    </div>
+    <div class="tool-card" style="background:#fff;border:1px solid #c3c4c7;border-radius:4px;padding:16px">
+        <h2 style="margin:0 0 12px;font-size:14px;color:#1d2327">Status Checks</h2>
+        <table style="width:100%;font-size:13px;border-collapse:collapse">
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Database Connection</td><td style="padding:6px 0;text-align:right;color:#00a32a">Connected</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Cache</td><td style="padding:6px 0;text-align:right;color:#00a32a">Active</td></tr>
+            <tr style="border-bottom:1px solid #f0f0f1"><td style="padding:6px 0;color:#646970">Cron</td><td style="padding:6px 0;text-align:right;color:#00a32a">Running</td></tr>
+            <tr><td style="padding:6px 0;color:#646970">HTTPS</td><td style="padding:6px 0;text-align:right">{{ https_status }}</td></tr>
+        </table>
+    </div>
+</div>
+{% endblock %}

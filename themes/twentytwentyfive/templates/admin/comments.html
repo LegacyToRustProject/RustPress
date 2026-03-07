@@ -1,0 +1,99 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Comments{% endblock %}
+
+{% block content %}
+<h1>Comments</h1>
+
+<ul class="subsubsub clearfix">
+    <li><a href="/wp-admin/edit-comments.php" {% if status_filter == "all" %}class="current"{% endif %}>All <span>({{ total }})</span></a></li>
+    <li><a href="/wp-admin/edit-comments.php?status=approved" {% if status_filter == "approved" %}class="current"{% endif %}>Approved <span>({{ approved_count }})</span></a></li>
+    <li><a href="/wp-admin/edit-comments.php?status=pending" {% if status_filter == "pending" %}class="current"{% endif %}>Pending <span>({{ pending_count }})</span></a></li>
+    <li><a href="/wp-admin/edit-comments.php?status=spam" {% if status_filter == "spam" %}class="current"{% endif %}>Spam <span>({{ spam_count }})</span></a></li>
+    <li><a href="/wp-admin/edit-comments.php?status=trash" {% if status_filter == "trash" %}class="current"{% endif %}>Trash <span>({{ trash_count }})</span></a></li>
+</ul>
+
+<table class="wp-list-table">
+    <thead>
+        <tr>
+            <th style="width:20%">Author</th>
+            <th>Comment</th>
+            <th style="width:20%">In Response To</th>
+            <th style="width:15%">Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in comments %}
+        <tr id="comment-{{ c.id }}">
+            <td>
+                <strong>{{ c.author }}</strong><br>
+                <span style="color:#646970;font-size:12px">{{ c.author_email }}</span>
+            </td>
+            <td>
+                <div style="margin-bottom:4px">{{ c.content | truncate(length=200) }}</div>
+                <div class="row-actions" style="visibility:visible">
+                    {% if c.status == "pending" or c.status == "0" %}
+                        <a href="#" onclick="commentAction({{ c.id }}, 'approve'); return false;">Approve</a> |
+                    {% endif %}
+                    {% if c.status == "approved" or c.status == "1" %}
+                        <a href="#" onclick="commentAction({{ c.id }}, 'hold'); return false;">Unapprove</a> |
+                    {% endif %}
+                    <a href="#" onclick="commentAction({{ c.id }}, 'spam'); return false;" class="trash">Spam</a> |
+                    <a href="#" onclick="commentAction({{ c.id }}, 'trash'); return false;" class="trash">Trash</a> |
+                    <a href="#" onclick="deleteComment({{ c.id }}); return false;" class="trash">Delete Permanently</a>
+                </div>
+            </td>
+            <td>
+                {% if c.post_title %}
+                    <a href="/wp-admin/post.php?post={{ c.post_id }}&action=edit">{{ c.post_title }}</a>
+                {% else %}
+                    <a href="/wp-admin/post.php?post={{ c.post_id }}&action=edit">Post #{{ c.post_id }}</a>
+                {% endif %}
+            </td>
+            <td>{{ c.date }}</td>
+        </tr>
+        {% endfor %}
+        {% if comments | length == 0 %}
+        <tr><td colspan="4" style="text-align:center;padding:2rem;color:#646970">No comments found.</td></tr>
+        {% endif %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="tablenav">
+    <div></div>
+    <div class="tablenav-pages">
+        {% if page > 1 %}
+            <a href="/wp-admin/edit-comments.php?status={{ status_filter }}&page={{ page - 1 }}">&laquo; Prev</a>
+        {% endif %}
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        {% if page < total_pages %}
+            <a href="/wp-admin/edit-comments.php?status={{ status_filter }}&page={{ page + 1 }}">Next &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function commentAction(id, action) {
+    try {
+        await RustPressAdmin.apiCall('PUT', '/admin/comments/' + id, { status: action });
+        document.getElementById('comment-' + id).style.opacity = '0.5';
+        setTimeout(() => location.reload(), 300);
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+async function deleteComment(id) {
+    if (!confirm('Permanently delete this comment?')) return;
+    try {
+        await RustPressAdmin.apiCall('DELETE', '/admin/comments/' + id);
+        document.getElementById('comment-' + id).remove();
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+</script>
+{% endblock %}

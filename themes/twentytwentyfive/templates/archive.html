@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Archives &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}archive{% endblock %}
+
+{% block content %}
+<h1 class="wp-block-query-title">Archives</h1>
+
+<div class="wp-block-query alignfull is-layout-flow wp-block-query-is-layout-flow">
+<ul class="alignfull wp-block-post-template is-layout-flow wp-block-post-template-is-layout-flow">
+{% if posts %}{% for post in posts %}
+<li class="wp-block-post post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry">
+
+<div class="wp-block-group alignfull has-global-padding is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--60);padding-bottom:var(--wp--preset--spacing--60)">
+
+<h2 class="wp-block-post-title has-x-large-font-size"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}">{{ post.title }}</a></h2>
+<div class="entry-content alignfull wp-block-post-content has-medium-font-size has-global-padding is-layout-constrained wp-block-post-content-is-layout-constrained">{{ post.content | default(value="") | safe }}</div>
+<div style="margin-top:var(--wp--preset--spacing--40);" class="wp-block-post-date has-small-font-size"><time datetime="{{ post.date_iso | default(value=post.date) }}"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}">{{ post.date_formatted | default(value=post.date) }}</a></time></div>
+</div>
+
+</li>
+{% endfor %}{% else %}
+<li><p>No posts found.</p></li>
+{% endif %}
+</ul>
+</div>
+{% endblock %}

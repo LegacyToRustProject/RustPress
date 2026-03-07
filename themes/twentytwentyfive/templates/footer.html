@@ -1,0 +1,38 @@
+<footer class="wp-block-template-part">
+<div class="wp-block-group has-global-padding is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--60);padding-bottom:var(--wp--preset--spacing--50)">
+
+<div class="wp-block-group alignwide is-layout-flow wp-block-group-is-layout-flow">
+
+<div class="wp-block-group alignfull is-content-justification-space-between is-layout-flex wp-block-group-is-layout-flex" style="gap:var(--wp--preset--spacing--80);align-items:flex-start">
+
+<div class="wp-block-columns is-layout-flex wp-block-columns-is-layout-flex" style="flex-wrap:nowrap">
+
+<div class="wp-block-column is-layout-flow wp-block-column-is-layout-flow" style="flex-basis:100%"><h2 class="wp-block-site-title"><a href="{{ site_url | default(value='/') }}" rel="home">{{ site_name | default(value="RustPress") }}</a></h2>
+{% if site_description is defined and site_description %}<p class="wp-block-site-tagline">{{ site_description }}</p>{% endif %}
+</div>
+
+<div class="wp-block-column is-layout-flow wp-block-column-is-layout-flow">
+<div style="height:var(--wp--preset--spacing--40);width:0px" aria-hidden="true" class="wp-block-spacer"></div>
+</div>
+
+</div>
+
+<div class="wp-block-group is-content-justification-space-between is-layout-flex wp-block-group-is-layout-flex" style="gap:var(--wp--preset--spacing--80);align-items:flex-start">
+<nav class="is-vertical wp-block-navigation is-layout-flex wp-block-navigation-is-layout-flex" style="flex-direction:column;align-items:flex-start"><ul class="wp-block-navigation__container is-vertical wp-block-navigation"><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">Blog</span></a></li><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">About</span></a></li><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">FAQs</span></a></li><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">Authors</span></a></li></ul></nav>
+
+<nav class="is-vertical wp-block-navigation is-layout-flex wp-block-navigation-is-layout-flex" style="flex-direction:column;align-items:flex-start"><ul class="wp-block-navigation__container is-vertical wp-block-navigation"><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">Events</span></a></li><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">Shop</span></a></li><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">Patterns</span></a></li><li class="wp-block-navigation-item wp-block-navigation-link"><a class="wp-block-navigation-item__content" href="#"><span class="wp-block-navigation-item__label">Themes</span></a></li></ul></nav>
+</div>
+
+</div>
+
+<div style="height:var(--wp--preset--spacing--70)" aria-hidden="true" class="wp-block-spacer"></div>
+
+<div class="wp-block-group alignfull is-content-justification-space-between is-layout-flex wp-block-group-is-layout-flex" style="gap:var(--wp--preset--spacing--20)">
+<p class="has-small-font-size">Twenty Twenty-Five</p>
+<p class="has-small-font-size">Designed with <a href="https://wordpress.org" rel="nofollow">WordPress</a></p>
+</div>
+
+</div>
+
+</div>
+</footer>

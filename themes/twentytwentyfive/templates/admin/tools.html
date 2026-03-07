@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+{% block title %}Tools &lsaquo; {{ site_name | default(value="RustPress") }} &mdash; Admin{% endblock %}
+{% block content %}
+<div class="admin-page">
+    <h1>Tools</h1>
+    <div class="tool-cards">
+        <div class="tool-card">
+            <h2>Export</h2>
+            <p>Export your posts, pages, and other content as a WordPress eXtended RSS (WXR) file.</p>
+            <a href="/wp-admin/export.php" class="button">Export Content</a>
+        </div>
+        <div class="tool-card">
+            <h2>Import</h2>
+            <p>Import content from a WordPress export file (WXR format).</p>
+            <a href="/wp-admin/import.php" class="button">Import Content</a>
+        </div>
+        <div class="tool-card">
+            <h2>Site Health</h2>
+            <p>Check your site's health status and performance.</p>
+            <a href="/wp-admin/site-health.php" class="button">Site Health</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ __( key="Writing Settings") }}{% endblock %}
+
+{% block content %}
+<h1>{{ __( key="Writing Settings") }}</h1>
+
+{% if saved %}
+<div class="notice notice-success">{{ __( key="Settings saved.") }}</div>
+{% endif %}
+
+<form method="post" action="/wp-admin/options-writing.php">
+    <table class="form-table">
+        <tr>
+            <th><label for="default_category">{{ __( key="Default Post Category") }}</label></th>
+            <td>
+                <select id="default_category" name="default_category" class="regular-text" style="max-width:300px">
+                    {% for cat in categories %}
+                    <option value="{{ cat.term_id }}" {% if cat.term_id == default_category %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+        </tr>
+        <tr>
+            <th><label for="default_post_format">{{ __( key="Default Post Format") }}</label></th>
+            <td>
+                <select id="default_post_format" name="default_post_format" class="regular-text" style="max-width:300px">
+                    <option value="standard" {% if default_post_format == "standard" %}selected{% endif %}>{{ __( key="Standard") }}</option>
+                    <option value="aside" {% if default_post_format == "aside" %}selected{% endif %}>{{ __( key="Aside") }}</option>
+                    <option value="image" {% if default_post_format == "image" %}selected{% endif %}>{{ __( key="Image") }}</option>
+                    <option value="video" {% if default_post_format == "video" %}selected{% endif %}>{{ __( key="Video") }}</option>
+                    <option value="quote" {% if default_post_format == "quote" %}selected{% endif %}>{{ __( key="Quote") }}</option>
+                    <option value="link" {% if default_post_format == "link" %}selected{% endif %}>{{ __( key="Link") }}</option>
+                    <option value="gallery" {% if default_post_format == "gallery" %}selected{% endif %}>{{ __( key="Gallery") }}</option>
+                    <option value="audio" {% if default_post_format == "audio" %}selected{% endif %}>{{ __( key="Audio") }}</option>
+                    <option value="status" {% if default_post_format == "status" %}selected{% endif %}>{{ __( key="Status") }}</option>
+                    <option value="chat" {% if default_post_format == "chat" %}selected{% endif %}>{{ __( key="Chat") }}</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+
+    <div style="margin-top:1rem">
+        <button type="submit" class="button button-primary">{{ __( key="Save Changes") }}</button>
+    </div>
+</form>
+{% endblock %}

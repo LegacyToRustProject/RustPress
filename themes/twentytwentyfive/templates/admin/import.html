@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+{% block title %}Import{% endblock %}
+{% block content %}
+<h1>Import</h1>
+
+{% if success %}
+<div class="notice notice-success">Import completed successfully. {{ imported_count }} items imported.</div>
+{% endif %}
+{% if error %}
+<div class="notice notice-error">{{ error }}</div>
+{% endif %}
+
+<p>If you have posts or comments in another system, WordPress can import those into this site. To get started, choose a file from your computer:</p>
+
+<form method="post" action="/wp-admin/import.php" enctype="multipart/form-data">
+    <table class="form-table">
+        <tr>
+            <th><label for="import-file">WordPress (WXR file)</label></th>
+            <td>
+                <input type="file" id="import-file" name="import_file" accept=".xml,.wxr">
+                <p style="color:#646970;font-size:13px;margin-top:0.5rem">Upload a WordPress eXtended RSS (WXR) file to import posts, pages, comments, custom fields, categories, and tags.</p>
+            </td>
+        </tr>
+    </table>
+    <div style="margin-top:1rem">
+        <button type="submit" class="button button-primary">Upload file and import</button>
+    </div>
+</form>
+{% endblock %}

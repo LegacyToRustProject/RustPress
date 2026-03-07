@@ -55,6 +55,9 @@ pub struct PostTemplateData {
     pub comment_status: String,
     pub sticky: bool,
     pub password_required: bool,
+    /// Featured image URL (from _thumbnail_id postmeta -> attachment guid).
+    #[serde(default)]
+    pub featured_image_url: String,
 }
 
 impl PostTemplateData {
@@ -84,6 +87,7 @@ impl PostTemplateData {
             comment_status: post.comment_status.clone(),
             sticky: false,
             password_required: !post.post_password.is_empty(),
+            featured_image_url: String::new(),
         }
     }
 
@@ -118,6 +122,7 @@ impl PostTemplateData {
             comment_status: post.comment_status.clone(),
             sticky: false,
             password_required: !post.post_password.is_empty(),
+            featured_image_url: String::new(),
         }
     }
 }
@@ -677,4 +682,271 @@ mod tests {
         let json = ctx.into_json();
         assert_eq!(json["have_posts"], false);
     }
+
+    #[test]
+    fn test_body_class_home() {
+        let classes = generate_body_class("home", None, "twentytwentyfive", &[]);
+        assert!(classes.contains("home"));
+        assert!(classes.contains("blog"));
+        assert!(classes.contains("wp-embed-responsive"));
+    }
+
+    #[test]
+    fn test_body_class_single() {
+        let post = PostTemplateData {
+            id: 42,
+            title: "Test".into(),
+            content: String::new(),
+            excerpt: String::new(),
+            date: String::new(),
+            date_formatted: String::new(),
+            date_iso: String::new(),
+            modified: String::new(),
+            author_id: 1,
+            slug: "test-post".into(),
+            status: "publish".into(),
+            post_type: "post".into(),
+            permalink: "/test-post".into(),
+            comment_count: 0,
+            comment_status: "open".into(),
+            sticky: false,
+            password_required: false,
+            featured_image_url: String::new(),
+        };
+        let classes = generate_body_class("single", Some(&post), "twentytwentyfive", &[]);
+        assert!(classes.contains("single"));
+        assert!(classes.contains("single-post"));
+        assert!(classes.contains("postid-42"));
+        assert!(classes.contains("single-format-standard"));
+    }
+
+    #[test]
+    fn test_post_class_basic() {
+        let classes =
+            generate_post_class(42, "post", "publish", false, &[], &["standard".to_string()]);
+        assert!(classes.contains("post-42"));
+        assert!(classes.contains("post"));
+        assert!(classes.contains("type-post"));
+        assert!(classes.contains("status-publish"));
+        assert!(classes.contains("format-standard"));
+        assert!(classes.contains("hentry"));
+    }
+}
+
+/// Generate WordPress-compatible body CSS classes.
+///
+/// Matches WordPress's `body_class()` output for the given page type.
+pub fn generate_body_class(
+    page_type: &str,
+    post: Option<&PostTemplateData>,
+    theme_slug: &str,
+    extra_classes: &[String],
+) -> String {
+    let mut classes: Vec<String> = Vec::new();
+
+    match page_type {
+        "home" | "front-page" | "index" => {
+            classes.push("home".into());
+            classes.push("blog".into());
+        }
+        "single" => {
+            classes.push("single".into());
+            if let Some(p) = post {
+                let pt = if p.post_type.is_empty() {
+                    "post"
+                } else {
+                    &p.post_type
+                };
+                classes.push(format!("single-{}", pt));
+                classes.push(format!("postid-{}", p.id));
+                classes.push("single-format-standard".into());
+            } else {
+                classes.push("single-post".into());
+            }
+        }
+        "page" => {
+            classes.push("page".into());
+            if let Some(p) = post {
+                classes.push(format!("page-id-{}", p.id));
+                classes.push("page-template-default".into());
+            }
+        }
+        "archive" => {
+            classes.push("archive".into());
+        }
+        "category" => {
+            classes.push("archive".into());
+            classes.push("category".into());
+        }
+        "tag" => {
+            classes.push("archive".into());
+            classes.push("tag".into());
+        }
+        "author" => {
+            classes.push("archive".into());
+            classes.push("author".into());
+        }
+        "date" => {
+            classes.push("archive".into());
+            classes.push("date".into());
+        }
+        "search" => {
+            classes.push("search".into());
+            classes.push("search-results".into());
+        }
+        "404" => {
+            classes.push("error404".into());
+        }
+        "attachment" => {
+            classes.push("attachment".into());
+            classes.push("single".into());
+            classes.push("single-attachment".into());
+        }
+        _ => {
+            classes.push(page_type.to_string());
+        }
+    }
+
+    // Common classes WordPress always adds
+    classes.push("wp-embed-responsive".into());
+
+    // Theme-specific class
+    if !theme_slug.is_empty() {
+        classes.push(format!("{}-style-default", theme_slug));
+    }
+
+    // Extra user-supplied classes
+    for c in extra_classes {
+        if !c.is_empty() {
+            classes.push(c.clone());
+        }
+    }
+
+    classes.join(" ")
+}
+
+/// Generate WordPress-compatible post CSS classes.
+///
+/// Matches WordPress's `post_class()` output.
+pub fn generate_post_class(
+    post_id: u64,
+    post_type: &str,
+    status: &str,
+    sticky: bool,
+    categories: &[String],
+    tags: &[String],
+) -> String {
+    let mut classes: Vec<String> = Vec::new();
+
+    classes.push(format!("post-{}", post_id));
+    classes.push(post_type.to_string());
+    classes.push(format!("type-{}", post_type));
+    classes.push(format!("status-{}", status));
+
+    // Post format
+    let has_format = tags.iter().any(|t| t != "standard");
+    if has_format {
+        if let Some(fmt) = tags.first() {
+            classes.push(format!("format-{}", fmt));
+        }
+    } else {
+        classes.push("format-standard".into());
+    }
+
+    // Microformat class
+    classes.push("hentry".into());
+
+    // Category classes
+    for cat in categories {
+        if !cat.is_empty() {
+            classes.push(format!("category-{}", cat));
+        }
+    }
+
+    // Tag classes
+    for tag in tags {
+        if !tag.is_empty() && tag != "standard" {
+            classes.push(format!("tag-{}", tag));
+        }
+    }
+
+    // Sticky
+    if sticky {
+        classes.push("sticky".into());
+    }
+
+    // Common entry class for block themes
+    classes.push("wp-block-post".into());
+
+    classes.join(" ")
+}
+
+/// Generate WordPress-compatible search form HTML.
+///
+/// Matches the output of WordPress's `get_search_form()`.
+pub fn get_search_form(site_url: &str, search_query: &str) -> String {
+    format!(
+        r#"<form role="search" method="get" class="search-form" action="{url}/">
+<label>
+<span class="screen-reader-text">Search for:</span>
+<input type="search" class="search-field" placeholder="Search &hellip;" value="{query}" name="s" />
+</label>
+<input type="submit" class="search-submit" value="Search" />
+</form>"#,
+        url = site_url.trim_end_matches('/'),
+        query = html_escape(search_query),
+    )
+}
+
+/// Minimal HTML escaping for attribute values.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// Split post content on `<!--nextpage-->` markers and return the requested page.
+///
+/// WordPress's `<!--nextpage-->` tag splits a single post into multiple pages.
+/// Returns `(page_content, total_pages)`.
+pub fn get_post_page(content: &str, page: usize) -> (String, usize) {
+    let pages: Vec<&str> = content.split("<!--nextpage-->").collect();
+    let total = pages.len();
+    let idx = page.saturating_sub(1).min(total.saturating_sub(1));
+    (pages.get(idx).unwrap_or(&"").to_string(), total)
+}
+
+/// Generate WordPress-compatible page links for multi-page posts.
+///
+/// Equivalent to `wp_link_pages()`. Returns HTML with links to each page
+/// of a post that uses `<!--nextpage-->` breaks.
+pub fn wp_link_pages(permalink: &str, current_page: usize, total_pages: usize) -> String {
+    if total_pages <= 1 {
+        return String::new();
+    }
+
+    let mut html = String::from("<div class=\"page-links\">Pages: ");
+
+    for i in 1..=total_pages {
+        if i == current_page {
+            html.push_str(&format!(
+                "<span class=\"post-page-numbers current\">{}</span> ",
+                i
+            ));
+        } else {
+            let url = if i == 1 {
+                permalink.to_string()
+            } else {
+                format!("{}{}/", permalink.trim_end_matches('/'), i)
+            };
+            html.push_str(&format!(
+                "<a href=\"{}\" class=\"post-page-numbers\">{}</a> ",
+                url, i
+            ));
+        }
+    }
+
+    html.push_str("</div>");
+    html
 }

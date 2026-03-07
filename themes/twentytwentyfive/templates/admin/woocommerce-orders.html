@@ -1,0 +1,97 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<h1>Orders</h1>
+
+{% if notice_message is defined and notice_message %}
+<div class="notice notice-{{ notice_type | default(value='success') }}">
+    <p>{{ notice_message }}</p>
+</div>
+{% endif %}
+
+<ul class="subsubsub">
+    <li><a href="/wp-admin/edit.php?post_type=shop_order" class="{% if not status_filter %}current{% endif %}">All <span class="count">({{ total_count | default(value=0) }})</span></a></li>
+    <li><a href="/wp-admin/edit.php?post_type=shop_order&status=wc-processing" class="{% if status_filter == 'wc-processing' %}current{% endif %}">Processing <span class="count">({{ processing_count | default(value=0) }})</span></a></li>
+    <li><a href="/wp-admin/edit.php?post_type=shop_order&status=wc-completed" class="{% if status_filter == 'wc-completed' %}current{% endif %}">Completed <span class="count">({{ completed_count | default(value=0) }})</span></a></li>
+    <li><a href="/wp-admin/edit.php?post_type=shop_order&status=wc-on-hold" class="{% if status_filter == 'wc-on-hold' %}current{% endif %}">On Hold <span class="count">({{ on_hold_count | default(value=0) }})</span></a></li>
+</ul>
+
+<div class="clearfix"></div>
+
+<table class="wp-list-table">
+    <thead>
+        <tr>
+            <th style="width:5%"><input type="checkbox" id="cb-select-all"></th>
+            <th style="width:12%">Order</th>
+            <th style="width:15%">Date</th>
+            <th style="width:12%">Status</th>
+            <th style="width:20%">Billing</th>
+            <th style="width:12%">Total</th>
+            <th style="width:12%">Payment</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if orders is defined and orders | length > 0 %}
+        {% for order in orders %}
+        <tr>
+            <td><input type="checkbox" value="{{ order.id }}"></td>
+            <td class="column-title">
+                <strong><a href="/wp-admin/post.php?post={{ order.id }}&action=edit">#{{ order.id }}</a></strong>
+            </td>
+            <td>{{ order.date }}</td>
+            <td>
+                <span class="order-status order-status-{{ order.status }}">{{ order.status_label }}</span>
+            </td>
+            <td>
+                {{ order.billing_name }}
+                {% if order.billing_email %}<br><small style="color:#646970">{{ order.billing_email }}</small>{% endif %}
+            </td>
+            <td><strong>{{ order.currency_symbol }}{{ order.total }}</strong></td>
+            <td>{{ order.payment_method_title | default(value="-") }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="7" style="text-align:center;padding:2rem;color:#646970">
+                No orders found.
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+{% if total_pages is defined and total_pages > 1 %}
+<div class="tablenav">
+    <div class="tablenav-pages">
+        {% if current_page > 1 %}
+        <a href="/wp-admin/edit.php?post_type=shop_order&page={{ current_page - 1 }}" class="prev-page">&laquo;</a>
+        {% endif %}
+        <span class="paging-input">{{ current_page }} of {{ total_pages }}</span>
+        {% if current_page < total_pages %}
+        <a href="/wp-admin/edit.php?post_type=shop_order&page={{ current_page + 1 }}" class="next-page">&raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.order-status {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.order-status-processing { background: #c6e1c6; color: #2e4a1e; }
+.order-status-completed { background: #c8d7e1; color: #2e4453; }
+.order-status-on-hold { background: #f8dda7; color: #94660c; }
+.order-status-pending { background: #e5e5e5; color: #646970; }
+.order-status-cancelled { background: #eba3a3; color: #761919; }
+.order-status-refunded { background: #ccd0d4; color: #646970; }
+.order-status-failed { background: #eba3a3; color: #761919; }
+</style>
+{% endblock %}

@@ -1,0 +1,420 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Media Library{% endblock %}
+
+{% block content %}
+{% if edit_mode and media_item is defined %}
+<!-- Media detail/edit view -->
+<h1>
+    <a href="/wp-admin/upload.php" style="text-decoration:none;color:#1d2327;">&larr;</a>
+    Edit Media
+</h1>
+
+<form method="post" action="/wp-admin/upload.php">
+    <input type="hidden" name="attachment_id" value="{{ media_item.id }}">
+    <div style="display:flex;gap:2rem;margin-top:1rem;">
+        <div style="flex:0 0 40%;max-width:40%;">
+            {% if media_item.mime_type is starting_with("image/") %}
+                <img src="{{ media_item.url }}" alt="{{ media_item.alt_text }}" style="max-width:100%;height:auto;border:1px solid #c3c4c7;border-radius:4px;">
+            {% else %}
+                <div style="padding:3rem;text-align:center;background:#f0f0f1;border:1px solid #c3c4c7;border-radius:4px;font-size:3rem;">&#128196;</div>
+            {% endif %}
+            <div style="margin-top:1rem;font-size:12px;color:#646970;">
+                <p>Uploaded: {{ media_item.date }}</p>
+                <p>File URL: <a href="{{ media_item.url }}" target="_blank" style="word-break:break-all;">{{ media_item.url }}</a></p>
+            </div>
+            <div style="margin-top:1rem;">
+                <button type="button" onclick="deleteMedia({{ media_item.id }})" class="button" style="color:#b32d2e;border-color:#b32d2e;">Delete Permanently</button>
+            </div>
+        </div>
+        <div style="flex:1;">
+            <table class="form-table" style="width:100%;">
+                <tr>
+                    <th style="padding:8px 10px 8px 0;vertical-align:top;width:120px;">Title</th>
+                    <td><input type="text" name="title" value="{{ media_item.title }}" style="width:100%;padding:4px 8px;border:1px solid #8c8f94;border-radius:4px;"></td>
+                </tr>
+                {% if media_item.mime_type is starting_with("image/") %}
+                <tr>
+                    <th style="padding:8px 10px 8px 0;vertical-align:top;">Alternative Text</th>
+                    <td>
+                        <input type="text" name="alt_text" value="{{ media_item.alt_text }}" style="width:100%;padding:4px 8px;border:1px solid #8c8f94;border-radius:4px;">
+                        <p style="font-size:12px;color:#646970;margin-top:4px;">Describe the purpose of the image. Leave empty if decorative.</p>
+                    </td>
+                </tr>
+                {% else %}
+                <input type="hidden" name="alt_text" value="">
+                {% endif %}
+                <tr>
+                    <th style="padding:8px 10px 8px 0;vertical-align:top;">Caption</th>
+                    <td><textarea name="caption" rows="3" style="width:100%;padding:4px 8px;border:1px solid #8c8f94;border-radius:4px;">{{ media_item.caption }}</textarea></td>
+                </tr>
+                <tr>
+                    <th style="padding:8px 10px 8px 0;vertical-align:top;">Description</th>
+                    <td><textarea name="description" rows="5" style="width:100%;padding:4px 8px;border:1px solid #8c8f94;border-radius:4px;">{{ media_item.description }}</textarea></td>
+                </tr>
+            </table>
+            <div style="margin-top:1rem;">
+                <button type="submit" class="button button-primary" style="background:#2271b1;color:#fff;border-color:#2271b1;padding:4px 12px;border-radius:3px;cursor:pointer;">Update</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% else %}
+<!-- Media grid view -->
+<h1>Media Library</h1>
+
+<!-- Drag-and-drop upload area -->
+<div id="drop-zone" style="border:3px dashed #c3c4c7;border-radius:8px;padding:3rem 2rem;text-align:center;margin:1rem 0 1.5rem 0;background:#f6f7f7;cursor:pointer;transition:border-color 0.2s, background-color 0.2s;">
+    <div style="font-size:2.5rem;color:#a7aaad;margin-bottom:0.75rem;">&#128228;</div>
+    <p style="font-size:1.1rem;color:#50575e;margin:0 0 0.5rem 0;font-weight:600;">Drop files here or click to upload</p>
+    <p style="font-size:0.85rem;color:#646970;margin:0;">Accepts images, video, audio, and PDF files (max 64 MB each)</p>
+    <input type="file" id="file-upload" style="display:none" accept="image/*,video/*,audio/*,application/pdf" multiple>
+</div>
+
+<!-- Upload progress container -->
+<div id="upload-progress" style="margin-bottom:1rem;"></div>
+
+<!-- Upload messages -->
+<div id="upload-msg"></div>
+
+{% if media_items | length > 0 %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0;">
+    <span style="color:#646970;font-size:13px;">{{ total_items }} items</span>
+    {% if total_pages > 1 %}
+    <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
+        {% if current_page > 1 %}
+        <a href="/wp-admin/upload.php?paged={{ current_page - 1 }}" style="text-decoration:none;">&laquo; Previous</a>
+        {% endif %}
+        <span>Page {{ current_page }} of {{ total_pages }}</span>
+        {% if current_page < total_pages %}
+        <a href="/wp-admin/upload.php?paged={{ current_page + 1 }}" style="text-decoration:none;">Next &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+<div class="media-grid" id="media-grid">
+    {% for item in media_items %}
+    <div class="media-item" style="position:relative;">
+        <a href="/wp-admin/upload.php?item={{ item.id }}" style="text-decoration:none;color:inherit;display:block;">
+            <div class="thumb">
+                {% if item.mime_type is starting_with("image/") %}
+                    <img src="{{ item.url }}" alt="{{ item.title }}">
+                {% else %}
+                    &#128196;
+                {% endif %}
+            </div>
+            <div class="info">
+                <div style="font-weight:600;margin-bottom:0.25rem">{{ item.title }}</div>
+                <div style="color:#646970">{{ item.date }}</div>
+            </div>
+        </a>
+        <button type="button" onclick="event.stopPropagation(); deleteMedia({{ item.id }})" title="Delete" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;display:none;" class="delete-btn">&times;</button>
+    </div>
+    {% endfor %}
+</div>
+{% if total_pages > 1 %}
+<div style="display:flex;justify-content:center;margin-top:1rem;gap:8px;font-size:13px;">
+    {% if current_page > 1 %}
+    <a href="/wp-admin/upload.php?paged={{ current_page - 1 }}">&laquo; Previous</a>
+    {% endif %}
+    <span>Page {{ current_page }} of {{ total_pages }}</span>
+    {% if current_page < total_pages %}
+    <a href="/wp-admin/upload.php?paged={{ current_page + 1 }}">Next &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% else %}
+<div id="empty-state" style="text-align:center;padding:3rem;color:#646970">
+    <p style="font-size:1.2rem">No media items yet.</p>
+    <p>Upload your first file using the drop zone above.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.media-item:hover .delete-btn { display: block !important; }
+
+#drop-zone.drag-over {
+    border-color: #2271b1;
+    background-color: #e8f0fe;
+}
+
+.upload-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+.upload-item .upload-filename {
+    flex: 0 0 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #1d2327;
+    font-weight: 500;
+}
+.upload-item .upload-bar-wrapper {
+    flex: 1;
+    height: 8px;
+    background: #dcdcde;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.upload-item .upload-bar {
+    height: 100%;
+    width: 0%;
+    background: #2271b1;
+    border-radius: 4px;
+    transition: width 0.15s ease;
+}
+.upload-item .upload-status {
+    flex: 0 0 80px;
+    text-align: right;
+    color: #646970;
+    font-size: 12px;
+}
+.upload-item.upload-success .upload-bar { background: #00a32a; }
+.upload-item.upload-error .upload-bar { background: #d63638; width: 100% !important; }
+.upload-item.upload-error .upload-status { color: #d63638; }
+.upload-item.upload-success .upload-status { color: #00a32a; }
+</style>
+<script>
+(function() {
+    var dropZone = document.getElementById('drop-zone');
+    var fileInput = document.getElementById('file-upload');
+    var progressContainer = document.getElementById('upload-progress');
+    var uploadMsg = document.getElementById('upload-msg');
+    var mediaGrid = document.getElementById('media-grid');
+
+    // Click on drop zone triggers file input
+    dropZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    // Prevent default drag behaviors on the whole document
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(eventName) {
+        document.addEventListener(eventName, function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+
+    // Highlight drop zone on drag over
+    ['dragenter', 'dragover'].forEach(function(eventName) {
+        dropZone.addEventListener(eventName, function() {
+            dropZone.classList.add('drag-over');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(function(eventName) {
+        dropZone.addEventListener(eventName, function() {
+            dropZone.classList.remove('drag-over');
+        });
+    });
+
+    // Handle file drop
+    dropZone.addEventListener('drop', function(e) {
+        var files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFiles(files);
+        }
+    });
+
+    // Handle file selection via input
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files.length > 0) {
+            handleFiles(fileInput.files);
+            fileInput.value = '';
+        }
+    });
+
+    function handleFiles(files) {
+        uploadMsg.innerHTML = '';
+        var totalFiles = files.length;
+        var completed = 0;
+        var succeeded = 0;
+        var failed = 0;
+
+        for (var i = 0; i < files.length; i++) {
+            uploadSingleFile(files[i], function(success) {
+                completed++;
+                if (success) { succeeded++; } else { failed++; }
+                if (completed === totalFiles) {
+                    showSummary(succeeded, failed);
+                }
+            });
+        }
+    }
+
+    function uploadSingleFile(file, callback) {
+        // Create progress UI for this file
+        var item = document.createElement('div');
+        item.className = 'upload-item';
+        item.innerHTML =
+            '<span class="upload-filename" title="' + escapeHtml(file.name) + '">' + escapeHtml(file.name) + '</span>' +
+            '<div class="upload-bar-wrapper"><div class="upload-bar"></div></div>' +
+            '<span class="upload-status">0%</span>';
+        progressContainer.appendChild(item);
+
+        var bar = item.querySelector('.upload-bar');
+        var status = item.querySelector('.upload-status');
+
+        var formData = new FormData();
+        formData.append('file', file);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/wp-admin/media-upload', true);
+
+        // Track upload progress
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                var pct = Math.round((e.loaded / e.total) * 100);
+                bar.style.width = pct + '%';
+                status.textContent = pct + '%';
+            }
+        });
+
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 201) {
+                item.classList.add('upload-success');
+                bar.style.width = '100%';
+                status.textContent = 'Done';
+
+                // Parse the response and add the new item to the grid
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    addMediaToGrid(data);
+                } catch(e) { /* ignore parse error */ }
+
+                callback(true);
+            } else {
+                item.classList.add('upload-error');
+                var errMsg = 'Error';
+                try {
+                    var errData = JSON.parse(xhr.responseText);
+                    errMsg = errData.error || errMsg;
+                } catch(e) { /* ignore */ }
+                status.textContent = errMsg;
+                callback(false);
+            }
+        });
+
+        xhr.addEventListener('error', function() {
+            item.classList.add('upload-error');
+            status.textContent = 'Network error';
+            callback(false);
+        });
+
+        xhr.addEventListener('abort', function() {
+            item.classList.add('upload-error');
+            status.textContent = 'Aborted';
+            callback(false);
+        });
+
+        xhr.send(formData);
+    }
+
+    function addMediaToGrid(data) {
+        // Remove the empty state message if present
+        var emptyState = document.getElementById('empty-state');
+        if (emptyState) {
+            emptyState.remove();
+        }
+
+        // Ensure media grid exists
+        var grid = document.getElementById('media-grid');
+        if (!grid) {
+            grid = document.createElement('div');
+            grid.className = 'media-grid';
+            grid.id = 'media-grid';
+            // Insert after upload-msg
+            uploadMsg.parentNode.insertBefore(grid, uploadMsg.nextSibling);
+        }
+
+        var isImage = data.mime_type && data.mime_type.indexOf('image/') === 0;
+        var thumbContent = isImage
+            ? '<img src="' + escapeHtml(data.url) + '" alt="' + escapeHtml(data.filename) + '">'
+            : '&#128196;';
+
+        var title = data.filename
+            .replace(/\.[^.]+$/, '')
+            .replace(/[-_]/g, ' ');
+
+        var today = new Date();
+        var dateStr = today.getFullYear() + '-' +
+            String(today.getMonth() + 1).padStart(2, '0') + '-' +
+            String(today.getDate()).padStart(2, '0');
+
+        var div = document.createElement('div');
+        div.className = 'media-item';
+        div.style.position = 'relative';
+        div.innerHTML =
+            '<a href="/wp-admin/upload.php?item=' + data.id + '" style="text-decoration:none;color:inherit;display:block;">' +
+                '<div class="thumb">' + thumbContent + '</div>' +
+                '<div class="info">' +
+                    '<div style="font-weight:600;margin-bottom:0.25rem">' + escapeHtml(title) + '</div>' +
+                    '<div style="color:#646970">' + dateStr + '</div>' +
+                '</div>' +
+            '</a>' +
+            '<button type="button" onclick="event.stopPropagation(); deleteMedia(' + data.id + ')" title="Delete" ' +
+                'style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;line-height:1;display:none;" ' +
+                'class="delete-btn">&times;</button>';
+
+        // Prepend to grid (newest first)
+        if (grid.firstChild) {
+            grid.insertBefore(div, grid.firstChild);
+        } else {
+            grid.appendChild(div);
+        }
+    }
+
+    function showSummary(succeeded, failed) {
+        if (failed === 0) {
+            uploadMsg.innerHTML = '<div class="notice notice-success" style="padding:8px 12px;margin:8px 0;border-left:4px solid #00a32a;background:#edfaef;">' +
+                succeeded + ' file(s) uploaded successfully.</div>';
+        } else {
+            uploadMsg.innerHTML = '<div class="notice notice-error" style="padding:8px 12px;margin:8px 0;border-left:4px solid #d63638;background:#fcf0f1;">' +
+                failed + ' upload(s) failed, ' + succeeded + ' succeeded.</div>';
+        }
+
+        // Clear progress bars after a delay
+        setTimeout(function() {
+            progressContainer.innerHTML = '';
+        }, 5000);
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+
+    // Expose deleteMedia globally
+    window.deleteMedia = function(id) {
+        if (!confirm('Are you sure you want to permanently delete this item?')) return;
+        fetch('/wp-json/wp/v2/media/' + id + '?force=true', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        })
+        .then(function(resp) {
+            if (resp.ok) {
+                window.location.href = '/wp-admin/upload.php';
+            } else {
+                return resp.text().then(function(t) { alert('Delete failed: ' + t); });
+            }
+        })
+        .catch(function(err) {
+            alert('Error: ' + err.message);
+        });
+    };
+})();
+</script>
+{% endblock %}

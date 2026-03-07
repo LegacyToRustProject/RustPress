@@ -695,11 +695,10 @@ fn add_block_layout_classes(content: &str) -> String {
 
     for (block_class, compound_class) in &flex_blocks {
         let pattern = format!(
-            r#"class="([^"]*\b{}\b(?:(?!\bis-layout-)[^"])*)"#,
+            "class=\"([^\"]*\\b{}\\b[^\"]*)\"",
             regex::escape(block_class)
         );
         if let Ok(re) = Regex::new(&pattern) {
-            let bc = *block_class;
             let cc = *compound_class;
             result = re
                 .replace_all(&result, |caps: &regex::Captures| {
@@ -710,17 +709,15 @@ fn add_block_layout_classes(content: &str) -> String {
                     format!("class=\"{} is-layout-flex {}\"", classes, cc)
                 })
                 .to_string();
-            let _ = bc; // block_class used via pattern
         }
     }
 
     for (block_class, compound_class) in &flow_blocks {
         let pattern = format!(
-            r#"class="([^"]*\b{}\b(?:(?!\bis-layout-)[^"])*)"#,
+            "class=\"([^\"]*\\b{}\\b[^\"]*)\"",
             regex::escape(block_class)
         );
         if let Ok(re) = Regex::new(&pattern) {
-            let bc = *block_class;
             let cc = *compound_class;
             result = re
                 .replace_all(&result, |caps: &regex::Captures| {
@@ -731,12 +728,11 @@ fn add_block_layout_classes(content: &str) -> String {
                     format!("class=\"{} is-layout-flow {}\"", classes, cc)
                 })
                 .to_string();
-            let _ = bc;
         }
     }
 
     // wp-block-column (without matching wp-block-columns)
-    if let Ok(re) = Regex::new(r#"class="([^"]*\bwp-block-column\b[^"]*)"#) {
+    if let Ok(re) = Regex::new("class=\"([^\"]*\\bwp-block-column\\b[^\"]*)\"") {
         result = re
             .replace_all(&result, |caps: &regex::Captures| {
                 let classes = &caps[1];
@@ -1068,5 +1064,39 @@ mod tests {
         assert!(result.contains('\u{2026}')); // ellipsis
                                               // Should NOT contain <p> tags
         assert!(!result.contains("<p>"));
+    }
+
+    #[test]
+    fn test_block_layout_classes_added() {
+        let input = r#"<!-- wp:columns -->
+<div class="wp-block-columns"><!-- wp:column {"width":"66.66%"} -->
+<div class="wp-block-column" style="flex-basis:66.66%"><!-- wp:paragraph -->
+<p>Left column</p>
+<!-- /wp:paragraph --></div>
+<!-- /wp:column --></div>
+<!-- /wp:columns -->
+<!-- wp:buttons -->
+<div class="wp-block-buttons"><!-- wp:button -->
+<div class="wp-block-button"><a class="wp-block-button__link wp-element-button">Click</a></div>
+<!-- /wp:button --></div>
+<!-- /wp:buttons -->"#;
+        let result = apply_content_filters(input);
+        assert!(
+            result.contains("is-layout-flex wp-block-columns-is-layout-flex"),
+            "Missing columns layout: {}",
+            result
+        );
+        assert!(
+            result.contains("is-layout-flex wp-block-buttons-is-layout-flex"),
+            "Missing buttons layout: {}",
+            result
+        );
+        assert!(
+            result.contains("is-layout-flow wp-block-column-is-layout-flow"),
+            "Missing column layout: {}",
+            result
+        );
+        // No double quotes
+        assert!(!result.contains("\"\""), "Double quote found: {}", result);
     }
 }
