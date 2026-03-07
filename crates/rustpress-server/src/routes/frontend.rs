@@ -167,8 +167,9 @@ async fn build_base_context(state: &AppState) -> tera::Context {
     ctx.insert("wp_head", &wp_head_html);
     ctx.insert("wp_footer", &wp_footer_html);
 
-    // Fire wp_head action hook so plugins can add to head output
+    // Fire wp_head and wp_footer action hooks so plugins can add output
     state.hooks.do_action("wp_head", &serde_json::json!({"site_url": &state.site_url}));
+    state.hooks.do_action("wp_footer", &serde_json::json!({"site_url": &state.site_url}));
 
     // Load navigation menu links
     let header_menu_text = state

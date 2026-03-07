@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Products{% endblock %}
+
+{% block content %}
+<h1>Products <a href="/wp-admin/wc-product-new.php" class="add-new-btn">Add New</a></h1>
+
+{% if notice_message is defined and notice_message %}
+<div class="notice notice-{{ notice_type | default(value='success') }}">
+    <p>{{ notice_message }}</p>
+</div>
+{% endif %}
+
+<ul class="subsubsub">
+    <li><a href="/wp-admin/edit.php?post_type=product" class="{% if not status_filter %}current{% endif %}">All <span class="count">({{ total_count | default(value=0) }})</span></a></li>
+    <li><a href="/wp-admin/edit.php?post_type=product&status=publish" class="{% if status_filter == 'publish' %}current{% endif %}">Published <span class="count">({{ publish_count | default(value=0) }})</span></a></li>
+    <li><a href="/wp-admin/edit.php?post_type=product&status=draft" class="{% if status_filter == 'draft' %}current{% endif %}">Draft <span class="count">({{ draft_count | default(value=0) }})</span></a></li>
+</ul>
+
+<div class="clearfix"></div>
+
+<table class="wp-list-table">
+    <thead>
+        <tr>
+            <th style="width:5%"><input type="checkbox" id="cb-select-all"></th>
+            <th style="width:25%">Name</th>
+            <th style="width:10%">SKU</th>
+            <th style="width:10%">Price</th>
+            <th style="width:10%">Stock</th>
+            <th style="width:10%">Type</th>
+            <th style="width:15%">Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if products is defined and products | length > 0 %}
+        {% for product in products %}
+        <tr>
+            <td><input type="checkbox" value="{{ product.id }}"></td>
+            <td class="column-title">
+                <strong><a href="/wp-admin/post.php?post={{ product.id }}&action=edit">{{ product.name }}</a></strong>
+                <div class="row-actions">
+                    <a href="/wp-admin/post.php?post={{ product.id }}&action=edit">Edit</a> |
+                    <a href="/{{ product.slug }}/" target="_blank">View</a> |
+                    <a href="#" class="delete-product" data-id="{{ product.id }}" style="color:#b32d2e">Trash</a>
+                </div>
+            </td>
+            <td>{{ product.sku }}</td>
+            <td>
+                {% if product.sale_price %}
+                <del>{{ product.currency_symbol }}{{ product.regular_price }}</del>
+                <ins>{{ product.currency_symbol }}{{ product.sale_price }}</ins>
+                {% else %}
+                {{ product.currency_symbol }}{{ product.regular_price }}
+                {% endif %}
+            </td>
+            <td>
+                {% if product.manage_stock %}
+                <span class="{% if product.stock_quantity <= 0 %}stock-out{% elif product.stock_quantity <= 5 %}stock-low{% else %}stock-ok{% endif %}">
+                    {{ product.stock_quantity }}
+                </span>
+                {% else %}
+                <span class="stock-ok">{{ product.stock_status }}</span>
+                {% endif %}
+            </td>
+            <td>{{ product.product_type | default(value="simple") }}</td>
+            <td>{{ product.date }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="7" style="text-align:center;padding:2rem;color:#646970">
+                No products found. <a href="/wp-admin/wc-product-new.php">Create your first product</a>.
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+
+{% if total_pages is defined and total_pages > 1 %}
+<div class="tablenav">
+    <div class="tablenav-pages">
+        {% if current_page > 1 %}
+        <a href="/wp-admin/edit.php?post_type=product&page={{ current_page - 1 }}" class="prev-page">&laquo;</a>
+        {% endif %}
+        <span class="paging-input">{{ current_page }} of {{ total_pages }}</span>
+        {% if current_page < total_pages %}
+        <a href="/wp-admin/edit.php?post_type=product&page={{ current_page + 1 }}" class="next-page">&raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.stock-ok { color: #00a32a; }
+.stock-low { color: #dba617; }
+.stock-out { color: #d63638; }
+del { color: #646970; }
+ins { text-decoration: none; font-weight: 600; }
+</style>
+<script>
+document.querySelectorAll('.delete-product').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!confirm('Move this product to trash?')) return;
+        var id = this.getAttribute('data-id');
+        RustPressAdmin.deletePost(id).then(function() {
+            window.location.reload();
+        }).catch(function(err) { alert('Error: ' + err.message); });
+    });
+});
+</script>
+{% endblock %}

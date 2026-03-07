@@ -10,6 +10,9 @@ description = "Plugin system with WASM runtime for RustPress"
 default = []
 wasm-runtime = ["wasmtime"]
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("wasm-runtime"))'] }
+
 [dependencies]
 rustpress-core = { workspace = true }
 serde = { workspace = true }

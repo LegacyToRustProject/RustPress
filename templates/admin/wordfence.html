@@ -1,0 +1,208 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Security{% endblock %}
+
+{% block content %}
+<h1><span class="dashicons dashicons-shield" style="font-size:1.3em;vertical-align:text-bottom;margin-right:0.3rem"></span> Security Dashboard</h1>
+
+{% if saved %}
+<div class="notice notice-success"><p>Security settings saved.</p></div>
+{% endif %}
+
+<div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+    <!-- Security Status -->
+    <div style="flex:1;min-width:420px">
+        <!-- Firewall -->
+        <div class="widget">
+            <div class="widget-title">Firewall (WAF)</div>
+            <div class="widget-content">
+                <form method="post" action="/wp-admin/admin-security.php">
+                    <input type="hidden" name="section" value="firewall">
+                    <table class="form-table">
+                        <tr>
+                            <th>Status</th>
+                            <td>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="waf_enabled" value="1" {% if waf_enabled | default(value=true) %}checked{% endif %}>
+                                    <span>{% if waf_enabled | default(value=true) %}Enabled{% else %}Disabled{% endif %}</span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Rules Loaded</th>
+                            <td><strong>{{ waf_rule_count | default(value=0) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Requests Blocked (24h)</th>
+                            <td><strong style="color:#d63638">{{ blocked_24h | default(value=0) }}</strong></td>
+                        </tr>
+                    </table>
+                    <button type="submit" class="button button-primary" style="margin-top:0.5rem">Save Firewall Settings</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Rate Limiting -->
+        <div class="widget" style="margin-top:1rem">
+            <div class="widget-title">Rate Limiting</div>
+            <div class="widget-content">
+                <form method="post" action="/wp-admin/admin-security.php">
+                    <input type="hidden" name="section" value="rate_limit">
+                    <table class="form-table">
+                        <tr>
+                            <th>Status</th>
+                            <td>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="rate_limit_enabled" value="1" {% if rate_limit_enabled | default(value=true) %}checked{% endif %}>
+                                    <span>{% if rate_limit_enabled | default(value=true) %}Enabled{% else %}Disabled{% endif %}</span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><label for="max_rpm">Max Requests / Minute</label></th>
+                            <td><input type="number" id="max_rpm" name="max_rpm" value="{{ max_rpm | default(value=120) }}" class="regular-text" style="max-width:100px" min="10" max="10000"></td>
+                        </tr>
+                    </table>
+                    <button type="submit" class="button button-primary" style="margin-top:0.5rem">Save Rate Limit Settings</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Login Protection -->
+        <div class="widget" style="margin-top:1rem">
+            <div class="widget-title">Login Protection</div>
+            <div class="widget-content">
+                <form method="post" action="/wp-admin/admin-security.php">
+                    <input type="hidden" name="section" value="login">
+                    <table class="form-table">
+                        <tr>
+                            <th>Status</th>
+                            <td>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" name="login_protection_enabled" value="1" {% if login_protection_enabled | default(value=true) %}checked{% endif %}>
+                                    <span>{% if login_protection_enabled | default(value=true) %}Enabled{% else %}Disabled{% endif %}</span>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th><label for="max_attempts">Max Failed Attempts</label></th>
+                            <td><input type="number" id="max_attempts" name="max_attempts" value="{{ max_attempts | default(value=5) }}" class="regular-text" style="max-width:80px" min="1" max="100"></td>
+                        </tr>
+                        <tr>
+                            <th><label for="lockout_mins">Lockout Duration (min)</label></th>
+                            <td><input type="number" id="lockout_mins" name="lockout_mins" value="{{ lockout_mins | default(value=30) }}" class="regular-text" style="max-width:80px" min="1" max="1440"></td>
+                        </tr>
+                        <tr>
+                            <th>Currently Locked Out</th>
+                            <td><strong>{{ locked_out_count | default(value=0) }}</strong> IPs</td>
+                        </tr>
+                    </table>
+                    <button type="submit" class="button button-primary" style="margin-top:0.5rem">Save Login Settings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div style="flex:0 0 300px">
+        <!-- Security Score -->
+        <div class="widget">
+            <div class="widget-title">Security Score</div>
+            <div class="widget-content" style="text-align:center">
+                <div style="font-size:3rem;font-weight:700;color:{% if security_score >= 80 %}#00a32a{% elif security_score >= 50 %}#dba617{% else %}#d63638{% endif %}">
+                    {{ security_score | default(value=0) }}%
+                </div>
+                <p style="color:#646970;font-size:13px">Based on {{ checks_passed | default(value=0) }}/{{ checks_total | default(value=0) }} checks</p>
+            </div>
+        </div>
+
+        <!-- IP Blocklist -->
+        <div class="widget" style="margin-top:1rem">
+            <div class="widget-title">Blocked IPs</div>
+            <div class="widget-content">
+                {% if blocked_ips is defined and blocked_ips | length > 0 %}
+                <ul style="list-style:none;padding:0;margin:0;font-size:13px">
+                    {% for ip in blocked_ips %}
+                    <li style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid #f0f0f1">
+                        <code>{{ ip }}</code>
+                        <a href="#" class="unblock-ip" data-ip="{{ ip }}" style="color:#b32d2e;font-size:12px">Unblock</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="color:#646970;font-size:13px;margin:0">No IPs are currently blocked.</p>
+                {% endif %}
+                <form method="post" action="/wp-admin/admin-security.php" style="margin-top:0.75rem;display:flex;gap:0.5rem">
+                    <input type="hidden" name="section" value="block_ip">
+                    <input type="text" name="block_ip" placeholder="IP address" class="regular-text" style="flex:1;font-size:12px">
+                    <button type="submit" class="button button-secondary" style="font-size:12px">Block</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Security Scanner -->
+        <div class="widget" style="margin-top:1rem">
+            <div class="widget-title">Security Scan</div>
+            <div class="widget-content">
+                {% if scan_results is defined and scan_results | length > 0 %}
+                <ul style="list-style:none;padding:0;margin:0;font-size:13px">
+                    {% for check in scan_results %}
+                    <li style="padding:0.3rem 0;border-bottom:1px solid #f0f0f1">
+                        {% if check.status == "pass" %}
+                        <span style="color:#00a32a">&#10003;</span>
+                        {% elif check.status == "warning" %}
+                        <span style="color:#dba617">&#9888;</span>
+                        {% else %}
+                        <span style="color:#d63638">&#10007;</span>
+                        {% endif %}
+                        {{ check.name }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p style="color:#646970;font-size:13px;margin:0">Run a security scan to check your site.</p>
+                {% endif %}
+                <form method="post" action="/wp-admin/admin-security.php" style="margin-top:0.75rem">
+                    <input type="hidden" name="section" value="scan">
+                    <button type="submit" class="button button-secondary" style="font-size:12px;width:100%">Run Security Scan</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Security Headers -->
+        <div class="widget" style="margin-top:1rem">
+            <div class="widget-title">Security Headers</div>
+            <div class="widget-content">
+                <ul style="list-style:none;padding:0;margin:0;font-size:13px">
+                    <li style="padding:0.2rem 0"><span style="color:#00a32a">&#10003;</span> X-Content-Type-Options</li>
+                    <li style="padding:0.2rem 0"><span style="color:#00a32a">&#10003;</span> X-Frame-Options</li>
+                    <li style="padding:0.2rem 0"><span style="color:#00a32a">&#10003;</span> X-XSS-Protection</li>
+                    <li style="padding:0.2rem 0"><span style="color:#00a32a">&#10003;</span> Referrer-Policy</li>
+                    <li style="padding:0.2rem 0"><span style="color:#00a32a">&#10003;</span> Content-Security-Policy</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.toggle-switch { display:flex;align-items:center;gap:0.5rem;cursor:pointer; }
+.toggle-switch input[type="checkbox"] { width:18px;height:18px; }
+</style>
+<script>
+document.querySelectorAll('.unblock-ip').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        var ip = this.getAttribute('data-ip');
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/wp-admin/admin-security.php';
+        form.innerHTML = '<input type="hidden" name="section" value="unblock_ip"><input type="hidden" name="unblock_ip" value="' + ip + '">';
+        document.body.appendChild(form);
+        form.submit();
+    });
+});
+</script>
+{% endblock %}

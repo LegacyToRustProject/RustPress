@@ -10,6 +10,7 @@ mod health;
 mod posts;
 pub mod seo;
 mod users;
+pub mod plugin_admin;
 pub mod wc_api;
 pub mod wp_admin;
 pub mod wasm_plugins;
@@ -43,6 +44,9 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     // SEO routes (sitemap.xml, robots.txt)
     let seo_router = seo::routes(state.clone());
 
+    // Plugin admin pages (SEO, ACF, CF7, Security)
+    let plugin_admin_router = plugin_admin::routes(state.clone());
+
     // WooCommerce REST API v3 routes
     let wc_router = wc_api::routes(state.clone());
 
@@ -58,6 +62,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
 
     api_router
         .merge(admin_html)
+        .merge(plugin_admin_router)
         .merge(xmlrpc_router)
         .merge(commerce_router)
         .merge(forms_router)

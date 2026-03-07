@@ -80,6 +80,10 @@ async fn main() -> Result<()> {
     // Initialize subsystems
     let hooks = HookRegistry::new();
 
+    // Register WordPress-standard filters and actions
+    register_default_hooks(&hooks);
+    info!("WordPress-standard hooks registered");
+
     let options = OptionsManager::new(db.clone());
     if let Err(e) = options.load_autoload_options().await {
         tracing::warn!("Failed to load autoload options: {}", e);
@@ -611,6 +615,317 @@ fn register_builtin_shortcodes(registry: &rustpress_core::shortcode::ShortcodeRe
             } else {
                 format!("<a href=\"{}\">{}</a>", url, url)
             }
+        }),
+    );
+}
+
+/// Register WordPress-standard filters and action placeholders.
+///
+/// This mirrors the default hooks that WordPress registers in wp-includes/default-filters.php.
+/// Filters transform content through a pipeline; actions fire side effects at specific points.
+fn register_default_hooks(hooks: &HookRegistry) {
+    use rustpress_themes::formatting;
+    use serde_json::Value;
+    use std::sync::Arc;
+
+    // ============================================================
+    // the_content filters — applied to post content before display
+    // ============================================================
+
+    // Priority 10: wpautop — converts double line breaks to <p> tags
+    hooks.add_filter(
+        "the_content",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wpautop(&s))
+            } else {
+                value
+            }
+        }),
+        10,
+    );
+
+    // Priority 11: shortcode_unautop — removes <p> wrapping around shortcodes
+    hooks.add_filter(
+        "the_content",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::shortcode_unautop(&s))
+            } else {
+                value
+            }
+        }),
+        11,
+    );
+
+    // Priority 12: wptexturize — converts straight quotes to curly, etc.
+    hooks.add_filter(
+        "the_content",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wptexturize(&s))
+            } else {
+                value
+            }
+        }),
+        12,
+    );
+
+    // Priority 13: convert_smilies — converts text emoticons to emoji
+    hooks.add_filter(
+        "the_content",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::convert_smilies(&s))
+            } else {
+                value
+            }
+        }),
+        13,
+    );
+
+    // ============================================================
+    // the_title filters — applied to post titles before display
+    // ============================================================
+
+    // Priority 10: wptexturize
+    hooks.add_filter(
+        "the_title",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wptexturize(&s))
+            } else {
+                value
+            }
+        }),
+        10,
+    );
+
+    // Priority 11: convert_chars
+    hooks.add_filter(
+        "the_title",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::convert_chars(&s))
+            } else {
+                value
+            }
+        }),
+        11,
+    );
+
+    // Priority 12: trim
+    hooks.add_filter(
+        "the_title",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(s.trim().to_string())
+            } else {
+                value
+            }
+        }),
+        12,
+    );
+
+    // ============================================================
+    // the_excerpt filters — applied to post excerpts before display
+    // ============================================================
+
+    // Priority 10: wp_trim_excerpt
+    hooks.add_filter(
+        "the_excerpt",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wp_trim_excerpt(&s))
+            } else {
+                value
+            }
+        }),
+        10,
+    );
+
+    // Priority 11: wpautop
+    hooks.add_filter(
+        "the_excerpt",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wpautop(&s))
+            } else {
+                value
+            }
+        }),
+        11,
+    );
+
+    // ============================================================
+    // comment_text filters — applied to comment content
+    // ============================================================
+
+    // Priority 10: wpautop
+    hooks.add_filter(
+        "comment_text",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wpautop(&s))
+            } else {
+                value
+            }
+        }),
+        10,
+    );
+
+    // Priority 12: wptexturize
+    hooks.add_filter(
+        "comment_text",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wptexturize(&s))
+            } else {
+                value
+            }
+        }),
+        12,
+    );
+
+    // Priority 13: convert_smilies
+    hooks.add_filter(
+        "comment_text",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::convert_smilies(&s))
+            } else {
+                value
+            }
+        }),
+        13,
+    );
+
+    // ============================================================
+    // widget_text filters — applied to text widget content
+    // ============================================================
+
+    // Priority 10: wpautop
+    hooks.add_filter(
+        "widget_text",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::wpautop(&s))
+            } else {
+                value
+            }
+        }),
+        10,
+    );
+
+    // Priority 11: shortcode_unautop
+    hooks.add_filter(
+        "widget_text",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                Value::String(formatting::shortcode_unautop(&s))
+            } else {
+                value
+            }
+        }),
+        11,
+    );
+
+    // ============================================================
+    // the_content_feed filters — applied to content in RSS feeds
+    // ============================================================
+
+    // Priority 10: strip HTML tags for feed safety
+    hooks.add_filter(
+        "the_content_feed",
+        Arc::new(|value: Value| {
+            if let Value::String(s) = value {
+                // Simple tag stripping for feed content
+                let mut result = String::with_capacity(s.len());
+                let mut in_tag = false;
+                for ch in s.chars() {
+                    match ch {
+                        '<' => in_tag = true,
+                        '>' => in_tag = false,
+                        _ if !in_tag => result.push(ch),
+                        _ => {}
+                    }
+                }
+                Value::String(result)
+            } else {
+                value
+            }
+        }),
+        10,
+    );
+
+    // ============================================================
+    // Standard WordPress action placeholders
+    //
+    // These are registered so plugins can hook into them. The actions
+    // are fired at the appropriate points in the request lifecycle.
+    // ============================================================
+
+    // init — fires on server startup (already called in main)
+    hooks.add_action_default(
+        "init",
+        Arc::new(|_| {
+            tracing::trace!("init action fired");
+        }),
+    );
+
+    // wp_head — fires when rendering <head> section
+    hooks.add_action_default(
+        "wp_head",
+        Arc::new(|_| {
+            tracing::trace!("wp_head action fired");
+        }),
+    );
+
+    // wp_footer — fires when rendering footer
+    hooks.add_action_default(
+        "wp_footer",
+        Arc::new(|_| {
+            tracing::trace!("wp_footer action fired");
+        }),
+    );
+
+    // wp_enqueue_scripts — for script/style registration
+    hooks.add_action_default(
+        "wp_enqueue_scripts",
+        Arc::new(|_| {
+            tracing::trace!("wp_enqueue_scripts action fired");
+        }),
+    );
+
+    // save_post — fires after post save (create or update)
+    hooks.add_action_default(
+        "save_post",
+        Arc::new(|_| {
+            tracing::trace!("save_post action fired");
+        }),
+    );
+
+    // delete_post — fires before post delete
+    hooks.add_action_default(
+        "delete_post",
+        Arc::new(|_| {
+            tracing::trace!("delete_post action fired");
+        }),
+    );
+
+    // wp_login — fires on successful login
+    hooks.add_action_default(
+        "wp_login",
+        Arc::new(|_| {
+            tracing::trace!("wp_login action fired");
+        }),
+    );
+
+    // wp_logout — fires on logout
+    hooks.add_action_default(
+        "wp_logout",
+        Arc::new(|_| {
+            tracing::trace!("wp_logout action fired");
         }),
     );
 }

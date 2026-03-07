@@ -12,6 +12,8 @@
         background: #fff;
         border: 1px solid #c3c4c7;
         border-radius: 4px;
+        position: sticky;
+        top: 52px;
     }
     .available-widgets-box .box-header {
         padding: 0.75rem 1rem;
@@ -22,9 +24,13 @@
     .available-widget-item {
         padding: 0.6rem 1rem;
         border-bottom: 1px solid #f0f0f1;
-        cursor: default;
+        cursor: grab;
+        user-select: none;
+        transition: background 0.15s;
     }
     .available-widget-item:last-child { border-bottom: none; }
+    .available-widget-item:hover { background: #f0f6fc; }
+    .available-widget-item.dragging { opacity: 0.5; background: #dceaff; }
     .available-widget-item .aw-name { font-weight: 500; font-size: 13px; }
     .available-widget-item .aw-desc { font-size: 12px; color: #646970; margin-top: 2px; }
 
@@ -33,6 +39,10 @@
         border: 1px solid #c3c4c7;
         border-radius: 4px;
         margin-bottom: 1.5rem;
+    }
+    .widget-area-box.drag-over {
+        border-color: #2271b1;
+        box-shadow: 0 0 0 1px #2271b1;
     }
     .widget-area-header {
         padding: 0.75rem 1rem;
@@ -50,24 +60,39 @@
         color: #a7aaad;
         font-size: 13px;
     }
+    .widget-area-body .drop-placeholder {
+        height: 4px;
+        background: #2271b1;
+        border-radius: 2px;
+        margin: 2px 8px;
+        display: none;
+    }
+    .widget-area-body.drag-active .drop-placeholder { display: block; }
 
     .widget-item {
         border-bottom: 1px solid #f0f0f1;
+        transition: opacity 0.15s;
     }
     .widget-item:last-child { border-bottom: none; }
+    .widget-item.dragging-item { opacity: 0.4; }
     .widget-item-header {
         padding: 0.5rem 1rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        cursor: pointer;
+        cursor: grab;
         user-select: none;
     }
     .widget-item-header:hover { background: #f6f7f7; }
     .widget-item-header .wi-title { font-weight: 500; font-size: 13px; }
     .widget-item-header .wi-type { font-size: 12px; color: #646970; margin-left: 0.5rem; }
     .widget-item-header .wi-actions { display: flex; gap: 0.5rem; align-items: center; }
-    .widget-item-header .toggle-arrow { font-size: 10px; color: #646970; }
+    .widget-item-header .toggle-arrow {
+        font-size: 10px; color: #646970;
+        transition: transform 0.2s;
+        display: inline-block;
+    }
+    .widget-item-header .toggle-arrow.open { transform: rotate(180deg); }
     .widget-item-body {
         display: none;
         padding: 0.75rem 1rem;
@@ -115,6 +140,19 @@
     /* Save bar */
     .widgets-save-bar { margin-top: 1rem; }
 
+    .drag-ghost {
+        position: fixed;
+        padding: 6px 12px;
+        background: #2271b1;
+        color: #fff;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        pointer-events: none;
+        z-index: 10000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
     @media (max-width: 900px) {
         .widgets-page { flex-direction: column; }
         .widgets-available { flex: none; width: 100%; }
@@ -130,7 +168,7 @@
 {% endif %}
 
 <p style="color:#646970;margin-bottom:1.5rem">
-    Widgets add content and features to your sidebar and footer areas. Add, configure, and remove widgets below, then click <strong>Save Widgets</strong>.
+    Widgets add content and features to your sidebar and footer areas. Drag widgets from <strong>Available Widgets</strong> into sidebar areas, or use the dropdown. Click a widget to expand and edit its settings, then click <strong>Save Widgets</strong>.
 </p>
 
 <form method="post" action="/wp-admin/widgets.php" id="widgets-form">
@@ -141,7 +179,7 @@
         <div class="available-widgets-box">
             <div class="box-header">Available Widgets</div>
             {% for aw in available_widgets %}
-            <div class="available-widget-item">
+            <div class="available-widget-item" draggable="true" data-widget-type="{{ aw.type_key }}">
                 <div class="aw-name">{{ aw.label }}</div>
                 <div class="aw-desc">{{ aw.description }}</div>
             </div>
@@ -162,7 +200,7 @@
             <div class="widget-area-body {% if not area_widgets[area.id] or area_widgets[area.id] | length == 0 %}empty-area{% endif %}" id="area-{{ area.id }}">
                 {% if area_widgets[area.id] is defined %}
                 {% for w in area_widgets[area.id] %}
-                <div class="widget-item" data-widget-index="{{ loop.index0 }}">
+                <div class="widget-item" draggable="true" data-widget-index="{{ loop.index0 }}">
                     <div class="widget-item-header" onclick="toggleWidgetBody(this)">
                         <div>
                             <span class="wi-title">{{ w.title }}</span>
@@ -208,7 +246,7 @@
                 {% endfor %}
                 {% endif %}
                 {% if not area_widgets[area.id] or area_widgets[area.id] | length == 0 %}
-                    No widgets in this area. Use the dropdown below to add one.
+                    No widgets in this area. Drag a widget here or use the dropdown below.
                 {% endif %}
             </div>
             <div class="add-widget-bar">
@@ -222,6 +260,8 @@
                     <option value="CustomHTML">Custom HTML</option>
                     <option value="Meta">Meta</option>
                     <option value="RecentComments">Recent Comments</option>
+                    <option value="Calendar">Calendar</option>
+                    <option value="TagCloud">Tag Cloud</option>
                 </select>
                 <button type="button" class="button button-secondary" onclick="addWidget(this)">Add</button>
             </div>
@@ -241,7 +281,11 @@
 <script>
 function toggleWidgetBody(header) {
     const body = header.nextElementSibling;
-    if (body) body.classList.toggle('open');
+    const arrow = header.querySelector('.toggle-arrow');
+    if (body) {
+        body.classList.toggle('open');
+        if (arrow) arrow.classList.toggle('open');
+    }
 }
 
 function removeWidget(btn) {
@@ -251,7 +295,7 @@ function removeWidget(btn) {
     reindexArea(area);
     if (area.querySelectorAll('.widget-item').length === 0) {
         area.classList.add('empty-area');
-        area.textContent = 'No widgets in this area. Use the dropdown below to add one.';
+        area.textContent = 'No widgets in this area. Drag a widget here or use the dropdown below.';
     }
 }
 
@@ -271,6 +315,63 @@ function reindexArea(areaEl) {
 
 let widgetCounter = 1000;
 
+const WIDGET_DEFAULTS = {
+    RecentPosts: { title: 'Recent Posts', count: 5 },
+    Categories: { title: 'Categories', display: 'list' },
+    Archives: { title: 'Archives' },
+    Search: { title: 'Search' },
+    Text: { title: '', content: '' },
+    CustomHTML: { title: '', content: '' },
+    Meta: { title: 'Meta' },
+    RecentComments: { title: 'Recent Comments', count: 5 },
+    Calendar: { title: 'Calendar' },
+    TagCloud: { title: 'Tag Cloud' },
+};
+
+function getWidgetLabel(type) {
+    const labels = {
+        RecentPosts: 'Recent Posts', Categories: 'Categories', Archives: 'Archives',
+        Search: 'Search', Text: 'Text', CustomHTML: 'Custom HTML', Meta: 'Meta',
+        RecentComments: 'Recent Comments', Calendar: 'Calendar', TagCloud: 'Tag Cloud'
+    };
+    return labels[type] || type;
+}
+
+function buildConfigFields(widgetType, areaId, idx, def) {
+    let fields = '';
+    if (widgetType === 'RecentPosts') {
+        fields = '<label>Number of posts to show</label><input type="number" name="widgets[' + areaId + '][' + idx + '][count]" value="' + (def.count || 5) + '" min="1" max="20">';
+    } else if (widgetType === 'RecentComments') {
+        fields = '<label>Number of comments to show</label><input type="number" name="widgets[' + areaId + '][' + idx + '][count]" value="' + (def.count || 5) + '" min="1" max="20">';
+    } else if (widgetType === 'Categories') {
+        fields = '<label>Display as</label><select name="widgets[' + areaId + '][' + idx + '][display]"><option value="list">List</option><option value="dropdown">Dropdown</option></select>';
+    } else if (widgetType === 'Text' || widgetType === 'CustomHTML') {
+        fields = '<label>Content</label><textarea name="widgets[' + areaId + '][' + idx + '][content]" rows="5"></textarea>';
+    }
+    return fields;
+}
+
+function createWidgetHTML(widgetType, areaId, idx) {
+    const def = WIDGET_DEFAULTS[widgetType] || { title: '' };
+    const wid = widgetType.toLowerCase() + '-' + (++widgetCounter);
+    const configFields = buildConfigFields(widgetType, areaId, idx, def);
+    const typeLabel = getWidgetLabel(widgetType);
+
+    return '<div class="widget-item" draggable="true" data-widget-index="' + idx + '">'
+        + '<div class="widget-item-header" onclick="toggleWidgetBody(this)">'
+        + '<div><span class="wi-title">' + (def.title || typeLabel) + '</span>'
+        + '<span class="wi-type">(' + widgetType + ')</span></div>'
+        + '<div class="wi-actions"><span class="toggle-arrow open">&#9660;</span></div></div>'
+        + '<div class="widget-item-body open">'
+        + '<input type="hidden" name="widgets[' + areaId + '][' + idx + '][type]" value="' + widgetType + '">'
+        + '<input type="hidden" name="widgets[' + areaId + '][' + idx + '][id]" value="' + wid + '">'
+        + '<label>Title</label>'
+        + '<input type="text" name="widgets[' + areaId + '][' + idx + '][title]" value="' + (def.title || '') + '">'
+        + configFields
+        + '<button type="button" class="wi-remove-btn" onclick="removeWidget(this)">Remove</button>'
+        + '</div></div>';
+}
+
 function addWidget(btn) {
     const bar = btn.closest('.add-widget-bar');
     const sel = bar.querySelector('.add-widget-select');
@@ -281,56 +382,185 @@ function addWidget(btn) {
     const areaId = areaBox.dataset.areaId;
     const areaBody = areaBox.querySelector('.widget-area-body');
 
-    // Clear empty-area message
     if (areaBody.classList.contains('empty-area')) {
         areaBody.classList.remove('empty-area');
         areaBody.textContent = '';
     }
 
     const idx = areaBody.querySelectorAll('.widget-item').length;
-    const wid = widgetType.toLowerCase() + '-' + (++widgetCounter);
-
-    const defaults = {
-        RecentPosts: { title: 'Recent Posts', count: 5 },
-        Categories: { title: 'Categories', display: 'list' },
-        Archives: { title: 'Archives' },
-        Search: { title: 'Search' },
-        Text: { title: '', content: '' },
-        CustomHTML: { title: '', content: '' },
-        Meta: { title: 'Meta' },
-        RecentComments: { title: 'Recent Comments', count: 5 },
-    };
-    const def = defaults[widgetType] || { title: '' };
-
-    let configFields = '';
-    if (widgetType === 'RecentPosts') {
-        configFields = '<label>Number of posts to show</label><input type="number" name="widgets[' + areaId + '][' + idx + '][count]" value="' + def.count + '" min="1" max="20">';
-    } else if (widgetType === 'RecentComments') {
-        configFields = '<label>Number of comments to show</label><input type="number" name="widgets[' + areaId + '][' + idx + '][count]" value="' + def.count + '" min="1" max="20">';
-    } else if (widgetType === 'Categories') {
-        configFields = '<label>Display as</label><select name="widgets[' + areaId + '][' + idx + '][display]"><option value="list">List</option><option value="dropdown">Dropdown</option></select>';
-    } else if (widgetType === 'Text' || widgetType === 'CustomHTML') {
-        configFields = '<label>Content</label><textarea name="widgets[' + areaId + '][' + idx + '][content]" rows="5"></textarea>';
-    }
-
-    const typeLabel = widgetType === 'CustomHTML' ? 'Custom HTML' : widgetType.replace(/([A-Z])/g, ' $1').trim();
-
-    const html = '<div class="widget-item" data-widget-index="' + idx + '">'
-        + '<div class="widget-item-header" onclick="toggleWidgetBody(this)">'
-        + '<div><span class="wi-title">' + (def.title || typeLabel) + '</span>'
-        + '<span class="wi-type">(' + widgetType + ')</span></div>'
-        + '<div class="wi-actions"><span class="toggle-arrow">&#9660;</span></div></div>'
-        + '<div class="widget-item-body open">'
-        + '<input type="hidden" name="widgets[' + areaId + '][' + idx + '][type]" value="' + widgetType + '">'
-        + '<input type="hidden" name="widgets[' + areaId + '][' + idx + '][id]" value="' + wid + '">'
-        + '<label>Title</label>'
-        + '<input type="text" name="widgets[' + areaId + '][' + idx + '][title]" value="' + (def.title || '') + '">'
-        + configFields
-        + '<button type="button" class="wi-remove-btn" onclick="removeWidget(this)">Remove</button>'
-        + '</div></div>';
-
-    areaBody.insertAdjacentHTML('beforeend', html);
+    areaBody.insertAdjacentHTML('beforeend', createWidgetHTML(widgetType, areaId, idx));
     sel.value = '';
+    initWidgetItemDrag(areaBody.querySelector('.widget-item:last-child'));
 }
+
+// === Drag and Drop ===
+
+let dragData = null;
+let ghostEl = null;
+
+function createGhost(label) {
+    const g = document.createElement('div');
+    g.className = 'drag-ghost';
+    g.textContent = label;
+    document.body.appendChild(g);
+    return g;
+}
+
+function removeGhost() {
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+}
+
+// Drag from available widgets panel
+document.querySelectorAll('.available-widget-item').forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+        dragData = { type: 'new', widgetType: item.dataset.widgetType };
+        e.dataTransfer.effectAllowed = 'copy';
+        e.dataTransfer.setData('text/plain', item.dataset.widgetType);
+        item.classList.add('dragging');
+        ghostEl = createGhost(item.querySelector('.aw-name').textContent);
+        // Use a transparent drag image
+        const img = new Image();
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(img, 0, 0);
+    });
+    item.addEventListener('drag', (e) => {
+        if (ghostEl && e.clientX) {
+            ghostEl.style.left = (e.clientX + 12) + 'px';
+            ghostEl.style.top = (e.clientY + 12) + 'px';
+        }
+    });
+    item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+        removeGhost();
+        dragData = null;
+        document.querySelectorAll('.widget-area-box.drag-over').forEach(a => a.classList.remove('drag-over'));
+    });
+});
+
+// Drag existing widgets within / between areas
+function initWidgetItemDrag(item) {
+    item.addEventListener('dragstart', (e) => {
+        dragData = {
+            type: 'move',
+            element: item,
+            sourceArea: item.closest('.widget-area-body'),
+        };
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', 'widget-move');
+        item.classList.add('dragging-item');
+        const title = item.querySelector('.wi-title');
+        ghostEl = createGhost(title ? title.textContent : 'Widget');
+        const img = new Image();
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        e.dataTransfer.setDragImage(img, 0, 0);
+    });
+    item.addEventListener('drag', (e) => {
+        if (ghostEl && e.clientX) {
+            ghostEl.style.left = (e.clientX + 12) + 'px';
+            ghostEl.style.top = (e.clientY + 12) + 'px';
+        }
+    });
+    item.addEventListener('dragend', () => {
+        item.classList.remove('dragging-item');
+        removeGhost();
+        dragData = null;
+        document.querySelectorAll('.widget-area-box.drag-over').forEach(a => a.classList.remove('drag-over'));
+    });
+}
+
+// Init drag on existing widget items
+document.querySelectorAll('.widget-item').forEach(initWidgetItemDrag);
+
+// Drop targets: widget area bodies
+document.querySelectorAll('.widget-area-body').forEach(areaBody => {
+    areaBody.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = dragData && dragData.type === 'new' ? 'copy' : 'move';
+        areaBody.closest('.widget-area-box').classList.add('drag-over');
+    });
+    areaBody.addEventListener('dragleave', (e) => {
+        // Only remove if leaving the area box entirely
+        const box = areaBody.closest('.widget-area-box');
+        if (!box.contains(e.relatedTarget)) {
+            box.classList.remove('drag-over');
+        }
+    });
+    areaBody.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const box = areaBody.closest('.widget-area-box');
+        box.classList.remove('drag-over');
+
+        if (!dragData) return;
+
+        const areaId = box.dataset.areaId;
+
+        if (areaBody.classList.contains('empty-area')) {
+            areaBody.classList.remove('empty-area');
+            areaBody.textContent = '';
+        }
+
+        if (dragData.type === 'new') {
+            // Add new widget
+            const idx = areaBody.querySelectorAll('.widget-item').length;
+
+            // Find drop position based on mouse Y
+            const items = Array.from(areaBody.querySelectorAll('.widget-item'));
+            let insertBefore = null;
+            for (const itm of items) {
+                const rect = itm.getBoundingClientRect();
+                if (e.clientY < rect.top + rect.height / 2) {
+                    insertBefore = itm;
+                    break;
+                }
+            }
+
+            const tmp = document.createElement('div');
+            tmp.innerHTML = createWidgetHTML(dragData.widgetType, areaId, idx);
+            const newItem = tmp.firstElementChild;
+
+            if (insertBefore) {
+                areaBody.insertBefore(newItem, insertBefore);
+            } else {
+                areaBody.appendChild(newItem);
+            }
+
+            initWidgetItemDrag(newItem);
+            reindexArea(areaBody);
+
+        } else if (dragData.type === 'move') {
+            // Move existing widget
+            const movedItem = dragData.element;
+            const srcArea = dragData.sourceArea;
+
+            // Find drop position
+            const items = Array.from(areaBody.querySelectorAll('.widget-item'));
+            let insertBefore = null;
+            for (const itm of items) {
+                if (itm === movedItem) continue;
+                const rect = itm.getBoundingClientRect();
+                if (e.clientY < rect.top + rect.height / 2) {
+                    insertBefore = itm;
+                    break;
+                }
+            }
+
+            if (insertBefore) {
+                areaBody.insertBefore(movedItem, insertBefore);
+            } else {
+                areaBody.appendChild(movedItem);
+            }
+
+            // Reindex both source and destination
+            reindexArea(areaBody);
+            if (srcArea && srcArea !== areaBody) {
+                reindexArea(srcArea);
+                if (srcArea.querySelectorAll('.widget-item').length === 0) {
+                    srcArea.classList.add('empty-area');
+                    srcArea.textContent = 'No widgets in this area. Drag a widget here or use the dropdown below.';
+                }
+            }
+        }
+    });
+});
 </script>
 {% endblock %}

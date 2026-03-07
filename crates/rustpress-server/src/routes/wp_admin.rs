@@ -641,9 +641,28 @@ async fn posts_list(
     Extension(session): Extension<Session>,
     Query(params): Query<AdminPostsQuery>,
 ) -> Html<String> {
+    let post_type = params.post_type.as_deref().unwrap_or("post");
+
+    // Dispatch WooCommerce post types to dedicated plugin admin pages
+    if post_type == "product" {
+        let q = super::plugin_admin::PluginPostsQuery {
+            post_type: params.post_type.clone(),
+            status: params.status.clone(),
+            page: params.page,
+        };
+        return super::plugin_admin::wc_products_page(state, session, q).await;
+    }
+    if post_type == "shop_order" {
+        let q = super::plugin_admin::PluginPostsQuery {
+            post_type: params.post_type.clone(),
+            status: params.status.clone(),
+            page: params.page,
+        };
+        return super::plugin_admin::wc_orders_page(state, session, q).await;
+    }
+
     let mut ctx = admin_context(&state, &session).await;
 
-    let post_type = params.post_type.as_deref().unwrap_or("post");
     let (active_page, type_label) = if post_type == "page" {
         ("pages", "Pages")
     } else {
@@ -3132,6 +3151,16 @@ fn widget_instance_to_json(inst: &widgets::WidgetInstance) -> serde_json::Value 
             "type_name": "RecentComments",
             "title": title,
             "count": count,
+        }),
+        widgets::WidgetType::Calendar { title } => serde_json::json!({
+            "id": inst.id,
+            "type_name": "Calendar",
+            "title": title,
+        }),
+        widgets::WidgetType::TagCloud { title } => serde_json::json!({
+            "id": inst.id,
+            "type_name": "TagCloud",
+            "title": title,
         }),
     }
 }

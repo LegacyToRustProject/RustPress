@@ -1,0 +1,138 @@
+{% extends "admin/base.html" %}
+
+{% block title %}SEO Settings{% endblock %}
+
+{% block content %}
+<h1><span class="dashicons dashicons-chart-area" style="font-size:1.3em;vertical-align:text-bottom;margin-right:0.3rem"></span> SEO Settings</h1>
+
+{% if saved %}
+<div class="notice notice-success"><p>SEO settings saved.</p></div>
+{% endif %}
+
+<div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+    <!-- General SEO -->
+    <div class="widget" style="flex:1;min-width:400px">
+        <div class="widget-title">General</div>
+        <div class="widget-content">
+            <form method="post" action="/wp-admin/admin-seo.php">
+                <table class="form-table">
+                    <tr>
+                        <th><label for="seo_title_separator">Title Separator</label></th>
+                        <td>
+                            <select id="seo_title_separator" name="seo_title_separator" class="regular-text" style="max-width:120px">
+                                {% for sep in separators %}
+                                <option value="{{ sep }}" {% if sep == title_separator %}selected{% endif %}>{{ sep }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="seo_homepage_title">Homepage Title</label></th>
+                        <td>
+                            <input type="text" id="seo_homepage_title" name="seo_homepage_title" value="{{ homepage_title | default(value='') }}" class="regular-text" style="width:100%">
+                            <p style="color:#646970;font-size:13px;margin-top:0.25rem">Template variables: <code>%%sitename%%</code> <code>%%sitedesc%%</code></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="seo_homepage_desc">Homepage Meta Description</label></th>
+                        <td>
+                            <textarea id="seo_homepage_desc" name="seo_homepage_desc" class="regular-text" rows="3" style="width:100%">{{ homepage_desc | default(value='') }}</textarea>
+                        </td>
+                    </tr>
+                </table>
+
+                <h3 style="margin-top:1.5rem;font-size:14px">Content Types</h3>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="seo_post_title">Post Title Template</label></th>
+                        <td>
+                            <input type="text" id="seo_post_title" name="seo_post_title" value="{{ post_title_template | default(value='%%title%% %%sep%% %%sitename%%') }}" class="regular-text" style="width:100%">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label for="seo_page_title">Page Title Template</label></th>
+                        <td>
+                            <input type="text" id="seo_page_title" name="seo_page_title" value="{{ page_title_template | default(value='%%title%% %%sep%% %%sitename%%') }}" class="regular-text" style="width:100%">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Noindex Empty Categories</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="seo_noindex_empty_cat" value="1" {% if noindex_empty_cat %}checked{% endif %}>
+                                Prevent empty category archives from appearing in search results
+                            </label>
+                        </td>
+                    </tr>
+                </table>
+
+                <h3 style="margin-top:1.5rem;font-size:14px">Social &amp; Open Graph</h3>
+                <table class="form-table">
+                    <tr>
+                        <th><label for="seo_og_default_image">Default OG Image URL</label></th>
+                        <td>
+                            <input type="text" id="seo_og_default_image" name="seo_og_default_image" value="{{ og_default_image | default(value='') }}" class="regular-text" style="width:100%" placeholder="https://example.com/image.jpg">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Enable Open Graph</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="seo_og_enabled" value="1" {% if og_enabled | default(value=true) %}checked{% endif %}>
+                                Add Open Graph meta tags to pages
+                            </label>
+                        </td>
+                    </tr>
+                </table>
+
+                <h3 style="margin-top:1.5rem;font-size:14px">XML Sitemap</h3>
+                <table class="form-table">
+                    <tr>
+                        <th>Sitemap URL</th>
+                        <td>
+                            <a href="/sitemap.xml" target="_blank">/sitemap.xml</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Include Posts</label></th>
+                        <td>
+                            <label><input type="checkbox" name="seo_sitemap_posts" value="1" {% if sitemap_posts | default(value=true) %}checked{% endif %}> Include posts in sitemap</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><label>Include Pages</label></th>
+                        <td>
+                            <label><input type="checkbox" name="seo_sitemap_pages" value="1" {% if sitemap_pages | default(value=true) %}checked{% endif %}> Include pages in sitemap</label>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="margin-top:1rem">
+                    <button type="submit" class="button button-primary">Save SEO Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SEO Overview -->
+    <div style="flex:0 0 280px">
+        <div class="widget">
+            <div class="widget-title">SEO Overview</div>
+            <div class="widget-content">
+                <table style="width:100%;font-size:13px">
+                    <tr><td>Posts indexed</td><td style="text-align:right"><strong>{{ indexed_posts | default(value=0) }}</strong></td></tr>
+                    <tr><td>Pages indexed</td><td style="text-align:right"><strong>{{ indexed_pages | default(value=0) }}</strong></td></tr>
+                    <tr><td>Posts with meta desc</td><td style="text-align:right"><strong>{{ posts_with_desc | default(value=0) }}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+        <div class="widget" style="margin-top:1rem">
+            <div class="widget-title">robots.txt</div>
+            <div class="widget-content">
+                <p style="font-size:13px;color:#646970">Your robots.txt is auto-generated.</p>
+                <a href="/robots.txt" target="_blank" class="button button-secondary" style="font-size:12px">View robots.txt</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
