@@ -8,10 +8,8 @@
 ├─────────────────────────────────────────────────────┤
 │                                                     │
 │  LegacyToRustProject/RustPress (本体)               │
-│  ├── ~/RustPress-theme/     ← #01 テーマ互換        │
-│  ├── ~/RustPress-api/       ← #02 API・移行・CI     │
-│  ├── ~/RustPress-security/  ← #03 セキュリティ       │
-│  └── ~/RustPress-qa/        ← #09 QA (読み取り専用) │
+│    担当: #01 テーマ, #02 API, #03 セキュリティ        │
+│    QA:   #09 (レビュー)                              │
 │                                                     │
 │  LegacyToRustProject/php-to-rust    ← #04           │
 │  LegacyToRustProject/cobol-to-rust  ← #05           │
@@ -36,30 +34,31 @@
 ### ステップ詳細
 
 ```
-1. 担当者が作業ブランチで開発
-   #01 ─→ feat/theme-compat ブランチで作業
+1. 担当者がfeatureブランチで開発
+   $ git checkout -b feat/theme-compat
 
 2. 担当者がPRを作成
-   #01 ─→ PR: "feat: Add theme switching mechanism"
+   $ git push -u origin feat/theme-compat
+   → PR: "feat: Add theme switching mechanism"
 
-3. QAが検証
-   #09 ─→ cargo check / test / clippy / audit
-   #09 ─→ コードレビュー
-   #09 ─→ 統合テスト
+3. CI が自動実行（check, test, clippy, fmt）
+   → 全ジョブ green 必須
 
-4. 問題があれば → QAがGitHub Issueで報告
+4. QAが検証
+   #09 ─→ コードレビュー + 統合テスト
+
+5. 問題があれば → QAがGitHub Issueで報告
    #09 ─→ Issue: "[QA] theme switching breaks REST API routes"
 
-5. プロジェクトオーナーが判断
-   オーナー ─→ 修正方針を決定
-   オーナー ─→ 担当者を指定（元の担当者 or 別の担当者）
+6. プロジェクトオーナーが判断
+   オーナー ─→ 修正方針を決定 + 担当者を指定
 
-6. 担当者が修正
-   #01 ─→ 修正コミット → PRを更新
+7. 担当者が修正
+   → 修正コミット → PRを更新
 
-7. QAが再検証 → 問題なければApprove
+8. QAが再検証 → 問題なければApprove
 
-8. プロジェクトオーナーがマージ承認
+9. プロジェクトオーナーがマージ承認
    オーナー ─→ main にマージ
 ```
 
@@ -70,15 +69,67 @@ main (常にビルド・テスト通過)
  ├── feat/theme-compat      (#01)
  ├── feat/rest-api           (#02)
  ├── feat/security-owasp     (#03)
+ ├── fix/logout-session      (#03)
  └── ...
 ```
 
 ### ルール
 
 1. **mainに直接pushしない。** 必ずPR経由。
-2. **各担当者は自分のクローンで作業。** 同じディレクトリを共有しない。
+2. **featureブランチで作業。** 1つのクローンでブランチを切り替える。
 3. **PRはQAレビュー + オーナー承認の2段階。**
 4. **mainは常にグリーン。** ビルド・テストが通らない状態にしない。
+5. **作業前に `git pull origin main` を実行。** 常に最新のmainから分岐する。
+
+## セットアップ
+
+### RustPress本体
+
+```bash
+# 初回クローン（全担当者共通）
+git clone https://github.com/LegacyToRustProject/RustPress.git ~/RustPress
+cd ~/RustPress
+
+# 作業開始時
+git checkout main
+git pull origin main
+git checkout -b feat/<feature-name>
+
+# 作業完了後
+git push -u origin feat/<feature-name>
+# → GitHub上でPR作成
+```
+
+### 変換エンジン
+
+```bash
+# 各担当者が自分のリポジトリをクローン
+git clone https://github.com/LegacyToRustProject/php-to-rust.git ~/php-to-rust
+git clone https://github.com/LegacyToRustProject/cobol-to-rust.git ~/cobol-to-rust
+git clone https://github.com/LegacyToRustProject/cpp-to-rust.git ~/cpp-to-rust
+git clone https://github.com/LegacyToRustProject/java-to-rust.git ~/java-to-rust
+git clone https://github.com/LegacyToRustProject/perl-to-rust.git ~/perl-to-rust
+```
+
+全リポジトリ共通ルール:
+1. **mainに直接pushしない。** 必ずPR経由。
+2. **featureブランチで作業。** 例: `feat/next-iteration`
+3. **PRはQAレビュー + オーナー承認の2段階。**
+4. **mainは常にグリーン。** ビルド・テストが通らない状態にしない。
+5. **GitHub Actions CI** が全リポジトリに設定済み（check, test, fmt, clippy）。PRマージ前にCIグリーン必須。
+
+## CI/CD
+
+全リポジトリに GitHub Actions CI を設定済み。PRおよびmainへのpush時に自動実行:
+
+| ジョブ | コマンド | 必須 |
+|--------|---------|------|
+| check | `cargo check --workspace` | Yes |
+| test | `cargo test --workspace --lib --bins` | Yes |
+| clippy | `cargo clippy --workspace -- -D warnings` | Yes |
+| fmt | `cargo fmt --all -- --check` | Yes |
+| audit | `cargo audit` (RustPress本体のみ) | Yes |
+| build | `cargo build --release` (RustPress本体のみ) | Yes |
 
 ## Issue管理とトリアージ
 
@@ -198,78 +249,18 @@ PR → QAレビュー → マージ → Issueクローズ
 
 ### Issue Template
 
-一般ユーザー向けにテンプレートを用意する:
+GitHub上に設定済み（`.github/ISSUE_TEMPLATE/`）:
+- **バグ報告**: `bug_report.md`
+- **機能要望**: `feature_request.md`
 
-**バグ報告テンプレート:**
-```markdown
-## 概要
-（何が起きたか）
+### PR Template
 
-## 再現手順
-1.
-2.
-3.
+GitHub上に設定済み（`.github/PULL_REQUEST_TEMPLATE.md`）:
+- CIチェックリスト（check, test, clippy, fmt）
+- QAレビュー確認欄
 
-## 期待される動作
-（本来どうなるべきか）
+### CODEOWNERS
 
-## 実際の動作
-（実際に何が起きたか）
-
-## 環境
-- RustPress バージョン:
-- OS:
-- ブラウザ:
-- 元WordPressテーマ:
-```
-
-**機能要望テンプレート:**
-```markdown
-## 概要
-（何が欲しいか）
-
-## 動機
-（なぜ必要か、どんな場面で使うか）
-
-## WordPress での動作
-（WordPressではどう動いているか、該当する場合）
-```
-
-## RustPress本体のクローン構成
-
-```bash
-# 各担当者の初期セットアップ
-git clone https://github.com/LegacyToRustProject/RustPress.git ~/RustPress-theme
-cd ~/RustPress-theme
-git checkout -b feat/theme-compat
-
-git clone https://github.com/LegacyToRustProject/RustPress.git ~/RustPress-api
-cd ~/RustPress-api
-git checkout -b feat/rest-api
-
-git clone https://github.com/LegacyToRustProject/RustPress.git ~/RustPress-security
-cd ~/RustPress-security
-git checkout -b feat/security-owasp
-
-git clone https://github.com/LegacyToRustProject/RustPress.git ~/RustPress-qa
-cd ~/RustPress-qa
-# QAはmainを見るだけ。ブランチ不要。
-```
-
-## 変換エンジンのクローン構成
-
-```bash
-# 各担当者が自分のリポジトリをクローン
-git clone https://github.com/LegacyToRustProject/php-to-rust.git ~/php-to-rust
-git clone https://github.com/LegacyToRustProject/cobol-to-rust.git ~/cobol-to-rust
-git clone https://github.com/LegacyToRustProject/cpp-to-rust.git ~/cpp-to-rust
-git clone https://github.com/LegacyToRustProject/java-to-rust.git ~/java-to-rust
-git clone https://github.com/LegacyToRustProject/perl-to-rust.git ~/perl-to-rust
-```
-
-変換エンジンもRustPress本体と同じルールで運用する:
-1. **mainに直接pushしない。** 必ずPR経由。
-2. **featureブランチで作業。** 例: `feat/next-iteration`
-3. **PRはQAレビュー + オーナー承認の2段階。**
-4. **mainは常にグリーン。** ビルド・テストが通らない状態にしない。
-5. **GitHub Actions CI** が全リポジトリに設定済み（check, test, fmt, clippy）。PRマージ前にCIグリーン必須。
+`.github/CODEOWNERS` で自動レビュアーを設定済み:
+- 全PR → QA #09 が自動アサイン
+- クレート別に担当者を指定

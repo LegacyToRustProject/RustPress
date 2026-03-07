@@ -37,24 +37,58 @@ docker-compose up -d
 ./tests/run_e2e.sh
 ```
 
-## How to Contribute
+## Workflow
 
-### Reporting Bugs
+### For Team Members (#01-#09)
 
+Each team member works in a **separate clone** of the repository:
+
+```bash
+git clone https://github.com/LegacyToRustProject/RustPress.git ~/RustPress-<role>
+cd ~/RustPress-<role>
+git checkout -b feat/<feature-name>
+```
+
+**Rules:**
+
+1. **Never push directly to `main`.** All changes go through PRs.
+2. **Work on feature branches.** e.g., `feat/theme-compat`, `fix/logout-session`
+3. **PRs require two approvals:** QA review (#09) + project owner.
+4. **`main` must always be green.** CI (check, test, fmt, clippy) must pass.
+5. **Pull before you test.** Always `git pull origin main` to get the latest code.
+
+### For External Contributors
+
+1. Fork the repository
+2. Create a branch from `main`
+3. Make your changes
+4. Ensure CI checks pass (see below)
+5. Submit a pull request using the PR template
+
+### CI Requirements
+
+All PRs must pass these checks before merge:
+
+```bash
+cargo check --workspace
+cargo test --workspace --lib --bins
+cargo clippy --workspace -- -D warnings
+cargo fmt --all -- --check
+```
+
+## Reporting Bugs
+
+- Use the [bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
 - Check existing issues first
 - Include steps to reproduce
 - If it's a WordPress parity issue, include the WordPress output for comparison
-- Screenshots or diff images are especially helpful for visual issues
 
-### Code Contributions
+## Feature Requests
 
-1. Create a branch from `main`
-2. Make your changes
-3. Run `cargo test --workspace` and ensure all tests pass
-4. Run `cargo clippy --workspace` and fix any warnings
-5. Submit a pull request
+- Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md)
+- Explain the motivation and WordPress behavior if applicable
 
-### WordPress Parity Testing
+## WordPress Parity Testing
 
 One of the most valuable contributions is testing RustPress against WordPress and reporting differences. If you find a page, API response, or behavior that doesn't match WordPress, please file an issue with:
 
@@ -63,14 +97,13 @@ One of the most valuable contributions is testing RustPress against WordPress an
 - RustPress output (screenshot or response body)
 - WordPress version and theme used
 
-### Areas Where Help is Needed
+## Areas Where Help is Needed
 
-- **Theme compatibility** — Testing more WordPress themes beyond TT25
-- **Plugin compatibility** — Identifying commonly-used plugin APIs to implement
-- **REST API parity** — Comparing response formats with WordPress
-- **CSS/visual parity** — Finding and fixing rendering differences
-- **Performance benchmarks** — Testing under various workloads
-- **Documentation** — Setup guides, architecture docs, API docs
+- **Theme compatibility** - Testing more WordPress themes beyond TT25
+- **Plugin compatibility** - Identifying commonly-used plugin APIs to implement
+- **REST API parity** - Comparing response formats with WordPress
+- **CSS/visual parity** - Finding and fixing rendering differences
+- **Performance benchmarks** - Testing under various workloads
 
 ## Code Style
 
@@ -82,18 +115,20 @@ One of the most valuable contributions is testing RustPress against WordPress an
 
 ## Crate Structure
 
-Each crate has a specific responsibility. When adding features, put code in the appropriate crate:
+Each crate has a specific responsibility. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture overview.
 
-- `rustpress-server` — HTTP routes, middleware, server startup
-- `rustpress-db` — Database entities, queries, options
-- `rustpress-api` — REST API endpoints (WP v2 compatible)
-- `rustpress-admin` — Admin dashboard backend
-- `rustpress-auth` — Authentication, sessions, RBAC
-- `rustpress-themes` — Template rendering, template tags
-- `rustpress-plugins` — Plugin loading and execution
-- `rustpress-cache` — Caching layers
-- `rustpress-query` — WP_Query-style query building
-- `rustpress-e2e` — End-to-end tests
+| Crate | Role |
+|-------|------|
+| `rustpress-server` | HTTP routes, middleware, server startup |
+| `rustpress-db` | Database entities, queries, options |
+| `rustpress-api` | REST API endpoints (WP v2 compatible) |
+| `rustpress-admin` | Admin dashboard backend |
+| `rustpress-auth` | Authentication, sessions, RBAC |
+| `rustpress-themes` | Template rendering, template tags |
+| `rustpress-plugins` | Plugin loading and execution |
+| `rustpress-cache` | Caching layers |
+| `rustpress-query` | WP_Query-style query building |
+| `rustpress-e2e` | End-to-end tests |
 
 ## License
 

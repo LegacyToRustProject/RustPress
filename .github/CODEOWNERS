@@ -1,0 +1,9 @@
+# Default: QA reviews all PRs
+* @qa-09
+
+# Crate-specific ownership
+crates/rustpress-themes/ @dev-01
+crates/rustpress-api/ @dev-02
+crates/rustpress-security/ @dev-03
+crates/rustpress-auth/ @dev-03
+templates/ @dev-01
