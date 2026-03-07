@@ -14,7 +14,10 @@ pub use checkout::{CheckoutError, CheckoutProcessor, CheckoutRequest, CheckoutRe
 pub use coupon::{Coupon, CouponManager, DiscountResult, DiscountType};
 pub use inventory::{InventoryManager, StockAdjustment, StockAdjustmentReason, StockReservation};
 pub use order::{Address, Order, OrderItem, OrderManager, OrderStatus};
-pub use payment::{MockGateway, PaymentGateway, PaymentManager, PaymentResult};
+pub use payment::{
+    MockGateway, PayPalProvider, PaymentError, PaymentGateway, PaymentManager, PaymentProvider,
+    PaymentResult, StripeProvider,
+};
 pub use product::{
     Dimensions, Product, ProductAttribute, ProductCatalog, ProductVariation, StockStatus,
 };

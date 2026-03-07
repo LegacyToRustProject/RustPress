@@ -12,9 +12,11 @@ pub mod login_protection;
 pub mod rate_limiter;
 pub mod scanner;
 pub mod waf;
+pub mod wordfence_compat;
 
 pub use headers::SecurityHeaders;
 pub use login_protection::LoginProtection;
 pub use rate_limiter::{RateLimitResult, RateLimiter};
 pub use scanner::{CheckStatus, SecurityCheck, SecurityScanner};
 pub use waf::{WafAction, WafEngine, WafResult, WafRule};
+pub use wordfence_compat::WordfenceSettings;

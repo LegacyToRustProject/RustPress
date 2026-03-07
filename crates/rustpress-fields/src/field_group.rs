@@ -255,6 +255,13 @@ impl FieldGroupRegistry {
         self.groups.is_empty()
     }
 
+    /// Returns all registered field groups, sorted by menu_order.
+    pub fn all_groups(&self) -> Vec<&FieldGroup> {
+        let mut groups: Vec<&FieldGroup> = self.groups.values().collect();
+        groups.sort_by_key(|g| g.menu_order);
+        groups
+    }
+
     /// Removes a field group by key, returning it if it existed.
     pub fn unregister_group(&mut self, key: &str) -> Option<FieldGroup> {
         self.groups.remove(key)

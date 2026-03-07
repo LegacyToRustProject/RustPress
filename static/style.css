@@ -287,7 +287,6 @@ h6 {
 
 .alignfull {
 	max-width: none;
-	width: 100%;
 }
 
 /* Compound layout classes (WordPress generates these per-block) */

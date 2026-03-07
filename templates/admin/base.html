@@ -87,6 +87,35 @@
             </a>
             {% endif %}
             <div class="menu-sep"></div>
+            {% if can_manage_options | default(value=true) %}
+            <a href="/wp-admin/edit.php?post_type=product" class="menu-item {% if active_page == 'wc-products' %}active{% endif %}">
+                <span class="dashicons dashicons-cart"></span>
+                <span>WooCommerce</span>
+            </a>
+            <a href="/wp-admin/edit.php?post_type=product" class="menu-item submenu-item {% if active_page == 'wc-products' %}active{% endif %}">
+                <span>Products</span>
+            </a>
+            <a href="/wp-admin/edit.php?post_type=shop_order" class="menu-item submenu-item {% if active_page == 'wc-orders' %}active{% endif %}">
+                <span>Orders</span>
+            </a>
+            <a href="/wp-admin/admin-seo.php" class="menu-item {% if active_page == 'seo' %}active{% endif %}">
+                <span class="dashicons dashicons-chart-area"></span>
+                <span>SEO</span>
+            </a>
+            <a href="/wp-admin/admin-acf.php" class="menu-item {% if active_page == 'acf' %}active{% endif %}">
+                <span class="dashicons dashicons-welcome-widgets-menus"></span>
+                <span>Custom Fields</span>
+            </a>
+            <a href="/wp-admin/admin-cf7.php" class="menu-item {% if active_page == 'cf7' %}active{% endif %}">
+                <span class="dashicons dashicons-email"></span>
+                <span>Contact Forms</span>
+            </a>
+            <a href="/wp-admin/admin-security.php" class="menu-item {% if active_page == 'security' %}active{% endif %}">
+                <span class="dashicons dashicons-shield"></span>
+                <span>Security</span>
+            </a>
+            {% endif %}
+            <div class="menu-sep"></div>
             {% if can_list_users | default(value=true) %}
             <a href="/wp-admin/users.php" class="menu-item {% if active_page == 'users' %}active{% endif %}">
                 <span class="dashicons dashicons-admin-users"></span>
@@ -100,6 +129,13 @@
             <a href="/wp-admin/tools.php" class="menu-item {% if active_page == 'tools' %}active{% endif %}">
                 <span class="dashicons dashicons-admin-tools"></span>
                 <span>{{ __( key="Tools") }}</span>
+            </a>
+            <a href="/wp-admin/network.php" class="menu-item {% if active_page == 'network' %}active{% endif %}">
+                <span class="dashicons dashicons-admin-multisite"></span>
+                <span>Network</span>
+            </a>
+            <a href="/wp-admin/customize.php" class="menu-item submenu-item {% if active_page == 'customizer' %}active{% endif %}">
+                <span>Customize</span>
             </a>
             <a href="/wp-admin/options-general.php" class="menu-item {% if active_page == 'settings' %}active{% endif %}">
                 <span class="dashicons dashicons-admin-settings"></span>

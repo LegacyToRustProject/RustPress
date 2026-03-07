@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use tracing::trace;
 
@@ -22,6 +23,11 @@ struct FilterEntry {
     priority: i32,
 }
 
+// Thread-local storage for the currently executing filter tag.
+thread_local! {
+    static CURRENT_FILTER: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
+}
+
 /// WordPress-compatible hook registry.
 ///
 /// Provides `add_action`/`do_action` for side effects and
@@ -34,6 +40,8 @@ struct FilterEntry {
 pub struct HookRegistry {
     actions: Arc<RwLock<BTreeMap<String, Vec<ActionEntry>>>>,
     filters: Arc<RwLock<BTreeMap<String, Vec<FilterEntry>>>>,
+    /// Counter tracking how many times each action has been fired.
+    action_counts: Arc<RwLock<HashMap<String, usize>>>,
 }
 
 impl HookRegistry {
@@ -56,6 +64,12 @@ impl HookRegistry {
     ///
     /// Equivalent to WordPress `do_action($tag, $args...)`.
     pub fn do_action(&self, tag: &str, args: &Value) {
+        // Increment action fire counter
+        {
+            let mut counts = self.action_counts.write().expect("hook lock poisoned");
+            *counts.entry(tag.to_string()).or_insert(0) += 1;
+        }
+
         let actions = self.actions.read().expect("hook lock poisoned");
         if let Some(entries) = actions.get(tag) {
             trace!(tag, count = entries.len(), "executing actions");
@@ -81,8 +95,12 @@ impl HookRegistry {
     /// Each filter receives the output of the previous filter (pipeline).
     /// Equivalent to WordPress `apply_filters($tag, $value, $args...)`.
     pub fn apply_filters(&self, tag: &str, value: Value) -> Value {
+        // Save previous filter and set current
+        let previous = CURRENT_FILTER.with(|cf| cf.borrow().clone());
+        CURRENT_FILTER.with(|cf| *cf.borrow_mut() = Some(tag.to_string()));
+
         let filters = self.filters.read().expect("hook lock poisoned");
-        if let Some(entries) = filters.get(tag) {
+        let result = if let Some(entries) = filters.get(tag) {
             trace!(tag, count = entries.len(), "applying filters");
             let mut result = value;
             for entry in entries {
@@ -91,7 +109,12 @@ impl HookRegistry {
             result
         } else {
             value
-        }
+        };
+
+        // Restore previous filter
+        CURRENT_FILTER.with(|cf| *cf.borrow_mut() = previous);
+
+        result
     }
 
     /// Check if any actions are registered for the given tag.
@@ -116,6 +139,36 @@ impl HookRegistry {
     pub fn remove_all_filters(&self, tag: &str) {
         let mut filters = self.filters.write().expect("hook lock poisoned");
         filters.remove(tag);
+    }
+
+    /// Register an action callback with DEFAULT_PRIORITY (10).
+    ///
+    /// Convenience wrapper around `add_action` for the common case.
+    pub fn add_action_default(&self, tag: &str, callback: ActionCallback) {
+        self.add_action(tag, callback, DEFAULT_PRIORITY);
+    }
+
+    /// Register a filter callback with DEFAULT_PRIORITY (10).
+    ///
+    /// Convenience wrapper around `add_filter` for the common case.
+    pub fn add_filter_default(&self, tag: &str, callback: FilterCallback) {
+        self.add_filter(tag, callback, DEFAULT_PRIORITY);
+    }
+
+    /// Returns the tag of the currently executing filter, if any.
+    ///
+    /// Uses thread-local storage so it works correctly even when
+    /// filters are applied concurrently on different threads.
+    pub fn current_filter() -> Option<String> {
+        CURRENT_FILTER.with(|cf| cf.borrow().clone())
+    }
+
+    /// Returns how many times the given action has been fired.
+    ///
+    /// Equivalent to WordPress `did_action($tag)`.
+    pub fn did_action(&self, tag: &str) -> usize {
+        let counts = self.action_counts.read().expect("hook lock poisoned");
+        counts.get(tag).copied().unwrap_or(0)
     }
 }
 

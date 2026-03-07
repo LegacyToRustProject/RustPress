@@ -480,13 +480,35 @@ pub fn insert_posts_context(
     posts: &[PostTemplateData],
     pagination: &PaginationData,
 ) {
+    insert_posts_context_with_hooks(context, posts, pagination, None);
+}
+
+/// Insert posts into context with optional HookRegistry integration.
+///
+/// When hooks are provided, applies `the_content`, `the_title`, and
+/// `the_excerpt` filters through the HookRegistry so plugins can
+/// modify post data in list views.
+pub fn insert_posts_context_with_hooks(
+    context: &mut Context,
+    posts: &[PostTemplateData],
+    pagination: &PaginationData,
+    hooks: Option<&rustpress_core::hooks::HookRegistry>,
+) {
     // Apply content filters to each post (strip block comments, add layout classes, etc.)
     let processed_posts: Vec<PostTemplateData> = posts
         .iter()
         .map(|post| {
             let mut p = post.clone();
-            p.content = super::formatting::apply_content_filters(&p.content);
-            p.title = super::formatting::apply_title_filters(&p.title);
+            if let Some(h) = hooks {
+                p.content = super::formatting::apply_content_filters_with_hooks(&p.content, h);
+                p.title = super::formatting::apply_title_filters_with_hooks(&p.title, h);
+                if !p.excerpt.is_empty() {
+                    p.excerpt = super::formatting::apply_excerpt_filters_with_hooks(&p.excerpt, h);
+                }
+            } else {
+                p.content = super::formatting::apply_content_filters(&p.content);
+                p.title = super::formatting::apply_title_filters(&p.title);
+            }
             p
         })
         .collect();

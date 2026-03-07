@@ -481,6 +481,124 @@ fn find_tag_end(chars: &[char], start: usize) -> Option<usize> {
     None
 }
 
+/// WordPress-compatible convert_smilies: converts text emoticons to emoji characters.
+///
+/// Replaces common emoticon sequences like :-) :) :D etc. with Unicode emoji.
+/// WordPress uses image-based smilies; we use Unicode for simplicity.
+pub fn convert_smilies(text: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+
+    // Only process text nodes (skip HTML tags)
+    let tokens = tokenize_html(text);
+    let mut result = String::with_capacity(text.len());
+
+    for token in &tokens {
+        match token {
+            HtmlToken::Tag(tag) => result.push_str(tag),
+            HtmlToken::Text(t) => {
+                let mut s = t.clone();
+                s = s.replace(":-))", "\u{1F600}"); // must come before :-)
+                s = s.replace(":-)", "\u{1F642}");
+                s = s.replace(":)", "\u{1F642}");
+                s = s.replace(":-(", "\u{1F641}");
+                s = s.replace(":(", "\u{1F641}");
+                s = s.replace(":-D", "\u{1F603}");
+                s = s.replace(":D", "\u{1F603}");
+                s = s.replace(";-)", "\u{1F609}");
+                s = s.replace(";)", "\u{1F609}");
+                s = s.replace(":-P", "\u{1F61B}");
+                s = s.replace(":P", "\u{1F61B}");
+                s = s.replace(":-|", "\u{1F610}");
+                s = s.replace(":|", "\u{1F610}");
+                s = s.replace(":-O", "\u{1F62E}");
+                s = s.replace(":O", "\u{1F62E}");
+                s = s.replace("8-)", "\u{1F60E}");
+                s = s.replace("8)", "\u{1F60E}");
+                result.push_str(&s);
+            }
+        }
+    }
+
+    result
+}
+
+/// WordPress-compatible convert_chars: converts certain characters to HTML entities.
+///
+/// Converts ampersands that are not part of existing entities, and
+/// fixes other character encoding edge cases.
+pub fn convert_chars(text: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+
+    let mut result = text.to_string();
+
+    // Convert bare & to &amp; (but not already-encoded entities)
+    let re_amp = Regex::new(r"&(?!#?\w+;)").unwrap();
+    result = re_amp.replace_all(&result, "&amp;").to_string();
+
+    // Convert lone < that aren't part of tags
+    // This is a simplified version; WordPress has more complex logic
+    result
+}
+
+/// WordPress-compatible shortcode_unautop: removes <p> tags wrapping shortcodes.
+///
+/// When wpautop runs before shortcodes, it may wrap shortcodes in <p> tags.
+/// This function removes those extraneous paragraph wrappers.
+pub fn shortcode_unautop(text: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+
+    let re = Regex::new(r"<p>\s*(\[/?[^\]]+\])\s*</p>").unwrap();
+    re.replace_all(text, "$1").to_string()
+}
+
+/// WordPress-compatible wp_trim_excerpt: generates an excerpt from content.
+///
+/// If the excerpt is empty, generates one from the content by stripping
+/// HTML, shortcodes, and truncating to 55 words with a [...] suffix.
+pub fn wp_trim_excerpt(text: &str) -> String {
+    if text.is_empty() {
+        return String::new();
+    }
+
+    let mut result = text.to_string();
+
+    // Strip shortcodes
+    let re_shortcode = Regex::new(r"\[/?[^\]]+\]").unwrap();
+    result = re_shortcode.replace_all(&result, "").to_string();
+
+    // Strip HTML tags
+    result = strip_html_simple(&result);
+
+    // Trim to 55 words (WordPress default excerpt length)
+    let words: Vec<&str> = result.split_whitespace().collect();
+    if words.len() > 55 {
+        result = format!("{} [&hellip;]", words[..55].join(" "));
+    }
+
+    result
+}
+
+/// Simple HTML tag stripper for excerpt generation.
+fn strip_html_simple(html: &str) -> String {
+    let mut result = String::with_capacity(html.len());
+    let mut in_tag = false;
+    for ch in html.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    result
+}
+
 /// Apply the full WordPress content filter pipeline.
 ///
 /// This is equivalent to WordPress's `apply_filters('the_content', $content)`.

@@ -4,6 +4,7 @@
 //! CustomHTML, Meta, RecentComments), widget areas (sidebars), and
 //! persistence via `wp_options` as JSON under the key `widget_config`.
 
+use chrono::Datelike;
 use rustpress_db::options::OptionsManager;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
@@ -45,6 +46,12 @@ pub enum WidgetType {
         title: String,
         count: u32,
     },
+    Calendar {
+        title: String,
+    },
+    TagCloud {
+        title: String,
+    },
 }
 
 impl WidgetType {
@@ -59,6 +66,8 @@ impl WidgetType {
             WidgetType::CustomHTML { .. } => "CustomHTML",
             WidgetType::Meta { .. } => "Meta",
             WidgetType::RecentComments { .. } => "RecentComments",
+            WidgetType::Calendar { .. } => "Calendar",
+            WidgetType::TagCloud { .. } => "TagCloud",
         }
     }
 
@@ -72,7 +81,9 @@ impl WidgetType {
             | WidgetType::Text { title, .. }
             | WidgetType::CustomHTML { title, .. }
             | WidgetType::Meta { title, .. }
-            | WidgetType::RecentComments { title, .. } => title,
+            | WidgetType::RecentComments { title, .. }
+            | WidgetType::Calendar { title, .. }
+            | WidgetType::TagCloud { title, .. } => title,
         }
     }
 }
@@ -165,6 +176,16 @@ pub const AVAILABLE_WIDGETS: &[AvailableWidget] = &[
         type_key: "RecentComments",
         label: "Recent Comments",
         description: "Your site's most recent comments.",
+    },
+    AvailableWidget {
+        type_key: "Calendar",
+        label: "Calendar",
+        description: "A calendar of your site's posts.",
+    },
+    AvailableWidget {
+        type_key: "TagCloud",
+        label: "Tag Cloud",
+        description: "A cloud of your most used tags.",
     },
 ];
 
@@ -299,6 +320,8 @@ async fn render_single_widget(
         WidgetType::RecentComments { title, count } => {
             render_recent_comments(title, *count, db).await
         }
+        WidgetType::Calendar { title } => render_calendar(title, db).await,
+        WidgetType::TagCloud { title } => render_tag_cloud(title, db).await,
     }
 }
 
@@ -575,6 +598,136 @@ async fn render_recent_comments(
     }
 
     html.push_str("</ul>");
+    html
+}
+
+async fn render_calendar(title: &str, db: &DatabaseConnection) -> String {
+    let display_title = if title.is_empty() { "Calendar" } else { title };
+
+    // Get current year/month
+    let now = chrono::Utc::now();
+    let year = now.format("%Y").to_string();
+    let month = now.format("%m").to_string();
+    let month_name = now.format("%B %Y").to_string();
+
+    // Get days with posts this month
+    use sea_orm::{ConnectionTrait, Statement};
+    let sql = format!(
+        "SELECT DAY(post_date) AS d FROM wp_posts WHERE post_type='post' AND post_status='publish' AND YEAR(post_date)={} AND MONTH(post_date)={} GROUP BY d",
+        year, month
+    );
+    let mut post_days: std::collections::HashSet<u32> = std::collections::HashSet::new();
+    if let Ok(rows) = db
+        .query_all(Statement::from_string(
+            sea_orm::DatabaseBackend::MySql,
+            sql,
+        ))
+        .await
+    {
+        for row in &rows {
+            if let Ok(d) = row.try_get::<i32>("", "d") {
+                post_days.insert(d as u32);
+            }
+        }
+    }
+
+    let mut html = format!(
+        "<h3 class=\"widget-title\">{}</h3>\n<table class=\"wp-calendar\"><caption>{}</caption>\n<thead><tr><th>M</th><th>T</th><th>W</th><th>T</th><th>F</th><th>S</th><th>S</th></tr></thead>\n<tbody>\n",
+        escape_html(display_title),
+        escape_html(&month_name)
+    );
+
+    // Simple calendar grid
+    let y: i32 = year.parse().unwrap_or(2026);
+    let m: u32 = month.parse().unwrap_or(1);
+    let first_day = chrono::NaiveDate::from_ymd_opt(y, m, 1).unwrap_or(chrono::NaiveDate::from_ymd_opt(2026, 1, 1).unwrap());
+    let days_in_month = if m == 12 {
+        chrono::NaiveDate::from_ymd_opt(y + 1, 1, 1)
+    } else {
+        chrono::NaiveDate::from_ymd_opt(y, m + 1, 1)
+    }
+    .unwrap_or(first_day)
+    .signed_duration_since(first_day)
+    .num_days() as u32;
+
+    // Monday=0 in iso_weekday (1=Mon in chrono)
+    let start_weekday = first_day.weekday().num_days_from_monday();
+
+    html.push_str("<tr>");
+    for _ in 0..start_weekday {
+        html.push_str("<td>&nbsp;</td>");
+    }
+    let mut col = start_weekday;
+    for day in 1..=days_in_month {
+        if col == 7 {
+            html.push_str("</tr>\n<tr>");
+            col = 0;
+        }
+        if post_days.contains(&day) {
+            html.push_str(&format!(
+                "<td><a href=\"/{}/{:02}/{:02}/\">{}</a></td>",
+                year, m, day, day
+            ));
+        } else {
+            html.push_str(&format!("<td>{}</td>", day));
+        }
+        col += 1;
+    }
+    while col < 7 {
+        html.push_str("<td>&nbsp;</td>");
+        col += 1;
+    }
+    html.push_str("</tr>\n</tbody></table>");
+    html
+}
+
+async fn render_tag_cloud(title: &str, db: &DatabaseConnection) -> String {
+    let display_title = if title.is_empty() { "Tag Cloud" } else { title };
+
+    let tt_records = wp_term_taxonomy::Entity::find()
+        .filter(wp_term_taxonomy::Column::Taxonomy.eq("post_tag"))
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    let term_ids: Vec<u64> = tt_records.iter().filter(|tt| tt.count > 0).map(|tt| tt.term_id).collect();
+    if term_ids.is_empty() {
+        return format!(
+            "<h3 class=\"widget-title\">{}</h3>\n<p>No tags found.</p>",
+            escape_html(display_title)
+        );
+    }
+
+    let terms = wp_terms::Entity::find()
+        .filter(wp_terms::Column::TermId.is_in(term_ids.clone()))
+        .order_by_asc(wp_terms::Column::Name)
+        .all(db)
+        .await
+        .unwrap_or_default();
+
+    let count_map: std::collections::HashMap<u64, i64> = tt_records
+        .iter()
+        .map(|tt| (tt.term_id, tt.count))
+        .collect();
+
+    let max_count = count_map.values().copied().max().unwrap_or(1) as f64;
+
+    let mut html = format!(
+        "<h3 class=\"widget-title\">{}</h3>\n<div class=\"tagcloud\">\n",
+        escape_html(display_title)
+    );
+    for t in &terms {
+        let cnt = count_map.get(&t.term_id).copied().unwrap_or(0) as f64;
+        // Scale font size between 0.8em and 1.8em
+        let size = 0.8 + (cnt / max_count) * 1.0;
+        html.push_str(&format!(
+            "<a href=\"/tag/{}\" style=\"font-size:{:.1}em\">{}</a> \n",
+            escape_html(&t.slug),
+            size,
+            escape_html(&t.name)
+        ));
+    }
+    html.push_str("</div>");
     html
 }
 

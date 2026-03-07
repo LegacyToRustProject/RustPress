@@ -15,7 +15,7 @@ use std::sync::Arc;
 use rustpress_db::entities::{wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_users};
 use rustpress_themes::hierarchy::PageType;
 use rustpress_themes::tags::{
-    insert_post_context_full, insert_posts_context,
+    insert_post_context_full, insert_posts_context_with_hooks,
     PaginationData, PostTemplateData,
 };
 
@@ -363,7 +363,7 @@ async fn front_page(
         posts = combined;
     }
 
-    insert_posts_context(&mut context, &posts, &pagination);
+    insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     let result = render_theme_page(&state, &PageType::FrontPage, &context).await?;
 
     // Store in cache
@@ -445,7 +445,7 @@ async fn front_page_or_query(
             .collect();
         drop(rewrite);
         let pagination = rustpress_themes::tags::PaginationData::new(1, 1, results.len() as u64);
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
         return conv(render_theme_page(&state, &rustpress_themes::hierarchy::PageType::Search, &context).await);
     }
 
@@ -465,7 +465,7 @@ async fn front_page_or_query(
         };
         context.insert("term_name", &proper_name);
         context.insert("archive_title", &format!("Category: {}", proper_name));
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
         return conv(render_theme_page(
             &state,
             &rustpress_themes::hierarchy::PageType::Category { slug, id: term_id },
@@ -483,7 +483,7 @@ async fn front_page_or_query(
         let term_name = tag_slug.replace('-', " ");
         context.insert("term_name", &term_name);
         context.insert("archive_title", &format!("Tag: {}", term_name));
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
         return conv(render_theme_page(
             &state,
             &rustpress_themes::hierarchy::PageType::Tag { slug: tag_slug, id: term_id },
@@ -519,7 +519,7 @@ async fn front_page_or_query(
             Ok(v) => v,
             Err(e) => return conv(Err(e)),
         };
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
         return conv(render_theme_page(&state, &PageType::Home, &context).await);
     }
 
@@ -559,7 +559,7 @@ async fn paginated_home(
     let page = if num == 0 { 1 } else { num };
     let mut context = build_base_context(&state).await;
     let (posts, pagination) = get_posts_page(&state, page).await?;
-    insert_posts_context(&mut context, &posts, &pagination);
+    insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     render_theme_page(&state, &PageType::Home, &context).await
 }
 
@@ -780,7 +780,7 @@ async fn search_page(
     if search_term.is_empty() {
         let posts: Vec<PostTemplateData> = vec![];
         let pagination = PaginationData::new(1, 1, 0);
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     } else {
         let like_term = format!("%{}%", search_term);
         let models = wp_posts::Entity::find()
@@ -805,7 +805,7 @@ async fn search_page(
         drop(rewrite);
         let total = posts.len() as u64;
         let pagination = PaginationData::new(1, 1, total);
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     }
 
     render_theme_page(&state, &PageType::Search, &context).await
@@ -821,10 +821,17 @@ async fn category_archive(
     let (posts, pagination, term_id) =
         taxonomy_posts(&state, &slug, "category", params.page.unwrap_or(1)).await?;
 
-    let term_name = slug.replace('-', " ");
+    let term_name = wp_terms::Entity::find()
+        .filter(wp_terms::Column::Slug.eq(&slug))
+        .one(&state.db)
+        .await
+        .ok()
+        .flatten()
+        .map(|t| t.name)
+        .unwrap_or_else(|| slug.replace('-', " "));
     context.insert("term_name", &term_name);
     context.insert("archive_title", &format!("Category: {}", term_name));
-    insert_posts_context(&mut context, &posts, &pagination);
+    insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
 
     render_theme_page(
         &state,
@@ -847,10 +854,17 @@ async fn tag_archive(
     let (posts, pagination, term_id) =
         taxonomy_posts(&state, &slug, "post_tag", params.page.unwrap_or(1)).await?;
 
-    let term_name = slug.replace('-', " ");
+    let term_name = wp_terms::Entity::find()
+        .filter(wp_terms::Column::Slug.eq(&slug))
+        .one(&state.db)
+        .await
+        .ok()
+        .flatten()
+        .map(|t| t.name)
+        .unwrap_or_else(|| slug.replace('-', " "));
     context.insert("term_name", &term_name);
     context.insert("archive_title", &format!("Tag: {}", term_name));
-    insert_posts_context(&mut context, &posts, &pagination);
+    insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
 
     render_theme_page(
         &state,
@@ -911,11 +925,11 @@ async fn author_archive(
             .collect();
         drop(rewrite);
         let pagination = PaginationData::new(page, total_pages, total);
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     } else {
         let posts: Vec<PostTemplateData> = vec![];
         let pagination = PaginationData::new(1, 1, 0);
-        insert_posts_context(&mut context, &posts, &pagination);
+        insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     }
 
     render_theme_page(
@@ -1255,7 +1269,7 @@ async fn year_archive_page(
         .collect();
     drop(rewrite);
     let pagination = PaginationData::new(page, total_pages, total);
-    insert_posts_context(&mut context, &posts, &pagination);
+    insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
 
     render_theme_page(state, &PageType::DateArchive, &context).await
 }
@@ -1333,7 +1347,7 @@ async fn month_archive(
         .collect();
     drop(rewrite);
     let pagination = PaginationData::new(page, total_pages, total);
-    insert_posts_context(&mut context, &posts, &pagination);
+    insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
 
     render_theme_page(&state, &PageType::DateArchive, &context).await
 }
@@ -1404,7 +1418,7 @@ async fn day_archive(
         .collect();
     drop(rewrite);
     let pagination = PaginationData::new(page, total_pages, total);
-    insert_posts_context(&mut context, &posts, &pagination);
+    insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
 
     render_theme_page(&state, &PageType::DateArchive, &context).await
 }
@@ -2182,6 +2196,12 @@ async fn wp_login_post(
             "subscriber".to_string()
         }
     };
+
+    // Fire wp_login action
+    state.hooks.do_action("wp_login", &serde_json::json!({
+        "user_login": user.user_login,
+        "user_id": user.id
+    }));
 
     // Create session
     let session = state.sessions.create_session(user.id, &user.user_login, &role).await;

@@ -77,6 +77,175 @@ impl PaymentGateway for MockGateway {
     }
 }
 
+/// Errors that can occur during payment processing.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PaymentError {
+    /// The payment was declined by the provider.
+    Declined { reason: String },
+    /// Network or communication error with the provider.
+    NetworkError { message: String },
+    /// Invalid payment details (e.g., expired card).
+    InvalidDetails { message: String },
+    /// The payment provider is not configured or unavailable.
+    ProviderUnavailable { provider: String },
+    /// Generic / unexpected error.
+    InternalError { message: String },
+}
+
+impl std::fmt::Display for PaymentError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PaymentError::Declined { reason } => write!(f, "Payment declined: {}", reason),
+            PaymentError::NetworkError { message } => write!(f, "Network error: {}", message),
+            PaymentError::InvalidDetails { message } => write!(f, "Invalid details: {}", message),
+            PaymentError::ProviderUnavailable { provider } => {
+                write!(f, "Provider unavailable: {}", provider)
+            }
+            PaymentError::InternalError { message } => write!(f, "Internal error: {}", message),
+        }
+    }
+}
+
+impl std::error::Error for PaymentError {}
+
+/// Trait for payment providers that process payments by amount and currency.
+pub trait PaymentProvider: Send + Sync {
+    fn process_payment(
+        &self,
+        amount: f64,
+        currency: &str,
+        metadata: HashMap<String, String>,
+    ) -> Result<PaymentResult, PaymentError>;
+}
+
+/// Stub Stripe payment provider. Always returns success.
+pub struct StripeProvider {
+    pub api_key: String,
+}
+
+impl StripeProvider {
+    pub fn new(api_key: &str) -> Self {
+        Self {
+            api_key: api_key.to_string(),
+        }
+    }
+}
+
+impl PaymentProvider for StripeProvider {
+    fn process_payment(
+        &self,
+        amount: f64,
+        currency: &str,
+        _metadata: HashMap<String, String>,
+    ) -> Result<PaymentResult, PaymentError> {
+        tracing::info!(
+            amount = amount,
+            currency = currency,
+            "Stripe stub: processing payment"
+        );
+        Ok(PaymentResult {
+            success: true,
+            transaction_id: Some(format!("stripe_ch_{}", uuid::Uuid::new_v4().as_simple())),
+            redirect_url: None,
+            message: format!("Stripe payment of {:.2} {} processed successfully (stub)", amount, currency),
+        })
+    }
+}
+
+impl PaymentGateway for StripeProvider {
+    fn id(&self) -> &str {
+        "stripe"
+    }
+    fn title(&self) -> &str {
+        "Credit Card (Stripe)"
+    }
+    fn description(&self) -> &str {
+        "Pay with your credit card via Stripe."
+    }
+    fn process_payment(&self, order: &Order) -> PaymentResult {
+        let mut metadata = HashMap::new();
+        metadata.insert("order_id".to_string(), order.id.to_string());
+        metadata.insert("order_number".to_string(), order.order_number.clone());
+        match PaymentProvider::process_payment(self, order.total, "USD", metadata) {
+            Ok(result) => result,
+            Err(e) => PaymentResult {
+                success: false,
+                transaction_id: None,
+                redirect_url: None,
+                message: e.to_string(),
+            },
+        }
+    }
+    fn supports_refund(&self) -> bool {
+        true
+    }
+}
+
+/// Stub PayPal payment provider. Always returns success.
+pub struct PayPalProvider {
+    pub client_id: String,
+    pub client_secret: String,
+}
+
+impl PayPalProvider {
+    pub fn new(client_id: &str, client_secret: &str) -> Self {
+        Self {
+            client_id: client_id.to_string(),
+            client_secret: client_secret.to_string(),
+        }
+    }
+}
+
+impl PaymentProvider for PayPalProvider {
+    fn process_payment(
+        &self,
+        amount: f64,
+        currency: &str,
+        _metadata: HashMap<String, String>,
+    ) -> Result<PaymentResult, PaymentError> {
+        tracing::info!(
+            amount = amount,
+            currency = currency,
+            "PayPal stub: processing payment"
+        );
+        Ok(PaymentResult {
+            success: true,
+            transaction_id: Some(format!("PAYPAL-{}", uuid::Uuid::new_v4().as_simple().to_string()[..12].to_uppercase())),
+            redirect_url: Some("https://www.sandbox.paypal.com/checkout".to_string()),
+            message: format!("PayPal payment of {:.2} {} processed successfully (stub)", amount, currency),
+        })
+    }
+}
+
+impl PaymentGateway for PayPalProvider {
+    fn id(&self) -> &str {
+        "paypal"
+    }
+    fn title(&self) -> &str {
+        "PayPal"
+    }
+    fn description(&self) -> &str {
+        "Pay securely with your PayPal account."
+    }
+    fn process_payment(&self, order: &Order) -> PaymentResult {
+        let mut metadata = HashMap::new();
+        metadata.insert("order_id".to_string(), order.id.to_string());
+        metadata.insert("order_number".to_string(), order.order_number.clone());
+        match PaymentProvider::process_payment(self, order.total, "USD", metadata) {
+            Ok(result) => result,
+            Err(e) => PaymentResult {
+                success: false,
+                transaction_id: None,
+                redirect_url: None,
+                message: e.to_string(),
+            },
+        }
+    }
+    fn supports_refund(&self) -> bool {
+        true
+    }
+}
+
 /// Manages registered payment gateways.
 pub struct PaymentManager {
     gateways: HashMap<String, Box<dyn PaymentGateway>>,

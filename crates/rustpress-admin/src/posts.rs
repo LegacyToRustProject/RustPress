@@ -194,6 +194,14 @@ async fn create_post(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
+    // Fire save_post action
+    state.hooks.do_action("save_post", &serde_json::json!({
+        "post_id": result.id,
+        "post_type": result.post_type,
+        "post_status": result.post_status,
+        "is_new": true
+    }));
+
     Ok((StatusCode::CREATED, Json(PostResponse::from(result))))
 }
 
@@ -230,6 +238,14 @@ async fn update_post(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
+    // Fire save_post action
+    state.hooks.do_action("save_post", &serde_json::json!({
+        "post_id": updated.id,
+        "post_type": updated.post_type,
+        "post_status": updated.post_status,
+        "is_new": false
+    }));
+
     Ok(Json(PostResponse::from(updated)))
 }
 
@@ -237,6 +253,11 @@ async fn delete_post(
     State(state): State<AdminState>,
     Path(id): Path<u64>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    // Fire delete_post action before deletion
+    state.hooks.do_action("delete_post", &serde_json::json!({
+        "post_id": id
+    }));
+
     // Move to trash instead of hard delete
     let post = wp_posts::Entity::find_by_id(id)
         .one(&state.db)

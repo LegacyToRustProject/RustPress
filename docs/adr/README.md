@@ -1,24 +1,26 @@
 # Architecture Decision Records (ADR)
 
 RustPressプロジェクトにおける重要なアーキテクチャ決定を記録する。
+Documents important architectural decisions in the RustPress project.
 
-## ADR一覧
+## ADR一覧 / ADR List
 
-| # | タイトル | ステータス | 日付 |
-|---|---------|----------|------|
-| [001](001-php-bridge-mode.md) | PHP Bridge Mode の採否 | 検討中 | 2026-03-07 |
+| # | Title | Status | Date | Language |
+|---|-------|--------|------|----------|
+| [001](001-php-bridge-mode.md) | PHP Bridge Mode の採否 | 承認 | 2026-03-07 | JP |
+| [001 (EN)](001-php-bridge-mode.en.md) | PHP Bridge Mode and Plugin Compatibility Strategy | Accepted | 2026-03-07 | EN |
 
-## ADRとは
+## ADRとは / What is ADR
 
 Architecture Decision Records (ADR) は、ソフトウェアアーキテクチャに関する重要な決定と、その決定に至った経緯・根拠を記録するドキュメントである。
 
-### フォーマット
+Architecture Decision Records document important software architecture decisions, the context behind them, and the rationale for the chosen approach.
 
-各ADRは以下の構成に従う:
+### フォーマット / Format
 
-- **ステータス**: 提案 / 承認 / 却下 / 廃止 / 検討中
-- **コンテキスト**: なぜこの決定が必要か
-- **検討した選択肢**: 比較検討した案
-- **決定**: 最終的に選んだ方針
-- **根拠**: なぜその決定をしたか
-- **影響**: この決定がプロジェクトに与える影響
+- **Status**: Proposed / Accepted / Rejected / Deprecated
+- **Context**: Why this decision was needed
+- **Options considered**: Alternatives that were evaluated
+- **Decision**: The chosen approach
+- **Rationale**: Why this decision was made
+- **Impact**: How this decision affects the project
