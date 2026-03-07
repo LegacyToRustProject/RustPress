@@ -26,7 +26,7 @@ use rustpress_cron::CronManager;
 use rustpress_db::{connection, options::OptionsManager};
 use rustpress_fields::{FieldGroupRegistry, FieldStorage};
 use rustpress_forms::SubmissionStore;
-use rustpress_plugins::{PluginLoader, PluginRegistry};
+use rustpress_plugins::{PluginLoader, PluginRegistry, WasmHost};
 use rustpress_security::{LoginProtection, RateLimiter, WafEngine};
 
 use state::AppState;
@@ -183,6 +183,100 @@ async fn main() -> Result<()> {
     let order_manager = Arc::new(RwLock::new(OrderManager::new()));
     info!("Commerce subsystem initialized");
 
+    // Initialize multisite support (if enabled)
+    let multisite_env = std::env::var("MULTISITE").unwrap_or_default();
+    let multisite_enabled = multisite_env == "true" || multisite_env == "1";
+    let (multisite_resolver, multisite_network) = if multisite_enabled {
+        // Extract domain from site_url for the network domain
+        let network_domain = site_url
+            .trim_start_matches("http://")
+            .trim_start_matches("https://")
+            .split('/')
+            .next()
+            .unwrap_or("localhost")
+            .split(':')
+            .next()
+            .unwrap_or("localhost")
+            .to_string();
+
+        let resolver = rustpress_multisite::SiteResolver::new(
+            rustpress_multisite::MultisiteMode::SubDirectory,
+            network_domain.clone(),
+        );
+
+        // Register the main site (blog_id 1)
+        let now = chrono::Utc::now();
+        let main_site = rustpress_multisite::Site {
+            blog_id: 1,
+            domain: network_domain.clone(),
+            path: "/".to_string(),
+            site_id: 1,
+            registered: now,
+            last_updated: now,
+            public: true,
+            archived: false,
+            mature: false,
+            spam: false,
+            deleted: false,
+            lang_id: 0,
+        };
+        resolver.register_site(main_site);
+
+        let network_manager = rustpress_multisite::NetworkManager::new();
+        network_manager.create_network(
+            network_domain.clone(),
+            "/".to_string(),
+            "Default Network".to_string(),
+            "admin@localhost".to_string(),
+        );
+
+        info!(domain = %network_domain, "Multisite enabled (SubDirectory mode)");
+
+        (
+            Some(Arc::new(resolver)),
+            Some(Arc::new(RwLock::new(network_manager))),
+        )
+    } else {
+        (None, None)
+    };
+
+    // Initialize WASM plugin host
+    let mut wasm_host = WasmHost::new();
+    let wasm_plugins_dir = std::path::Path::new("plugins/wasm");
+    std::fs::create_dir_all(wasm_plugins_dir).ok();
+    if let Ok(entries) = std::fs::read_dir(wasm_plugins_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("wasm") {
+                let plugin_name = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+                match wasm_host.load_plugin(&plugin_name, &path) {
+                    Ok(()) => {
+                        if let Err(e) = wasm_host.init_plugin(&plugin_name) {
+                            tracing::warn!(
+                                plugin = %plugin_name,
+                                error = %e,
+                                "Failed to init WASM plugin"
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            plugin = %plugin_name,
+                            error = %e,
+                            "Failed to load WASM plugin"
+                        );
+                    }
+                }
+            }
+        }
+    }
+    let wasm_host = Arc::new(RwLock::new(wasm_host));
+    info!("WASM plugin host initialized");
+
     // Build application state
     let state = Arc::new(AppState {
         db: db.clone(),
@@ -213,6 +307,9 @@ async fn main() -> Result<()> {
         product_catalog,
         cart_manager,
         order_manager,
+        wasm_host,
+        multisite_resolver,
+        multisite_network,
     });
 
     // Register session cleanup cron job (every hour)
@@ -368,6 +465,15 @@ async fn main() -> Result<()> {
             middleware::security_headers,
         ))
         .layer(tower_http::compression::CompressionLayer::new());
+
+    // Apply multisite middleware (only if multisite is enabled)
+    if multisite_enabled {
+        app = app.layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::multisite_resolve,
+        ));
+        info!("Multisite middleware active");
+    }
 
     // Fire init hook
     state.hooks.do_action("init", &serde_json::json!({}));

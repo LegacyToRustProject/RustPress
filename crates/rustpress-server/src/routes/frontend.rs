@@ -12,7 +12,7 @@ use sea_orm::{
 use serde::Deserialize;
 use std::sync::Arc;
 
-use rustpress_db::entities::{wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_usermeta, wp_users};
+use rustpress_db::entities::{wp_comments, wp_postmeta, wp_posts, wp_term_relationships, wp_term_taxonomy, wp_terms, wp_users};
 use rustpress_themes::hierarchy::PageType;
 use rustpress_themes::tags::{
     insert_post_context_full, insert_posts_context,

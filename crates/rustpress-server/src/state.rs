@@ -15,7 +15,7 @@ use rustpress_cron::CronManager;
 use rustpress_db::options::OptionsManager;
 use rustpress_fields::{FieldGroupRegistry, FieldStorage};
 use rustpress_forms::SubmissionStore;
-use rustpress_plugins::PluginRegistry;
+use rustpress_plugins::{PluginRegistry, WasmHost};
 use rustpress_security::{LoginProtection, RateLimiter, WafEngine};
 use rustpress_themes::ThemeEngine;
 
@@ -53,4 +53,9 @@ pub struct AppState {
     pub product_catalog: Arc<RwLock<ProductCatalog>>,
     pub cart_manager: Arc<RwLock<CartManager>>,
     pub order_manager: Arc<RwLock<OrderManager>>,
+    // WASM plugin host
+    pub wasm_host: Arc<RwLock<WasmHost>>,
+    // Multisite support
+    pub multisite_resolver: Option<Arc<rustpress_multisite::SiteResolver>>,
+    pub multisite_network: Option<Arc<RwLock<rustpress_multisite::NetworkManager>>>,
 }

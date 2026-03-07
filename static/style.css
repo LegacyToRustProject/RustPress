@@ -111,6 +111,11 @@ button, input, optgroup, select, textarea {
 	padding-bottom: var(--wp--style--root--padding-bottom);
 }
 
+/* The skip-link <a> is first-child, so header (visually first) needs margin reset */
+.wp-site-blocks > header:first-of-type {
+	margin-block-start: 0;
+}
+
 .wp-site-blocks > .alignleft {
 	float: left;
 	margin-right: 2em;
@@ -382,14 +387,9 @@ h6 {
 	word-wrap: normal !important;
 }
 
-/* Site Title */
+/* Site Title - WordPress inherits font-size from body (--large), sets weight/spacing via global styles */
 .wp-block-site-title {
-	font-family: inherit;
-	font-size: var(--wp--preset--font-size--medium);
-	font-style: normal;
-	font-weight: 600;
-	letter-spacing: -0.01em;
-	line-height: 1.2;
+	box-sizing: border-box;
 }
 
 .wp-block-site-title a {

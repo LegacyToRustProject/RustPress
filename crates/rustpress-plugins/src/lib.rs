@@ -4,3 +4,4 @@ pub mod wasm_host;
 
 pub use loader::PluginLoader;
 pub use registry::PluginRegistry;
+pub use wasm_host::WasmHost;

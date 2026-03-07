@@ -279,6 +279,43 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
     response
 }
 
+/// The resolved blog ID inserted into request extensions by the multisite middleware.
+#[derive(Debug, Clone, Copy)]
+pub struct ResolvedBlogId(pub u64);
+
+/// Middleware: resolve the current blog in a multisite installation.
+///
+/// Extracts the Host header and request path, uses the SiteResolver to find
+/// the matching site, and inserts the blog_id into request extensions as
+/// `ResolvedBlogId`. If multisite is not enabled or no site matches, the
+/// request proceeds without modification (defaults to blog_id 1).
+pub async fn multisite_resolve(
+    State(state): State<Arc<AppState>>,
+    mut request: Request,
+    next: Next,
+) -> Response {
+    if let Some(ref resolver) = state.multisite_resolver {
+        let host = request
+            .headers()
+            .get(header::HOST)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("localhost")
+            .to_string();
+
+        let path = request.uri().path().to_string();
+
+        let blog_id = resolver
+            .resolve_site(&host, &path)
+            .map(|site| site.blog_id)
+            .unwrap_or(1);
+
+        request.extensions_mut().insert(ResolvedBlogId(blog_id));
+        tracing::debug!(blog_id, host = %host, path = %path, "Multisite resolved");
+    }
+
+    next.run(request).await
+}
+
 /// Middleware: WAF (Web Application Firewall) check on incoming requests.
 /// Blocks requests matching malicious patterns (SQL injection, XSS, path traversal, etc.).
 pub async fn waf_check(

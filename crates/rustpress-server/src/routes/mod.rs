@@ -11,6 +11,7 @@ mod posts;
 pub mod seo;
 mod users;
 pub mod wp_admin;
+pub mod wasm_plugins;
 pub mod xmlrpc;
 
 use crate::state::AppState;
@@ -41,6 +42,11 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     // SEO routes (sitemap.xml, robots.txt)
     let seo_router = seo::routes(state.clone());
 
+    // WASM plugin API routes
+    let wasm_router = Router::new()
+        .merge(wasm_plugins::routes())
+        .with_state(state.clone());
+
     // Frontend routes (includes /{slug} catch-all, must come last)
     let frontend_router = Router::new()
         .merge(frontend::routes())
@@ -52,6 +58,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .merge(commerce_router)
         .merge(forms_router)
         .merge(seo_router)
+        .merge(wasm_router)
         .merge(frontend_router)
         .layer(TraceLayer::new_for_http())
 }

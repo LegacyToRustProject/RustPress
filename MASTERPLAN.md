@@ -271,9 +271,60 @@ PostQueryで複雑な条件指定のクエリが実行できること。
 - アップロードされたメディア (/wp-content/uploads/) の配信
 ```
 
+#### 4-5. FSE (Full Site Editing) / ブロックテーマ対応
+```
+課題:
+- WP 6.0+のデフォルトテーマ (TT25含む) はFSEブロックテーマ
+- theme.json がテーマの設定・スタイルを定義する標準形式
+- ブロックテンプレート/テンプレートパーツがPHP/Teraではなくブロックマークアップで記述
+
+実装内容:
+- theme.json パーサー (設定, スタイル, テンプレート定義)
+- ブロックテンプレート (HTMLファイル内のブロックマークアップ)
+- テンプレートパーツ (header, footer等のブロック構成パーツ)
+- グローバルスタイル (theme.json → CSS変数生成)
+- FSEテーマのブロックマークアップ → Teraレンダリングへの変換パイプライン
+- カスタムテンプレート定義 (theme.json の customTemplates)
+```
+
+#### 4-6. レガシーウィジェットシステム
+```
+課題:
+- ブロックウィジェット化されていない旧テーマがWPサイトの大半を占める
+- register_widget() / dynamic_sidebar() はテーマ表示の基本機能
+
+実装内容:
+- register_widget() / dynamic_sidebar() 互換テンプレートタグ
+- 標準ウィジェット実装:
+  → 最近の投稿, カテゴリ一覧, アーカイブ, テキスト, カスタムHTML
+  → 検索, メタ情報, RSS, タグクラウド, ナビゲーションメニュー
+- ウィジェットエリア定義 (register_sidebar 互換)
+- ウィジェットデータ (widget_* オプション) の読み取り・レンダリング
+- ブロックウィジェット (WP 5.8+) との共存
+```
+
+#### 4-7. ナビゲーションメニュー完全互換
+```
+課題:
+- wp_nav_menu() はほぼ全テーマで使用される最重要テンプレートタグ
+- カスタムウォーカーでBootstrap/Tailwind等のCSSフレームワーク用出力を行うテーマが多数
+
+実装内容:
+- wp_nav_menu() 互換テンプレートタグ (Teraカスタム関数)
+- メニューロケーション (register_nav_menus 互換)
+- メニュー階層 (親子関係) のネストレンダリング
+- メニューアイテムタイプ: 投稿, 固定ページ, カテゴリ, カスタムURL
+- CSSクラス自動付与:
+  → current-menu-item, current-menu-ancestor, current-menu-parent
+  → menu-item-has-children, menu-item-type-*, menu-item-object-*
+- カスタムウォーカー相当の出力カスタマイズ機構 (Rustトレイト)
+- メニューのキャッシュ (変更時のみ再構築)
+```
+
 **Phase 4 完了基準:**
 既存WP DBの投稿が、テンプレートを通じてHTMLでレンダリングされ、
 ブラウザでブログとして閲覧できること。
+FSEブロックテーマ、レガシーウィジェット、ナビゲーションメニューが正常に動作すること。
 
 ---
 
@@ -396,10 +447,154 @@ RustPressのプラグイン戦略は以下の2本柱で進める:
 - 技術スタック: Axum + Tera (RustPress本体と統一)
 ```
 
+#### 6-6. mu-plugins互換
+```
+課題:
+- エンタープライズ/マネージドWP (WP Engine, Kinsta等) ではmu-pluginsが標準
+- wp-content/mu-plugins/ に配置されたプラグインは自動ロード、無効化不可
+
+実装内容:
+- plugins/must-use/ ディレクトリの自動スキャン・ロード
+- ネイティブRustプラグインのmu-plugins配置対応
+- ロード順序の制御 (ファイル名アルファベット順、WP互換)
+- 管理画面の「Must-Use」タブでの一覧表示 (無効化ボタンなし)
+- 移行時: wp-content/mu-plugins/ の検出とAI変換対象への自動追加
+```
+
+#### 6-7. Drop-in互換
+```
+課題:
+- WPコアの動作をオーバーライドするdrop-inファイルが存在する
+- db.php, object-cache.php, advanced-cache.php, sunrise.php 等
+- これらを使うサイトは高度なカスタマイズ済みで、移行難易度が高い
+
+実装内容:
+- 各drop-inの機能をRustPress設定で代替:
+  → object-cache.php → rustpress-cache の Redis/Memcached設定
+  → advanced-cache.php → ページキャッシュ設定 (rustpress.toml)
+  → db.php → SeaORM設定 (接続プール、クエリログ等)
+  → sunrise.php → マルチサイトドメインマッピング設定
+  → maintenance.php → メンテナンスモード設定
+  → blog-deleted.php, blog-inactive.php, blog-suspended.php → マルチサイト状態管理
+- 移行ツール: drop-inの自動検出と代替設定の提案
+- 移行レポートに「drop-in検出: object-cache.php → Redis設定を推奨」形式で表示
+```
+
+#### 6-8. WP関数互換レイヤー (rustpress-wp-compat)
+```
+課題:
+- AI変換されたRustプラグインはWP関数を呼び出す
+- RustPress側にWP関数の互換APIが揃っていないと変換プラグインが動作しない
+- WPコアには約2,000の公開関数がある
+
+実装内容:
+- Tier 1 (必須 - 上位50関数、プラグインの95%が使用):
+  → データ: get_option, update_option, delete_option, add_option
+  → 投稿: get_post, wp_insert_post, wp_update_post, wp_delete_post
+  → クエリ: get_posts, WP_Query, get_pages, get_post_meta, update_post_meta
+  → ユーザー: get_current_user_id, wp_get_current_user, current_user_can, is_user_logged_in
+  → セキュリティ: wp_nonce_field, wp_verify_nonce, check_admin_referer
+  → 出力: esc_html, esc_attr, esc_url, wp_kses, wp_kses_post
+  → 入力: sanitize_text_field, absint, sanitize_email
+  → フック: add_action, add_filter, do_action, apply_filters, remove_action
+  → URL: home_url, site_url, admin_url, plugins_url, content_url
+  → 状態判定: is_admin, is_single, is_page, is_archive, is_home, is_front_page
+
+- Tier 2 (重要 - 次の100関数):
+  → アセット: wp_enqueue_script, wp_enqueue_style, wp_register_script, wp_localize_script
+  → テンプレート: get_template_part, locate_template, get_header, get_footer
+  → メール: wp_mail
+  → HTTP: wp_remote_get, wp_remote_post, wp_remote_request
+  → キャッシュ: set_transient, get_transient, delete_transient, wp_cache_get, wp_cache_set
+  → Cron: wp_schedule_event, wp_unschedule_event, wp_next_scheduled
+  → 日時: current_time, date_i18n, human_time_diff
+  → ファイル: wp_upload_dir, wp_get_attachment_url, wp_get_attachment_image
+  → タクソノミー: get_terms, get_the_terms, wp_get_post_terms, get_term_link
+
+- Tier 3 (プラグイン依存):
+  → DB直接: $wpdb->prepare, $wpdb->get_results, $wpdb->insert, $wpdb->update, $wpdb->delete, $wpdb->query
+  → 管理画面: WP_List_Table, add_menu_page, add_submenu_page, add_meta_box
+  → エラー: WP_Error, is_wp_error
+  → ウォーカー: Walker クラス互換トレイト
+  → ショートコード: add_shortcode, do_shortcode
+  → ウィジェット: register_widget, WP_Widget
+  → リライト: add_rewrite_rule, add_rewrite_tag, flush_rewrite_rules
+
+- 互換関数カバレッジダッシュボード:
+  → 実装済み/未実装の一覧をrustpress.dev/compatで公開
+  → プラグイン変換時に使用されるWP関数を検出し、未実装なら警告
+```
+
+#### 6-9. プラグイン間依存関係の解決
+```
+課題:
+- WooCommerce拡張プラグイン (WooCommerce Subscriptions等) はWooCommerceに依存
+- プラグインAがプラグインBのクラス/関数を直接呼び出すケースが多数
+- 依存関係を無視して個別変換すると動作しない
+
+実装内容:
+- プラグインヘッダーの依存宣言パース (Requires Plugins ヘッダー, WP 6.5+)
+- PHPコード解析による暗黙的依存の検出 (クラス参照, 関数呼び出し)
+- 依存グラフの構築と可視化
+- 変換順序の自動決定 (トポロジカルソート)
+- 基盤プラグインの優先変換:
+  → WooCommerce → WooCommerce拡張群
+  → ACF → ACF依存テーマ/プラグイン
+  → Elementor → Elementor Addons
+- 依存プラグインのモック/スタブ自動生成 (変換中の部分テスト用)
+```
+
+#### 6-10. AI変換サービス完全版 (rustpress-convert 拡充)
+```
+課題:
+- 「80%スキャフォールド+20%手動」では非エンジニアユーザーは移行不可
+- PHP特有の動的パターンのRust変換が構造的に困難
+- 変換後の品質保証が cargo check だけでは不十分
+
+(a) 非エンジニア向け自動化率向上:
+- 目標: 95%自動 + 5%Web UIでの対話的補完
+- 変換後の設定項目 (API キー, エンドポイントURL等) をWeb UIフォームで入力
+- 手動コード修正が必要な箇所はAIが修正候補を3つ提示
+- 完全自動変換不可の場合:
+  → コミュニティ変換リクエスト掲示板への投稿
+  → 代替Rustプラグインの提案
+  → 「このプラグインの機能はrustpress-seoに含まれています」形式のマッピング
+
+(b) 外部API呼び出しの自動変換:
+- cURL / wp_remote_get/post → reqwest への自動変換
+- API認証情報の安全な移行 (暗号化ストレージ)
+- REST API クライアントコードのパターン認識と変換
+- Webhook受信エンドポイントの自動登録
+
+(c) PHP動的パターンの変換戦略:
+- マジックメソッド (__get, __set, __call) → Rustトレイト実装
+- mixed型 → serde_json::Value または enum ディスパッチ
+- 動的プロパティ → HashMap<String, Value>
+- eval() / call_user_func → コンパイル時解決 or 変換不可警告
+- PHP配列 (連想配列+数値配列混在) → Vec / HashMap の適切な選択
+- グローバル変数 → Arc<RwLock<T>> or AppState注入
+
+(d) 変換後の品質保証:
+- cargo check → cargo test → 統合テスト の3段階検証
+- AIによるテストコード自動生成 (ユニットテスト + 統合テスト)
+- PHPプラグインのスクリーンショット比較 (変換前後のUI差分検出)
+- E2Eテストシナリオの自動生成
+- パフォーマンスベンチマーク (PHP版との速度比較)
+
+(e) ライセンス検証:
+- GPL / MIT / Apache / BSD等のOSSライセンスのみ変換許可
+- 商用プラグイン (Elementor Pro, ACF Pro, Gravity Forms等) は変換拒否
+- ライセンスヘッダーの自動検出
+- 変換後のコードにオリジナルのライセンス情報を自動継承
+- 商用プラグインに対しては rustpress-* 純正代替を提案
+```
+
 **Phase 6 完了基準:**
 Rust (ネイティブ) と WASM の両方でプラグインを書いて、
 フックを通じて動作を拡張できること。
 主要プラグイン (SEO, フォーム) の最低1つがRustネイティブで動作すること。
+WP関数互換レイヤーのTier 1が100%実装済みであること。
+mu-pluginsとdrop-inの移行パスが確立されていること。
 
 ---
 
@@ -436,9 +631,125 @@ Rust (ネイティブ) と WASM の両方でプラグインを書いて、
 - プラグイン管理
 ```
 
+#### 7-3. admin-ajax.php 互換エンドポイント
+```
+課題:
+- WPプラグインの大多数が admin-ajax.php 経由でAJAXリクエストを処理
+- フロントエンド (wp_ajax_nopriv_*) とバックエンド (wp_ajax_*) の両方で使用
+- このエンドポイントがないと、ほぼ全てのプラグインのフロント動的機能が停止
+
+実装内容:
+- POST /wp-admin/admin-ajax.php ディスパッチャ
+- action パラメータでハンドラをルーティング
+- フック経由でのハンドラ登録:
+  → wp_ajax_{action} (ログインユーザー用)
+  → wp_ajax_nopriv_{action} (非ログインユーザー用)
+- nonceバリデーション互換 (check_ajax_referer)
+- multipart/form-data (ファイルアップロード) 対応
+- JSON / URLencoded / FormData 全フォーマット対応
+- wp_send_json_success() / wp_send_json_error() 互換レスポンス
+```
+
+#### 7-4. admin-post.php 互換エンドポイント
+```
+課題:
+- カスタムフォーム処理の標準パターン
+- admin-ajax.phpのノンAJAX版
+
+実装内容:
+- POST /wp-admin/admin-post.php ディスパッチャ
+- admin_post_{action} (ログインユーザー用) フック
+- admin_post_nopriv_{action} (非ログインユーザー用) フック
+- リダイレクトレスポンス対応
+```
+
+#### 7-5. Heartbeat API
+```
+課題:
+- WP管理画面のリアルタイム機能の基盤
+- 投稿ロック (他ユーザーが編集中の警告)、自動保存、通知の受信に使用
+- 15-60秒間隔のポーリングで実装されている
+
+実装内容:
+- POST /wp-admin/admin-ajax.php?action=heartbeat 互換
+- heartbeat_received / heartbeat_send フィルタ
+- 投稿ロック機構:
+  → 投稿編集開始時にロック取得
+  → 他ユーザーが編集中の場合に警告表示
+  → ロック解放 (ページ離脱 or タイムアウト)
+- 自動保存 (autosave):
+  → 60秒間隔で下書き自動保存
+  → post_type='revision', post_name='{id}-autosave-v1' で保存
+- ログインセッション有効性チェック (セッション切れ警告)
+- 将来的にWebSocket/SSEへの置き換え検討 (パフォーマンス改善)
+```
+
+#### 7-6. カスタムREST APIエンドポイント登録
+```
+課題:
+- プラグインが register_rest_route() でカスタム名前空間のAPIを追加
+- /wp-json/myplugin/v1/data 等の独自エンドポイントが多数存在
+- AI変換されたプラグインもカスタムエンドポイントを登録する必要がある
+
+実装内容:
+- register_rest_route() 互換API:
+  → 名前空間 + ルート + メソッド + コールバック + 権限チェック
+- パーミッションコールバック対応
+- スキーマ定義 (引数のバリデーション)
+- /wp-json/ ディスカバリにカスタムエンドポイントを自動登録
+- WooCommerce REST API (/wc/v3/) の基盤としても使用
+```
+
+#### 7-7. WPGraphQL互換
+```
+課題:
+- Headless WPの標準GraphQLレイヤーとして30万+サイトが使用
+- Next.js (faust.js), Gatsby, Astro等のフレームワークがGraphQLで接続
+- REST APIだけではHeadless WPサイトの完全移行ができない
+
+実装内容:
+- /graphql エンドポイント (async-graphql クレート)
+- 標準スキーマ:
+  → Posts, Pages, MediaItems, Users, Comments
+  → Categories, Tags, カスタムタクソノミー
+  → Menus, MenuItems
+  → Settings
+- カスタム投稿タイプの自動スキーマ登録
+- カスタムフィールド (ACF, Meta Box等) のGraphQLフィールド化
+- ミューテーション: 投稿作成/更新/削除、メディアアップロード
+- 認証: Application Passwords, JWT対応
+- ページネーション: Cursor-based (Relay仕様)
+- Headless WPフレームワークとの接続テスト:
+  → faust.js (WP Engine製)
+  → gatsby-source-wordpress
+  → astro-wordpress
+```
+
+#### 7-8. Headless運用モード
+```
+課題:
+- WPをAPIバックエンドのみとして使うHeadless構成が急増
+- フロントエンドはNext.js/Nuxt/Gatsby等で構築
+- RustPressでもAPI専用モードが必要
+
+実装内容:
+- RUSTPRESS_HEADLESS=true でフロントエンドテンプレートレンダリング無効化
+- API専用モード (REST + GraphQL のみ稼働)
+- CORS設定:
+  → 許可オリジン, メソッド, ヘッダーの管理画面設定
+  → プリフライト (OPTIONS) の自動処理
+- Webhooks:
+  → コンテンツ変更時 (create/update/delete) の外部通知
+  → 設定可能なペイロードフォーマット (WP Hook形式)
+  → リトライ + 配信ログ
+- プレビュー: 外部フロントエンドでの下書きプレビュー用トークン生成
+```
+
 **Phase 7 完了基準:**
 Gutenbergエディタ等の既存WPクライアントがRustPressのAPIに接続して動作すること。
 独自管理画面で基本的なサイト管理ができること。
+admin-ajax.php互換エンドポイントでプラグインのAJAXリクエストが処理されること。
+GraphQLエンドポイントでHeadless WPクライアントが接続可能であること。
 
 ---
 
@@ -596,9 +907,131 @@ Gutenbergエディタ等の既存WPクライアントがRustPressのAPIに接続
 - データベース接続プーリング戦略 (PgBouncer相当)
 ```
 
+#### 8-11. Action Scheduler互換
+```
+課題:
+- WooCommerceのバックグラウンド処理基盤 (500万+サイトが依存)
+- 定期支払い処理、メール送信、在庫更新、Webhook配信等に使用
+- wp-cronとは別の高機能ジョブキューシステム
+- Action Schedulerなしでは WooCommerce Subscriptions が動作しない
+
+実装内容:
+- バックグラウンドジョブキュー (Tokioタスク + DBバックド永続化)
+- ジョブ状態管理: pending → in-progress → complete / failed
+- スケジュール種別:
+  → 即時実行 (async)
+  → 単発予約 (schedule_single_action)
+  → 定期実行 (schedule_recurring_action)
+  → Cron式 (schedule_cron_action)
+- リトライ機構: 失敗時の自動リトライ (最大試行回数設定可)
+- 並行実行制御: 同時実行数の上限設定
+- 管理画面: ジョブ一覧, 状態フィルタ, 手動実行, ログ表示
+- Action Scheduler互換テーブル (actionscheduler_actions, _claims, _groups, _logs)
+- 移行時: 既存のスケジュール済みアクションの自動移行
+```
+
+#### 8-12. wp-config.php 定数マッピング
+```
+課題:
+- WPサイトの設定は wp-config.php の定数で定義される
+- RustPressへの移行時に全定数を適切に変換する必要がある
+- 未変換の定数があるとサイトの動作が変わる
+
+実装内容:
+- rustpress migrate config でwp-config.php → rustpress.toml 自動変換
+- 定数マッピング表:
+  [database]
+  → DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_CHARSET, DB_COLLATE
+  → $table_prefix
+
+  [server]
+  → WP_SITEURL, WP_HOME → base_url
+  → FORCE_SSL_ADMIN, FORCE_SSL_LOGIN → tls.force = true
+  → WP_HTTP_BLOCK_EXTERNAL → http.block_external = true
+
+  [debug]
+  → WP_DEBUG → debug.enabled
+  → WP_DEBUG_LOG → debug.log_file
+  → WP_DEBUG_DISPLAY → debug.display_errors
+  → SCRIPT_DEBUG → debug.script_debug
+  → SAVEQUERIES → debug.log_queries
+
+  [security]
+  → DISALLOW_FILE_EDIT → security.disallow_file_edit
+  → DISALLOW_UNFILTERED_HTML → security.disallow_unfiltered_html
+  → AUTH_KEY, SECURE_AUTH_KEY等 → security.secret_keys (自動生成推奨)
+
+  [content]
+  → WP_POST_REVISIONS → content.max_revisions
+  → AUTOSAVE_INTERVAL → content.autosave_interval
+  → EMPTY_TRASH_DAYS → content.trash_retention_days
+  → WP_DEFAULT_THEME → themes.default
+
+  [performance]
+  → WP_MEMORY_LIMIT → 不要 (Rust管理、ログに記録のみ)
+  → WP_MAX_MEMORY_LIMIT → 不要
+  → WP_CACHE → cache.enabled
+  → WP_CRON_LOCK_TIMEOUT → cron.lock_timeout
+
+  [uploads]
+  → UPLOADS → uploads.directory
+  → WP_CONTENT_DIR → content.directory
+  → COOKIE_DOMAIN → auth.cookie_domain
+
+- 未対応定数の警告表示 (移行レポートに含める)
+- カスタム定数 (プラグイン固有) の検出と移行アドバイス
+```
+
+#### 8-13. カスタムCron完全互換
+```
+課題:
+- wp_schedule_event() で独自間隔・コールバックを登録するプラグインが大多数
+- cron_schedules フィルタでカスタム間隔を追加するパターンも一般的
+- Phase 8-2のcronスケジューラがWPのcron APIと互換でないとプラグインが動作しない
+
+実装内容:
+- wp_schedule_event() / wp_schedule_single_event() 互換API
+- wp_unschedule_event() / wp_clear_scheduled_hook() 互換
+- wp_next_scheduled() / wp_get_schedule() 互換
+- cron_schedules フィルタ互換 (カスタム間隔の登録)
+- 標準間隔: hourly, twicedaily, daily, weekly
+- wp_options の 'cron' エントリからの自動読み込み:
+  → 既存WPサイトのスケジュール済みイベントを自動移行
+  → PHPシリアライズ形式のcronデータをデシリアライズ
+- 仮想cronモード: リクエスト駆動 (WP互換) と真のcron (Tokio interval) の選択
+```
+
+#### 8-14. サイトヘルス
+```
+課題:
+- WP 5.2+の標準機能 (/wp-admin/site-health.php)
+- サーバー環境の診断、問題の検出、推奨事項の表示
+- 管理者が本番サイトの状態を把握するための基本ツール
+
+実装内容:
+- /wp-admin/site-health 相当の診断画面
+- テスト項目:
+  → DB接続状態 / レスポンスタイム
+  → ディスク容量 (メディアストレージ)
+  → HTTPS有効性
+  → PHP→Rust移行完了率 (プラグイン変換状況)
+  → プラグイン互換性チェック (未変換プラグインの警告)
+  → テーマ互換性チェック
+  → キャッシュ動作状態
+  → Cron実行状態 (最終実行時刻, 失敗ジョブ数)
+  → REST API利用可能性
+  → メール送信テスト
+  → セキュリティヘッダー (CSP, HSTS等)
+  → TLS証明書の有効期限
+- ステータス: 良好 (緑) / 改善推奨 (橙) / 要対応 (赤)
+- REST API: /wp-json/wp-site-health/v1/tests 互換
+```
+
 **Phase 8 完了基準:**
 本番環境でRustPressを安全に運用できること。
 バックアップ/リストア、メール配信、2FA/SSO、監視が動作すること。
+Action Schedulerでバックグラウンドジョブが処理されること。
+wp-config.phpの全定数がrustpress.tomlに変換可能であること。
 
 ---
 
@@ -863,11 +1296,218 @@ Gutenbergエディタ等の既存WPクライアントがRustPressのAPIに接続
 - CLI: rustpress export / rustpress import
 ```
 
+#### 9-14. カスタムGutenbergブロック移行
+```
+課題:
+- プラグイン/テーマが register_block_type() でカスタムブロックを登録
+- カスタムブロックはPHPのrender_callbackでサーバーサイドHTML生成を行う
+- 標準ブロック (9-2) だけでは、カスタムブロックを含むコンテンツが崩壊する
+
+実装内容:
+- block.json 定義ファイルの解析 (ブロック名, 属性, スタイル)
+- カスタムブロックの検出:
+  → wp_posts.post_content 内の <!-- wp:namespace/block-name --> を走査
+  → 未知のブロック名を「カスタムブロック」としてリストアップ
+- サーバーサイドレンダリング:
+  → PHP render_callback → Rustレンダラーへの変換 (AI変換サービス連携)
+  → 変換不可能なブロック: フォールバックHTML (保存済みHTML) をそのまま出力
+- クライアントサイド (エディタ側):
+  → React製エディタコンポーネントはそのまま使用 (npm パッケージ)
+  → RustPress REST API 経由でデータ通信
+- カスタムブロックカテゴリの登録
+- ダイナミックブロック vs 静的ブロックの判別と適切な処理
+```
+
+#### 9-15. ブロックパターン / ブロックスタイル
+```
+課題:
+- register_block_pattern() でテーマ/プラグインが定義するレイアウトパターン
+- register_block_style() でブロックの見た目バリエーションを追加
+- WP 6.0+ではパターンがテーマの中心的な機能
+
+実装内容:
+- ブロックパターン:
+  → register_block_pattern() 互換API
+  → パターンカテゴリの登録 (register_block_pattern_category)
+  → コアパターン (WP同梱) の網羅
+  → テーマ内 /patterns/ ディレクトリからの自動読み込み
+  → パターンディレクトリ (wordpress.org/patterns/) との連携
+- ブロックスタイル:
+  → register_block_style() 互換API
+  → スタイルバリエーション (例: ボタンのfill/outline)
+  → CSSクラスの自動付与 (is-style-{name})
+```
+
+#### 9-16. カスタムポストステータス
+```
+課題:
+- register_post_status() で独自ステータスを登録するプラグインが多数
+- WooCommerce: wc-pending, wc-processing, wc-on-hold, wc-completed, wc-cancelled, wc-refunded, wc-failed
+- 非標準ステータスの投稿がフィルタ/表示されないと業務が停止
+
+実装内容:
+- register_post_status() 互換API
+- カスタムステータスの属性:
+  → public, private, protected, internal
+  → label, label_count (翻訳対応)
+  → show_in_admin_all_list, show_in_admin_status_list
+- WooCommerce標準ステータスのプリセット登録
+- 管理画面での投稿リストフィルタ対応
+- REST APIでのカスタムステータス対応
+- 移行時: wp_posts.post_status の非標準値を自動検出し、対応するステータスを自動登録
+```
+
+#### 9-17. カスタムリライトルール
+```
+課題:
+- add_rewrite_rule() / add_rewrite_tag() でプラグインが独自URLパターンを登録
+- 例: /products/{slug}/, /events/{year}/{month}/ 等のカスタムURL構造
+- カスタムリライトが動かないと、カスタム投稿タイプのURL体系が壊れる
+
+実装内容:
+- add_rewrite_rule() 互換API → Axumルーターへの動的ルート追加
+- add_rewrite_tag() 互換API → URLパラメータ抽出
+- rewrite_rules オプション (wp_options) からの自動読み込み
+- WPリライトルール (正規表現ベース) → Axumルートパターンへの変換
+- flush_rewrite_rules() 互換 (キャッシュクリア + 再構築)
+- .htaccess のリライトルールパース → RustPress設定への変換
+- パーマリンク構造の完全互換:
+  → /%postname%/, /%category%/%postname%/, /%year%/%monthnum%/%day%/%postname%/
+  → カスタム投稿タイプのパーマリンク構造 (rewrite 引数)
+```
+
+#### 9-18. 非ACFカスタムフィールドプラグイン互換
+```
+課題:
+- ACF以外にもカスタムフィールドプラグインが多数存在
+- Meta Box (100万+), Pods (10万+), JetEngine, Carbon Fields
+- 各プラグインが独自のメタデータ保存形式を持つ
+
+実装内容:
+- Meta Box互換:
+  → rwmb_meta() 関数互換
+  → Meta Box グループ/クローンフィールドのデータ構造
+  → mb_* メタキープレフィックスの解析
+- Pods互換:
+  → pods() 関数互換
+  → Pods独自テーブル (_pods, _podsrel) の読み取り
+  → 拡張投稿タイプ/タクソノミーの移行
+- JetEngine互換:
+  → jet_engine()->listings のデータ構造
+  → JetEngine meta_query 形式
+- Carbon Fields互換:
+  → carbon_get_* 関数互換
+  → _carbon_* メタキープレフィックスの解析
+- 統一インターフェース:
+  → 全プラグインのメタデータ → rustpress-fields の統一フォーマットへ変換
+  → 移行ツール: rustpress migrate custom-fields --source=metabox|pods|jetengine|carbon
+```
+
+#### 9-19. 多言語コンテンツプラグイン互換
+```
+課題:
+- Phase 9-1のi18nは UI翻訳 (.moファイル) のみ対応
+- コンテンツの多言語管理 (WPML, Polylang) は完全に別の仕組み
+- 多言語ECサイト/企業サイトの移行にはコンテンツ多言語対応が必須
+
+実装内容:
+- WPML互換:
+  → icl_translations テーブルの読み取り
+  → 言語ごとの投稿紐付け (trid, language_code, source_language_code)
+  → 言語切替UI (言語セレクタ)
+  → hreflang タグの自動生成
+  → 文字列翻訳 (icl_strings テーブル)
+  → WooCommerce多通貨対応 (WCML)
+- Polylang互換:
+  → pll_languages タクソノミーの読み取り
+  → 投稿⇔翻訳の紐付け (pll_translations_* メタ)
+  → 言語別カテゴリ/タグの管理
+  → Polylang Pro の翻訳管理ワークフロー
+- TranslatePress互換:
+  → 翻訳データ (tp_translation テーブル) の読み取り
+  → フロントエンド翻訳エディタの代替UI
+- 移行時: rustpress migrate i18n --source=wpml|polylang|translatepress
+- RustPressネイティブの多言語コンテンツ管理機能 (rustpress-i18n 拡張)
+```
+
+#### 9-20. リビジョン管理完全実装
+```
+課題:
+- 自動保存 (autosave) とリビジョン比較はWP管理画面の基本機能
+- WP_POST_REVISIONS 定数によるリビジョン数制限
+- リビジョン復元はコンテンツ事故からの復旧に不可欠
+
+実装内容:
+- リビジョン保存:
+  → 投稿更新時に自動リビジョン作成 (post_type='revision')
+  → WP_POST_REVISIONS 設定に基づくリビジョン数制限 (デフォルト: 無制限)
+  → 古いリビジョンの自動パージ (設定値超過分)
+- 自動保存 (autosave):
+  → AUTOSAVE_INTERVAL (デフォルト60秒) 間隔
+  → ユーザーごとに1つの自動保存を保持
+  → Heartbeat API連携
+- リビジョン比較UI:
+  → 2つのリビジョン間のdiff表示 (行単位, 単語単位)
+  → スライダーUIで任意のリビジョンを選択
+  → タイトル/コンテンツ/抜粋それぞれの差分表示
+- リビジョン復元:
+  → 任意のリビジョンに戻す (wp_restore_post_revision 互換)
+  → 復元前の確認画面
+```
+
+#### 9-21. コメントタイプ完全対応
+```
+課題:
+- comment_type フィールドで区別される複数のコメント種別
+- WooCommerce商品レビュー (comment_type='review') は星評価を含む
+- Pingback/Trackback は外部サイトからの通知プロトコル
+
+実装内容:
+- コメントタイプ別処理:
+  → '' (通常コメント): 標準表示
+  → 'pingback': Pingbackプロトコル処理 + 表示
+  → 'trackback': Trackbackプロトコル処理 + 表示
+  → 'review': 星評価メタ (rating) の表示、平均評価計算
+  → カスタムコメントタイプ: プラグインから登録可能
+- WooCommerce商品レビュー:
+  → 星評価 (1-5) のレンダリング
+  → 評価の集計 (平均, 件数分布)
+  → verified owner バッジ
+  → Schema.org Review構造化データ
+- Pingback/Trackback送受信:
+  → 受信: xmlrpc.php 経由 (Phase 9-4で対応)
+  → 送信: 投稿公開時にリンク先へPingback送信
+  → スパムフィルタ連携
+```
+
+#### 9-22. テーマカスタマイザー設定移行
+```
+課題:
+- 既存WPサイトのカスタマイザー設定 (theme_mods_{theme_name}) がRustPressテーマに移行されない
+- ユーザーが管理画面から変更した色/フォント/ロゴ等の設定が失われる
+
+実装内容:
+- theme_mods_{theme_name} オプションの読み取り
+- 標準設定の自動マッピング:
+  → custom_logo → サイトロゴ設定
+  → header_image → ヘッダー画像
+  → background_color → 背景色
+  → nav_menu_locations → メニュー配置
+  → sidebars_widgets → ウィジェット配置
+- テーマ固有設定:
+  → WPテーマ → RustPressテーマ間のマッピング定義ファイル
+  → 未マッピング設定の警告とCSS上書きの提案
+- 移行ツール: rustpress migrate theme-settings --from=theme_name
+```
+
 **Phase 9 完了基準:**
 多言語サイト、Gutenbergコンテンツ、マルチサイト構成のWordPressが
 RustPressで正常に動作すること。WP 5.0以降のサイトが移行可能であること。
 PostgreSQL/SQLiteでも動作すること。ACFフィールド定義がインポート可能であること。
 GDPR準拠ツールが動作し、EU企業の要件を満たすこと。
+カスタムブロック、カスタムポストステータス、カスタムリライトルールが動作すること。
+WPML/Polylang の多言語コンテンツが移行可能であること。
+非ACFカスタムフィールドプラグイン (Meta Box, Pods等) からの移行パスがあること。
 
 ---
 
@@ -1176,6 +1816,189 @@ Phase 9 (v2.0) までに整備:
 - ダッシュボードウィジェット: 管理画面でサマリー表示
 ```
 
+#### 10-15. SEOプラグインデータ移行
+```
+課題:
+- Yoast/RankMath/AIOSEOの設定はpostmetaに保存されている
+- SEOデータが移行されないと、title/descriptionが空になりSEO順位が下落
+- 移行後にSEO設定を手動で再入力するのは非現実的 (数千ページ)
+
+実装内容:
+- rustpress migrate seo-data コマンド
+- Yoast SEO:
+  → _yoast_wpseo_title → rustpress-seo タイトル
+  → _yoast_wpseo_metadesc → rustpress-seo メタディスクリプション
+  → _yoast_wpseo_focuskw → フォーカスキーワード
+  → _yoast_wpseo_canonical → canonical URL
+  → _yoast_wpseo_opengraph-* → OGP設定
+  → wpseo_taxonomy_meta → タクソノミーSEO設定
+- RankMath:
+  → rank_math_title, rank_math_description
+  → rank_math_focus_keyword
+  → rank_math_canonical_url
+  → rank_math_og_*, rank_math_twitter_*
+  → rank_math_schema_* → 構造化データ
+- All in One SEO:
+  → _aioseo_title, _aioseo_description
+  → _aioseo_og_*, _aioseo_twitter_*
+  → aioseo_posts テーブルのデータ
+- SEO設定 (サイト全体):
+  → タイトル区切り文字, 会社/個人情報, ソーシャルプロフィール
+  → robots.txt カスタムルール
+  → リダイレクト一覧 (Yoast Premium, RankMath)
+- 自動マッピング: 検出されたSEOプラグインに応じて適切な変換を実行
+```
+
+#### 10-16. メール設定移行
+```
+課題:
+- WP Mail SMTP / Post SMTP / FluentSMTP で設定されたSMTP設定の移行
+- メール設定が移行されないと、パスワードリセット/注文通知等が全て停止
+
+実装内容:
+- rustpress migrate mail コマンド
+- 設定ソースの自動検出:
+  → WP Mail SMTP: wp_options の wp_mail_smtp オプション
+  → Post SMTP: wp_options の postman_options
+  → FluentSMTP: wp_options の fluentmail-settings
+  → wp-config.php のSMTP定数
+- 移行先: rustpress.toml [mail] セクション
+  → provider: sendgrid | ses | mailgun | smtp
+  → host, port, username, password (暗号化保存)
+  → from_name, from_email
+  → encryption: tls | starttls | none
+- APIキーの安全な移行 (暗号化ストレージ)
+- 移行後のテストメール送信機能
+- WooCommerceメールテンプレートの移行:
+  → 注文確認, 発送通知, パスワードリセット等のテンプレート
+  → カスタマイズ済みHTML/CSSの保持
+```
+
+#### 10-17. メディアCDNオフロード対応
+```
+課題:
+- WP Offload Media / EWWW等で画像URLがCDN URLに書き換えられている
+- メディアのURLパスが /wp-content/uploads/ ではなく CDNドメインになっている
+- URL解決を誤るとサイト内の全画像が404になる
+
+実装内容:
+- CDNオフロードの自動検出:
+  → wp_options から as3cf_*, ewwwio_* 等の設定を検出
+  → postmeta の amazonS3_info 等の解析
+- URL解決戦略:
+  → ローカルパス (/wp-content/uploads/) → そのまま配信
+  → S3 URL (s3.amazonaws.com) → S3プロキシまたはリダイレクト
+  → CDN URL (cdn.example.com) → CDN設定の引き継ぎ
+- rustpress.toml [media] セクション:
+  → storage: local | s3 | gcs | azure
+  → cdn_url: CDNプレフィックス
+  → bucket, region, access_key, secret_key
+- メディアURL変換: DB内のCDN URLを新しい設定に一括更新
+- 既存CDN設定の継続使用オプション (設定変更なしで移行)
+```
+
+#### 10-18. DNS / ドメイン移行手順
+```
+課題:
+- ドメインのDNS切り替えは移行の最終ステップで最もリスクが高い
+- TTLの設定ミスでダウンタイムが発生
+- SSL証明書の発行タイミングも調整が必要
+
+実装内容:
+- rustpress migrate dns-check コマンド:
+  → 現在のDNSレコード (A, CNAME, MX, TXT) の取得と表示
+  → TTL確認 (高TTLの場合は事前に下げるよう提案)
+  → MXレコードの保持確認 (メール配信への影響防止)
+- ゼロダウンタイム切り替え手順:
+  1. ステージング環境でRustPressを構築・検証
+  2. 移行前24時間: TTLを300秒に変更
+  3. DNS切り替え: Aレコードを新サーバーIPに変更
+  4. SSL証明書: Let's Encrypt自動発行 (HTTP-01チャレンジ)
+  5. 旧サーバーを1週間維持 (フォールバック)
+- 段階移行モード (Phase 10-5) との連携:
+  → リバースプロキシで一部URLのみRustPressに転送
+  → DNS変更なしで段階的に移行可能
+- 有料SSL証明書 (EV証明書等) の手動移行手順ドキュメント
+```
+
+#### 10-19. 管理画面カスタマイズの移行
+```
+課題:
+- プラグインが add_menu_page / add_meta_box で管理画面を拡張
+- カスタムダッシュボードウィジェットが業務フローの一部になっているサイト
+- 管理画面のカスタマイズが移行されないと運用チームが混乱
+
+実装内容:
+- add_menu_page / add_submenu_page 互換API:
+  → プラグインから管理画面メニューを追加
+  → アイコン (Dashicons互換), 表示順序, 権限チェック
+- add_meta_box 互換API:
+  → 投稿編集画面にカスタムメタボックスを追加
+  → コンテキスト (normal, side, advanced), 優先度
+  → メタボックスのコールバック → Rustクロージャ or WASMプラグイン
+- add_dashboard_widget 互換API:
+  → ダッシュボードにカスタムウィジェットを追加
+- カスタム管理ページ:
+  → 設定API (register_setting, add_settings_section, add_settings_field) 互換
+  → 管理画面通知 (admin_notices フック) 互換
+- 移行時: 検出された管理画面カスタマイズのリストと対応状況レポート
+```
+
+#### 10-20. WooCommerce外部連携API
+```
+課題:
+- WooCommerce Webhooksで外部サービス (Zapier, ShipStation等) と連携しているストア
+- WooCommerce Admin API / Analytics APIに依存する管理ツール
+- 外部連携が壊れるとECサイトの物流・会計が停止
+
+実装内容:
+- WooCommerce Webhooks互換:
+  → Webhook登録 (topic, delivery_url, secret)
+  → 標準トピック: order.created, order.updated, product.created, customer.created 等
+  → ペイロードフォーマット: WooCommerce API v3形式
+  → 配信ログ, リトライ (最大5回, 指数バックオフ)
+- WooCommerce Admin API:
+  → /wp-json/wc-admin/ 互換エンドポイント
+  → レポート: 売上, 注文, 商品, カテゴリ, 顧客
+  → ダッシュボードウィジェットデータ
+- WooCommerce Analytics API:
+  → /wp-json/wc-analytics/ 互換エンドポイント
+  → 期間比較, フィルタ, CSVエクスポート
+- 外部サービス連携テスト:
+  → Zapier: Webhook受信テスト
+  → ShipStation: 注文同期テスト
+  → 会計ソフト (Xero, QuickBooks): 請求書同期テスト
+```
+
+#### 10-21. 共有ホスティング対策
+```
+課題:
+- WPサイトの60%以上が共有ホスティング (PHP専用環境) で運用
+- Rustバイナリを動かせない環境のユーザーが最大の移行障壁
+- 「RustPress Cloud」だけでは移行先の選択肢が狭い
+
+実装内容:
+A. RustPress Lite (共有ホスティング互換):
+  → musl静的リンクバイナリのCGI/FastCGIモード
+  → cPanel Addon として動作するインストーラー
+  → 共有ホスティングの制約 (ポート制限, プロセス数制限) への対応
+
+B. ホスティングパートナーシップ:
+  → 日本: エックスサーバー, さくら, ロリポップ, ConoHa
+  → 海外: Bluehost, SiteGround, HostGator, DreamHost
+  → RustPress対応プランの共同開発 (Rust実行環境を提供)
+
+C. マイグレーションパスフローチャート:
+  → 共有ホスティング → RustPress Cloud (推奨, ワンクリック移行)
+  → 共有ホスティング → VPS移行ガイド (DigitalOcean, Linode, Vultr)
+  → 共有ホスティング → RustPress Lite (同一環境で移行)
+  → 共有ホスティング → マネージドRustPressホスティング (パートナー)
+
+D. 移行コスト試算ツール:
+  → 現在のホスティング費用 vs RustPress移行後の費用比較
+  → パフォーマンス改善の定量予測
+```
+
 **Phase 10 完了基準:**
 任意のWordPressサイトに対して `rustpress migrate analyze` を実行し、
 移行パスが明確に提示されること。
@@ -1183,6 +2006,8 @@ RustPress Cloudで新規サイトを30秒以内に立ち上げられること。
 SEO安全移行が検証済みで、移行前後で検索順位に影響がないこと。
 自動更新機構により、一般ユーザーが管理画面からワンクリックで更新可能であること。
 Webインストーラーから非エンジニアでも5分以内にセットアップ完了できること。
+SEOプラグイン/メール設定/CDN設定が自動移行されること。
+共有ホスティングユーザーへの移行パスが確立されていること。
 
 ---
 
@@ -1571,3 +2396,16 @@ rustpress-security    ← core, auth (WAF, セキュリティ)
 | フォーラム/LMS/メンバーシップサイト移行不可 | 中 | 垂直市場向けプラグインをPhase 11で開発。コミュニティ開発も推進 |
 | WCAG非準拠で訴訟リスク | 中 | デフォルトテーマWCAG 2.1 AA準拠。アクセシビリティ監査ツール内蔵。Phase 11で完成 |
 | エンタープライズ品質に達しない | 高 | SOC2/HIPAA/PCI DSS対応設計。ペネトレーションテスト。SLAガイド。Phase 11で実装 |
+| admin-ajax.php非互換でプラグインのフロント機能全滅 | 最高 | admin-ajax.php互換ディスパッチャをPhase 7で実装。wp_ajax_* フック対応 |
+| FSE/ブロックテーマ未対応でWP 6.0+のデフォルトテーマが動かない | 最高 | theme.json パーサー + ブロックテンプレート対応をPhase 4で実装 |
+| カスタムDBテーブル未対応で大規模プラグイン移行不可 | 高 | プラグイン独自テーブルの検出・移行をrustpress-migrateで対応。Phase 10で実装 |
+| WP関数互換レイヤー不足でAI変換プラグインが動作しない | 最高 | Tier 1-3のWP関数互換APIをPhase 6で体系的に実装。カバレッジダッシュボード公開 |
+| WPML/Polylang多言語コンテンツ移行不可 | 高 | 多言語コンテンツプラグイン互換をPhase 9で実装。icl_translations/pll_*の移行 |
+| 共有ホスティング(60%+のWPサイト)でRust実行不可 | 最高 | RustPress Lite (CGI/FastCGI) + ホスティングパートナーシップ + RustPress Cloud。Phase 10 |
+| カスタムGutenbergブロックのサーバーサイドレンダリング不可 | 高 | PHP render_callback → Rust変換をAI変換サービスで対応。Phase 9で実装 |
+| Headless WP (GraphQL) サイト移行不可 | 中 | async-graphqlでWPGraphQL互換エンドポイント提供。Phase 7で実装 |
+| Action Scheduler非互換でWooCommerce定期処理停止 | 高 | Tokioベースのジョブキュー + Action Scheduler互換テーブル。Phase 8で実装 |
+| 非ACFカスタムフィールド (Meta Box, Pods等) 移行不可 | 高 | 各プラグインのメタデータ形式パーサーとrustpress-fieldsへの統一変換。Phase 9 |
+| SEOプラグインデータ未移行で検索順位下落 | 最高 | Yoast/RankMath/AIOSEOのpostmetaを自動変換。Phase 10のseo-data移行ツール |
+| PHPコード実行プラグイン (Code Snippets等) のDB内コード移行不可 | 中 | AI変換サービスでDB内PHPスニペットもRustに変換。動的eval()は変換不可警告 |
+| プラグイン間依存関係でAI変換の順序問題 | 高 | 依存グラフ構築 + トポロジカルソートで変換順序を自動決定。Phase 6で実装 |

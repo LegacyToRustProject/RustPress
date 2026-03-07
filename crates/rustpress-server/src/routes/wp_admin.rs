@@ -1,13 +1,13 @@
 use axum::{
-    extract::{Extension, Form, Query, State},
+    extract::{Extension, Form, Multipart, Query, State},
     http::{header, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::get,
-    Router,
+    routing::{get, post},
+    Json, Router,
 };
 use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::Deserialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustpress_auth::{session::Session, PasswordHasher};
@@ -302,6 +302,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/wp-admin/post-new.php", get(post_editor_new))
         .route("/wp-admin/post.php", get(post_editor_edit))
         .route("/wp-admin/upload.php", get(media_library).post(media_edit_save))
+        .route("/wp-admin/media-upload", post(media_upload))
         .route("/wp-admin/edit-comments.php", get(comments_list))
         .route("/wp-admin/edit-tags.php", get(taxonomy_page))
         .route(
@@ -3748,3 +3749,193 @@ async fn site_health_page(
 
     render_admin(&state, "admin/site-health.html", &ctx)
 }
+
+// ---------------------------------------------------------------------------
+// Media upload handler (drag-and-drop / file picker)
+// ---------------------------------------------------------------------------
+
+const ALLOWED_UPLOAD_MIME_TYPES: &[&str] = &[
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+    "image/bmp",
+    "image/tiff",
+    "image/x-icon",
+    "video/mp4",
+    "video/webm",
+    "video/ogg",
+    "video/quicktime",
+    "audio/mpeg",
+    "audio/ogg",
+    "audio/wav",
+    "audio/webm",
+    "audio/flac",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+    "text/csv",
+];
+
+const MAX_UPLOAD_SIZE: usize = 64 * 1024 * 1024;
+
+async fn media_upload(
+    State(state): State<Arc<AppState>>,
+    Extension(session): Extension<Session>,
+    mut multipart: Multipart,
+) -> Response {
+    let field = match multipart.next_field().await {
+        Ok(Some(f)) => f,
+        Ok(None) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "No file provided"})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": format!("Multipart error: {}", e)})),
+            )
+                .into_response();
+        }
+    };
+
+    let raw_name = field
+        .file_name()
+        .unwrap_or("upload")
+        .to_string();
+    let content_type = field
+        .content_type()
+        .unwrap_or("application/octet-stream")
+        .to_string();
+
+    if !ALLOWED_UPLOAD_MIME_TYPES.contains(&content_type.as_str()) {
+        return (
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            Json(serde_json::json!({"error": format!("File type '{}' is not allowed.", content_type)})),
+        )
+            .into_response();
+    }
+
+    let data = match field.bytes().await {
+        Ok(d) => d,
+        Err(e) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": format!("Failed to read file: {}", e)})),
+            )
+                .into_response();
+        }
+    };
+
+    if data.len() > MAX_UPLOAD_SIZE {
+        return (
+            StatusCode::PAYLOAD_TOO_LARGE,
+            Json(serde_json::json!({"error": format!("File too large ({} bytes). Maximum is {} bytes.", data.len(), MAX_UPLOAD_SIZE)})),
+        )
+            .into_response();
+    }
+
+    let file_name = raw_name
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
+        .collect::<String>();
+    let file_name = if file_name.is_empty() { "upload".to_string() } else { file_name };
+
+    let uploads_dir = PathBuf::from(
+        std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "wp-content/uploads".to_string()),
+    );
+    let date_dir = chrono::Utc::now().format("%Y/%m").to_string();
+    let full_dir = uploads_dir.join(&date_dir);
+
+    if let Err(e) = tokio::fs::create_dir_all(&full_dir).await {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Failed to create upload directory: {}", e)})),
+        )
+            .into_response();
+    }
+
+    let file_path = full_dir.join(&file_name);
+
+    if let Err(e) = tokio::fs::write(&file_path, &data).await {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": format!("Failed to write file: {}", e)})),
+        )
+            .into_response();
+    }
+
+    let display_title = file_name
+        .rsplit('.')
+        .last()
+        .unwrap_or(&file_name)
+        .replace(['-', '_'], " ");
+
+    let guid = format!("/wp-content/uploads/{}/{}", date_dir, file_name);
+    let slug = file_name
+        .split('.')
+        .next()
+        .unwrap_or("upload")
+        .to_lowercase();
+    let now = chrono::Utc::now().naive_utc();
+
+    let author_id = session.user_id;
+
+    let new_attachment = wp_posts::ActiveModel {
+        post_author: Set(author_id),
+        post_date: Set(now),
+        post_date_gmt: Set(now),
+        post_content: Set(String::new()),
+        post_title: Set(display_title),
+        post_excerpt: Set(String::new()),
+        post_status: Set("inherit".to_string()),
+        comment_status: Set("open".to_string()),
+        ping_status: Set("closed".to_string()),
+        post_password: Set(String::new()),
+        post_name: Set(slug),
+        to_ping: Set(String::new()),
+        pinged: Set(String::new()),
+        post_modified: Set(now),
+        post_modified_gmt: Set(now),
+        post_content_filtered: Set(String::new()),
+        post_parent: Set(0),
+        guid: Set(guid.clone()),
+        menu_order: Set(0),
+        post_type: Set("attachment".to_string()),
+        post_mime_type: Set(content_type.clone()),
+        comment_count: Set(0),
+        ..Default::default()
+    };
+
+    match new_attachment.insert(&state.db).await {
+        Ok(result) => {
+            tracing::info!("Uploaded media: {} (id={})", file_name, result.id);
+            (
+                StatusCode::CREATED,
+                Json(serde_json::json!({
+                    "id": result.id,
+                    "url": guid,
+                    "filename": file_name,
+                    "mime_type": content_type,
+                })),
+            )
+                .into_response()
+        }
+        Err(e) => {
+            let _ = tokio::fs::remove_file(&file_path).await;
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": format!("Database error: {}", e)})),
+            )
+                .into_response()
+        }
+    }
+}
+

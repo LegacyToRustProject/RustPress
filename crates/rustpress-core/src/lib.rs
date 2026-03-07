@@ -4,6 +4,7 @@ pub mod kses;
 pub mod mail;
 pub mod media_sizes;
 pub mod nonce;
+pub mod php_serialize;
 pub mod post_type;
 pub mod rewrite;
 pub mod shortcode;
@@ -21,6 +22,7 @@ pub use media_sizes::{
     generate_srcset, ImageSize,
 };
 pub use nonce::NonceManager;
+pub use php_serialize::{php_serialize, php_unserialize, PhpSerializeError, PhpValue};
 pub use post_type::PostTypeRegistry;
 pub use rewrite::RewriteRules;
 pub use shortcode::ShortcodeRegistry;

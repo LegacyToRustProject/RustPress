@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% if editing %}Edit Post{% else %}Add New Post{% endif %} &lsaquo; {{ site_name | default(value="RustPress") }} &mdash; Admin</title>
-    <link rel="stylesheet" href="/static/js/editor.css">
-    <script src="/static/vendor/tinymce/tinymce.min.js"></script>
     <style>
         /* ============================================================
-           RustPress Gutenberg Editor — WordPress 6.8 Faithful Layout
+           RustPress Block Editor — WordPress-inspired Layout
            ============================================================ */
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -52,7 +50,7 @@
         }
 
         /* ============================================================
-           Header Bar (64px)
+           Header Bar
            ============================================================ */
         .editor-header {
             height: var(--header-height);
@@ -73,7 +71,6 @@
             gap: 4px;
         }
 
-        /* WP Back Button */
         .editor-header__back {
             display: inline-flex;
             align-items: center;
@@ -90,7 +87,6 @@
         }
         .editor-header__back:hover { background: var(--color-gray-100); }
 
-        /* Inserter Toggle (+) */
         .editor-inserter-toggle {
             display: inline-flex;
             align-items: center;
@@ -109,7 +105,6 @@
         .editor-inserter-toggle:hover { background: var(--wp-admin-theme-color-darker); }
         .editor-inserter-toggle.is-pressed { background: var(--wp-admin-theme-color-darker); }
 
-        /* Toolbar icon buttons */
         .editor-header__btn {
             display: inline-flex;
             align-items: center;
@@ -126,7 +121,6 @@
         .editor-header__btn:hover { background: var(--color-gray-100); }
         .editor-header__btn:disabled { color: var(--color-gray-600); cursor: default; }
         .editor-header__btn:disabled:hover { background: transparent; }
-        .editor-header__btn.is-active { color: var(--wp-admin-theme-color); }
 
         .editor-header__sep {
             width: 1px;
@@ -135,7 +129,6 @@
             margin: 0 4px;
         }
 
-        /* Text buttons (Save Draft, Preview) */
         .editor-header__text-btn {
             display: inline-flex;
             align-items: center;
@@ -152,7 +145,6 @@
         }
         .editor-header__text-btn:hover { background: var(--color-gray-100); }
 
-        /* Publish button */
         .editor-publish-btn {
             display: inline-flex;
             align-items: center;
@@ -169,10 +161,9 @@
             transition: background 0.1s;
         }
         .editor-publish-btn:hover { background: var(--wp-admin-theme-color-darker); }
-        .editor-publish-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
         /* ============================================================
-           Editor Body (flex row)
+           Editor Body
            ============================================================ */
         .editor-body {
             flex: 1;
@@ -182,17 +173,18 @@
         }
 
         /* ============================================================
-           Left: Block Inserter Sidebar (350px)
+           Block Inserter Sidebar
            ============================================================ */
         .editor-inserter-panel {
             width: var(--inserter-width);
             min-width: var(--inserter-width);
             background: var(--color-white);
             border-right: 1px solid var(--color-gray-200);
-            display: flex;
+            display: none;
             flex-direction: column;
             overflow: hidden;
         }
+        .editor-inserter-panel.is-open { display: flex; }
         .editor-inserter-panel__header {
             display: flex;
             align-items: center;
@@ -202,7 +194,6 @@
             border-bottom: 1px solid var(--color-gray-200);
             font-size: 13px;
             font-weight: 600;
-            color: var(--color-gray-900);
             flex-shrink: 0;
         }
         .editor-inserter-panel__close {
@@ -218,14 +209,12 @@
             cursor: pointer;
             border-radius: 2px;
         }
-        .editor-inserter-panel__close:hover { background: var(--color-gray-100); color: var(--color-gray-900); }
+        .editor-inserter-panel__close:hover { background: var(--color-gray-100); }
         .editor-inserter-panel__body {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
         }
-
-        /* Inserter search */
         .inserter-search {
             width: 100%;
             padding: 8px 12px;
@@ -240,8 +229,6 @@
             border-color: var(--wp-admin-theme-color);
             box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
         }
-
-        /* Inserter categories */
         .inserter-category { margin-bottom: 20px; }
         .inserter-category__title {
             font-size: 11px;
@@ -282,17 +269,15 @@
             background: var(--color-gray-100);
             border-radius: 2px;
             font-size: 20px;
-            color: var(--color-gray-900);
         }
         .inserter-block__name {
             font-size: 12px;
-            color: var(--color-gray-900);
             text-align: center;
             line-height: 1.3;
         }
 
         /* ============================================================
-           Center: Canvas
+           Canvas
            ============================================================ */
         .editor-canvas {
             flex: 1;
@@ -325,57 +310,380 @@
             margin-bottom: 4px;
             background: transparent;
         }
-        .editor-title-input::placeholder {
-            color: rgba(30, 30, 30, 0.62);
-        }
+        .editor-title-input::placeholder { color: rgba(30, 30, 30, 0.62); }
         .editor-title-sep {
             border: none;
             border-top: 1px solid var(--color-gray-200);
             margin: 16px 0 28px;
         }
 
-        /* Block editor overrides */
-        .block-editor-writing-flow { padding: 0; }
-        .block-editor-block-list__layout { padding: 0; }
-        .block-editor-block-list__layout .block-editor-block-list__block {
-            margin: 0 0 28px 0;
+        /* ============================================================
+           Block Toolbar (floating above selected block)
+           ============================================================ */
+        .block-toolbar {
+            display: none;
+            position: absolute;
+            top: -44px;
+            left: 0;
+            background: var(--color-white);
+            border: 1px solid var(--color-gray-200);
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 4px;
+            gap: 2px;
+            align-items: center;
+            z-index: 20;
+            white-space: nowrap;
+        }
+        .block-toolbar.is-visible { display: flex; }
+        .block-toolbar__btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 2px;
+            background: transparent;
+            color: var(--color-gray-900);
+            font-size: 14px;
+            cursor: pointer;
+            font-family: var(--font-ui);
+            font-weight: 600;
             padding: 0;
         }
-        .block-editor-block-list__block:focus { outline: none; }
-        .block-editor-block-list__block.is-selected {
+        .block-toolbar__btn:hover { background: var(--color-gray-100); }
+        .block-toolbar__btn.is-active {
+            background: var(--color-gray-900);
+            color: var(--color-white);
+        }
+        .block-toolbar__sep {
+            width: 1px;
+            height: 20px;
+            background: var(--color-gray-200);
+            margin: 0 2px;
+        }
+
+        /* ============================================================
+           Blocks
+           ============================================================ */
+        .rp-block-list { position: relative; }
+
+        .rp-block {
+            position: relative;
+            margin-bottom: 4px;
+            border: 1px solid transparent;
+            border-radius: 2px;
+            transition: border-color 0.1s;
+        }
+        .rp-block:hover { border-color: var(--color-gray-300); }
+        .rp-block.is-selected {
+            border-color: var(--wp-admin-theme-color);
             box-shadow: -3px 0 0 0 var(--wp-admin-theme-color);
         }
-        .block-editor-block-list__block.is-selected::after { border: none; }
 
-        .block-editor-block-toolbar {
-            border: 1px solid var(--color-gray-200);
-            border-radius: 2px;
-            background: var(--color-white);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        .rp-block__type-badge {
+            position: absolute;
+            top: -1px;
+            right: -1px;
+            background: var(--color-gray-100);
+            border: 1px solid var(--color-gray-300);
+            border-radius: 0 2px 0 4px;
+            padding: 1px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--color-gray-700);
+            letter-spacing: 0.5px;
+            opacity: 0;
+            transition: opacity 0.1s;
+            pointer-events: none;
+        }
+        .rp-block:hover .rp-block__type-badge,
+        .rp-block.is-selected .rp-block__type-badge {
+            opacity: 1;
         }
 
-        .wp-block-paragraph, [data-type="core/paragraph"] p {
+        .rp-block__controls {
+            position: absolute;
+            top: 0;
+            left: -40px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+        .rp-block:hover .rp-block__controls,
+        .rp-block.is-selected .rp-block__controls {
+            opacity: 1;
+        }
+        .rp-block__ctrl-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--color-gray-300);
+            border-radius: 2px;
+            background: var(--color-white);
+            color: var(--color-gray-700);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .rp-block__ctrl-btn:hover {
+            background: var(--color-gray-100);
+            color: var(--color-gray-900);
+        }
+        .rp-block__ctrl-btn--delete:hover {
+            background: #cc1818;
+            color: var(--color-white);
+            border-color: #cc1818;
+        }
+
+        .rp-block__content {
+            min-height: 1.6em;
+            padding: 8px 12px;
+            outline: none;
             font-size: 1rem;
             line-height: 1.8;
         }
-        [data-type="core/heading"] h2, [data-type="core/heading"] h3, [data-type="core/heading"] h4 {
+        .rp-block__content:empty::before {
+            content: attr(data-placeholder);
+            color: rgba(30,30,30,0.38);
+            pointer-events: none;
+        }
+
+        /* Block type specifics */
+        .rp-block[data-type="heading"] .rp-block__content {
+            font-weight: 700;
+            font-size: 1.6em;
             line-height: 1.3;
         }
-        [data-type="core/quote"] blockquote {
-            border-left: 4px solid var(--color-gray-900);
-            padding: 0 24px;
-            margin: 0;
+        .rp-block[data-type="heading"][data-level="3"] .rp-block__content {
+            font-size: 1.3em;
         }
-        [data-type="core/code"] pre {
+        .rp-block[data-type="heading"][data-level="4"] .rp-block__content {
+            font-size: 1.1em;
+        }
+        .rp-block[data-type="quote"] .rp-block__content {
+            border-left: 4px solid var(--color-gray-900);
+            padding-left: 24px;
+            font-style: italic;
+        }
+        .rp-block[data-type="code"] .rp-block__content {
             background: var(--color-gray-100);
             padding: 16px;
             border-radius: 2px;
             font-family: Menlo, Consolas, monaco, monospace;
             font-size: 0.875rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .rp-block[data-type="list"] .rp-block__content ul,
+        .rp-block[data-type="list"] .rp-block__content ol {
+            padding-left: 24px;
+        }
+        .rp-block[data-type="html"] .rp-block__content {
+            font-family: Menlo, Consolas, monaco, monospace;
+            font-size: 0.8rem;
+            background: #fdf6e3;
+            padding: 12px;
+            white-space: pre-wrap;
+            border: 1px dashed var(--color-gray-300);
+        }
+        .rp-block[data-type="image"] .rp-block__content {
+            text-align: center;
+            padding: 0;
+        }
+        .rp-block[data-type="image"] .rp-block__content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 2px;
+        }
+        .rp-image-placeholder {
+            padding: 32px 24px;
+            border: 2px dashed var(--color-gray-300);
+            border-radius: 4px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .rp-image-placeholder__icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .rp-image-url-input {
+            width: 100%;
+            max-width: 360px;
+            padding: 8px 12px;
+            border: 1px solid var(--color-gray-400);
+            border-radius: 2px;
+            font-size: 13px;
+            font-family: var(--font-ui);
+            margin-top: 8px;
+        }
+        .rp-image-url-input:focus {
+            border-color: var(--wp-admin-theme-color);
+            box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
+            outline: none;
+        }
+
+        /* Add block button between blocks */
+        .rp-add-block-between {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 20px;
+            margin: -2px 0;
+            opacity: 0;
+            transition: opacity 0.15s;
+            position: relative;
+            z-index: 5;
+        }
+        .rp-add-block-between:hover { opacity: 1; }
+        .rp-add-block-between__line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 1px;
+            background: var(--wp-admin-theme-color);
+        }
+        .rp-add-block-between__btn {
+            position: relative;
+            z-index: 1;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: none;
+            background: var(--wp-admin-theme-color);
+            color: var(--color-white);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .rp-add-block-between__btn:hover {
+            background: var(--wp-admin-theme-color-darker);
+        }
+
+        /* Bottom add block */
+        .rp-add-block-bottom {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            margin-top: 8px;
+            cursor: pointer;
+            border-radius: 2px;
+            color: var(--color-gray-700);
+            transition: background 0.1s;
+        }
+        .rp-add-block-bottom:hover { background: var(--color-gray-100); color: var(--color-gray-900); }
+        .rp-add-block-bottom__icon {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--color-gray-400);
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
         }
 
         /* ============================================================
-           Right: Settings Sidebar (280px)
+           Visual/Code Toggle
+           ============================================================ */
+        .rp-editor-mode-toggle {
+            display: flex;
+            gap: 0;
+            margin-left: 8px;
+        }
+        .rp-editor-mode-btn {
+            padding: 4px 12px;
+            border: 1px solid var(--color-gray-300);
+            background: var(--color-gray-100);
+            color: var(--color-gray-700);
+            font-size: 12px;
+            font-family: var(--font-ui);
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .rp-editor-mode-btn:first-child { border-radius: 3px 0 0 3px; }
+        .rp-editor-mode-btn:last-child { border-radius: 0 3px 3px 0; border-left: none; }
+        .rp-editor-mode-btn.is-active {
+            background: var(--color-white);
+            color: var(--color-gray-900);
+            font-weight: 600;
+            border-color: var(--wp-admin-theme-color);
+            z-index: 1;
+            position: relative;
+        }
+
+        /* Code editor textarea */
+        .rp-code-editor {
+            width: 100%;
+            min-height: 400px;
+            padding: 16px;
+            border: 1px solid var(--color-gray-300);
+            border-radius: 2px;
+            font-family: Menlo, Consolas, "Courier New", monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--color-gray-900);
+            background: #f9f9f9;
+            resize: vertical;
+            outline: none;
+            tab-size: 4;
+        }
+        .rp-code-editor:focus { background: #fff; border-color: var(--wp-admin-theme-color); }
+        .rp-code-editor-wrap { display: none; }
+        .rp-code-editor-wrap.is-visible { display: block; }
+        .rp-visual-editor-wrap { display: block; }
+        .rp-visual-editor-wrap.is-hidden { display: none; }
+
+        /* ============================================================
+           Inserter Dropdown (inline, appears near + button)
+           ============================================================ */
+        .rp-inserter-dropdown {
+            position: absolute;
+            background: var(--color-white);
+            border: 1px solid var(--color-gray-200);
+            border-radius: 4px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            padding: 8px;
+            z-index: 100;
+            display: none;
+            min-width: 200px;
+        }
+        .rp-inserter-dropdown.is-open { display: block; }
+        .rp-inserter-dropdown__item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            font-size: 13px;
+            font-family: var(--font-ui);
+            cursor: pointer;
+            border-radius: 2px;
+            color: var(--color-gray-900);
+        }
+        .rp-inserter-dropdown__item:hover {
+            background: var(--wp-admin-theme-color);
+            color: var(--color-white);
+        }
+        .rp-inserter-dropdown__icon {
+            width: 24px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        /* ============================================================
+           Settings Sidebar
            ============================================================ */
         .editor-settings-sidebar {
             width: var(--sidebar-width);
@@ -386,6 +694,7 @@
             flex-direction: column;
             overflow: hidden;
         }
+        .editor-settings-sidebar.is-hidden { display: none; }
         .editor-settings-tabs {
             display: flex;
             border-bottom: 1px solid var(--color-gray-200);
@@ -405,7 +714,6 @@
             cursor: pointer;
             border-bottom: 3px solid transparent;
             font-family: var(--font-ui);
-            transition: color 0.1s;
         }
         .editor-settings-tab:hover { color: var(--color-gray-900); }
         .editor-settings-tab.is-active {
@@ -417,8 +725,6 @@
             overflow-y: auto;
             padding: 16px;
         }
-
-        /* Settings panel sections */
         .settings-panel {
             margin-bottom: 16px;
             border-bottom: 1px solid var(--color-gray-200);
@@ -442,7 +748,7 @@
             color: var(--color-gray-700);
             margin-bottom: 6px;
         }
-        .settings-select {
+        .settings-select, .settings-input {
             width: 100%;
             padding: 6px 8px;
             border: 1px solid var(--color-gray-600);
@@ -452,7 +758,7 @@
             background: var(--color-white);
             color: var(--color-gray-900);
         }
-        .settings-select:focus {
+        .settings-select:focus, .settings-input:focus {
             border-color: var(--wp-admin-theme-color);
             box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
             outline: none;
@@ -473,19 +779,21 @@
             box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
             outline: none;
         }
-        .settings-input {
-            width: 100%;
-            padding: 6px 8px;
-            border: 1px solid var(--color-gray-600);
-            border-radius: 2px;
-            font-size: 13px;
-            font-family: var(--font-ui);
-            color: var(--color-gray-900);
+        .settings-checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
         }
-        .settings-input:focus {
-            border-color: var(--wp-admin-theme-color);
-            box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
-            outline: none;
+        .settings-checkbox-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        .settings-checkbox-row label {
+            margin-bottom: 0;
+            text-transform: none;
+            font-weight: 400;
+            font-size: 13px;
         }
 
         /* ============================================================
@@ -504,549 +812,1286 @@
         .editor-notice--success { background: #4ab866; color: #fff; }
         .editor-notice--error { background: #cc1818; color: #fff; }
         .editor-notice__dismiss { font-size: 16px; margin-left: 8px; opacity: 0.8; }
-        .editor-notice__dismiss:hover { opacity: 1; }
         @keyframes notice-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
         /* ============================================================
-           Loading
+           Link Popover
            ============================================================ */
-        #rustpress-editor-loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            font-size: 1rem;
-            color: var(--color-gray-700);
-            gap: 12px;
-        }
-        #rustpress-editor-loading.hidden { display: none; }
-        #rustpress-editor-loading::before {
-            content: '';
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--color-gray-300);
-            border-top-color: var(--wp-admin-theme-color);
-            border-radius: 50%;
-            animation: rp-spin 0.6s linear infinite;
-        }
-        @keyframes rp-spin { to { transform: rotate(360deg); } }
-
-        /* Popover */
-        .components-popover { z-index: 1000; }
-
-        /* ============================================================
-           Image Block — Upload Placeholder
-           ============================================================ */
-        .rp-image-placeholder {
-            padding: 32px 24px;
-            border: 2px dashed var(--color-gray-300);
-            border-radius: 4px;
-            text-align: center;
-            background: #fafafa;
-            transition: border-color 0.15s, background 0.15s;
-        }
-        .rp-image-placeholder.is-drag-over {
-            border-color: var(--wp-admin-theme-color);
-            background: #f0f7fc;
-        }
-        .rp-image-placeholder__icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-            opacity: 0.5;
-        }
-        .rp-image-placeholder__buttons {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-bottom: 12px;
-        }
-        .rp-image-btn {
-            display: inline-flex;
-            align-items: center;
-            padding: 8px 20px;
-            border: 1px solid var(--wp-admin-theme-color);
-            border-radius: 2px;
-            font-size: 13px;
-            font-family: var(--font-ui);
-            cursor: pointer;
+        .rp-link-popover {
+            position: fixed;
             background: var(--color-white);
-            color: var(--wp-admin-theme-color);
-            transition: background 0.1s;
+            border: 1px solid var(--color-gray-200);
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 12px;
+            z-index: 200;
+            display: none;
+            min-width: 300px;
         }
-        .rp-image-btn:hover {
-            background: #f0f7fc;
-        }
-        .rp-image-btn--primary {
-            background: var(--wp-admin-theme-color);
-            color: var(--color-white);
-        }
-        .rp-image-btn--primary:hover {
-            background: var(--wp-admin-theme-color-darker);
-        }
-        .rp-image-placeholder__hint {
-            font-size: 12px;
-            color: var(--color-gray-700);
-            margin-bottom: 12px;
-        }
-        .rp-image-placeholder__url-row {
-            display: flex;
-            justify-content: center;
-        }
-        .rp-image-url-input {
-            width: 100%;
-            max-width: 360px;
+        .rp-link-popover.is-open { display: flex; gap: 8px; align-items: center; }
+        .rp-link-popover input {
+            flex: 1;
             padding: 6px 10px;
             border: 1px solid var(--color-gray-400);
             border-radius: 2px;
             font-size: 13px;
             font-family: var(--font-ui);
-        }
-        .rp-image-url-input:focus {
-            border-color: var(--wp-admin-theme-color);
-            box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
             outline: none;
         }
-        .rp-image-placeholder__uploading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 16px;
-            color: var(--color-gray-700);
-            font-size: 14px;
-        }
-        .rp-image-spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--color-gray-300);
-            border-top-color: var(--wp-admin-theme-color);
-            border-radius: 50%;
-            animation: rp-spin 0.6s linear infinite;
-        }
-        .rp-image-error {
-            margin-top: 8px;
-            color: #cc1818;
-            font-size: 12px;
-        }
-
-        /* Image toolbar overlay */
-        .rp-image-toolbar {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            display: flex;
-            gap: 4px;
-            opacity: 0;
-            transition: opacity 0.15s;
-        }
-        figure:hover .rp-image-toolbar,
-        [data-type="core/image"]:hover .rp-image-toolbar {
-            opacity: 1;
-        }
-        .rp-image-toolbar__btn {
-            padding: 4px 10px;
-            border: none;
-            border-radius: 2px;
-            background: rgba(30, 30, 30, 0.7);
-            color: #fff;
-            font-size: 12px;
-            cursor: pointer;
-            font-family: var(--font-ui);
-        }
-        .rp-image-toolbar__btn:hover {
-            background: rgba(30, 30, 30, 0.9);
-        }
-
-        /* ============================================================
-           Media Library Modal
-           ============================================================ */
-        .rp-media-modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 200;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: rp-fade-in 0.15s ease;
-        }
-        @keyframes rp-fade-in { from { opacity: 0; } to { opacity: 1; } }
-
-        .rp-media-modal {
-            width: 90%;
-            max-width: 800px;
-            max-height: 80vh;
-            background: var(--color-white);
-            border-radius: 4px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        .rp-media-modal__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--color-gray-200);
-        }
-        .rp-media-modal__close {
-            width: 32px;
-            height: 32px;
-            border: none;
-            background: transparent;
-            font-size: 20px;
-            cursor: pointer;
-            border-radius: 2px;
-            color: var(--color-gray-700);
-        }
-        .rp-media-modal__close:hover {
-            background: var(--color-gray-100);
-        }
-        .rp-media-modal__body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-        .rp-media-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 8px;
-        }
-        .rp-media-grid__item {
-            aspect-ratio: 1;
-            border: 2px solid transparent;
-            border-radius: 4px;
-            overflow: hidden;
-            cursor: pointer;
-            background: var(--color-gray-100);
-            padding: 0;
-            transition: border-color 0.1s;
-        }
-        .rp-media-grid__item:hover {
+        .rp-link-popover input:focus {
             border-color: var(--wp-admin-theme-color);
         }
-        .rp-media-grid__item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+        .rp-link-popover button {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 2px;
+            background: var(--wp-admin-theme-color);
+            color: var(--color-white);
+            font-size: 13px;
+            cursor: pointer;
+            font-family: var(--font-ui);
         }
 
         /* ============================================================
            Responsive
            ============================================================ */
-        /* ============================================================
-           TinyMCE Visual/Text Tab Toggle (WordPress-style)
-           ============================================================ */
-        .rp-editor-tabs {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 0;
-            position: relative;
-            z-index: 1;
-        }
-        .rp-editor-tab {
-            display: inline-block;
-            padding: 4px 12px;
-            margin: 0;
-            border: 1px solid var(--color-gray-300);
-            border-bottom: none;
-            background: var(--color-gray-100);
-            color: var(--color-gray-700);
-            font-size: 13px;
-            font-family: var(--font-ui);
-            font-weight: 500;
-            cursor: pointer;
-            border-radius: 3px 3px 0 0;
-            line-height: 1.8;
-            transition: background 0.1s, color 0.1s;
-            position: relative;
-            top: 1px;
-        }
-        .rp-editor-tab:first-child {
-            margin-right: -1px;
-        }
-        .rp-editor-tab:hover {
-            background: var(--color-gray-200);
-            color: var(--color-gray-900);
-        }
-        .rp-editor-tab.is-active {
-            background: var(--color-white);
-            color: var(--color-gray-900);
-            border-bottom-color: var(--color-white);
-            font-weight: 600;
-        }
-        .rp-editor-content-wrap {
-            border: 1px solid var(--color-gray-300);
-            border-radius: 0 0 4px 4px;
-            background: var(--color-white);
-            min-height: 300px;
-            position: relative;
-        }
-        .rp-editor-content-wrap .tox.tox-tinymce {
-            border: none !important;
-            border-radius: 0 !important;
-        }
-        .rp-text-editor {
-            width: 100%;
-            min-height: 400px;
-            padding: 12px;
-            border: none;
-            outline: none;
-            font-family: Menlo, Consolas, "Courier New", monospace;
-            font-size: 13px;
-            line-height: 1.6;
-            color: var(--color-gray-900);
-            background: #f9f9f9;
-            resize: vertical;
-            box-sizing: border-box;
-            tab-size: 4;
-            -moz-tab-size: 4;
-        }
-        .rp-text-editor:focus {
-            outline: none;
-            background: #fff;
-        }
-
-        /* ============================================================
-           Custom Fields Metabox
-           ============================================================ */
-        .rp-custom-fields {
-            margin-top: 28px;
-            border: 1px solid var(--color-gray-300);
-            border-radius: 4px;
-            background: var(--color-white);
-        }
-        .rp-custom-fields__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
-            background: var(--color-gray-100);
-            border-bottom: 1px solid var(--color-gray-300);
-            cursor: pointer;
-            user-select: none;
-            border-radius: 4px 4px 0 0;
-        }
-        .rp-custom-fields__header:hover {
-            background: var(--color-gray-200);
-        }
-        .rp-custom-fields__title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--color-gray-900);
-        }
-        .rp-custom-fields__toggle {
-            font-size: 16px;
-            color: var(--color-gray-700);
-            transition: transform 0.15s;
-        }
-        .rp-custom-fields__toggle.is-collapsed {
-            transform: rotate(-90deg);
-        }
-        .rp-custom-fields__body {
-            padding: 0;
-        }
-        .rp-custom-fields__body.is-collapsed {
-            display: none;
-        }
-        .rp-custom-fields__table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        .rp-custom-fields__table th {
-            text-align: left;
-            padding: 8px 12px;
-            background: var(--color-gray-100);
-            border-bottom: 1px solid var(--color-gray-300);
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--color-gray-700);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .rp-custom-fields__table td {
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--color-gray-200);
-            vertical-align: top;
-        }
-        .rp-custom-fields__table tr:last-child td {
-            border-bottom: none;
-        }
-        .rp-custom-fields__table .rp-cf-key {
-            width: 30%;
-            min-width: 140px;
-        }
-        .rp-custom-fields__table .rp-cf-value {
-            width: auto;
-        }
-        .rp-custom-fields__table .rp-cf-actions {
-            width: 100px;
-            text-align: right;
-            white-space: nowrap;
-        }
-        .rp-cf-key-input,
-        .rp-cf-value-textarea {
-            width: 100%;
-            padding: 6px 8px;
-            border: 1px solid var(--color-gray-400);
-            border-radius: 2px;
-            font-size: 13px;
-            font-family: var(--font-ui);
-            color: var(--color-gray-900);
-            background: var(--color-white);
-        }
-        .rp-cf-key-input:focus,
-        .rp-cf-value-textarea:focus {
-            border-color: var(--wp-admin-theme-color);
-            box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
-            outline: none;
-        }
-        .rp-cf-value-textarea {
-            min-height: 60px;
-            resize: vertical;
-            font-family: Menlo, Consolas, monospace;
-            font-size: 12px;
-        }
-        .rp-cf-value-display {
-            font-family: Menlo, Consolas, monospace;
-            font-size: 12px;
-            color: var(--color-gray-900);
-            word-break: break-all;
-            max-height: 80px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-        .rp-cf-btn {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 10px;
-            border: 1px solid var(--color-gray-400);
-            border-radius: 2px;
-            background: var(--color-white);
-            color: var(--color-gray-900);
-            font-size: 12px;
-            font-family: var(--font-ui);
-            cursor: pointer;
-            transition: background 0.1s, border-color 0.1s;
-        }
-        .rp-cf-btn:hover {
-            background: var(--color-gray-100);
-            border-color: var(--color-gray-600);
-        }
-        .rp-cf-btn--primary {
-            background: var(--wp-admin-theme-color);
-            border-color: var(--wp-admin-theme-color);
-            color: var(--color-white);
-        }
-        .rp-cf-btn--primary:hover {
-            background: var(--wp-admin-theme-color-darker);
-            border-color: var(--wp-admin-theme-color-darker);
-        }
-        .rp-cf-btn--danger {
-            color: #cc1818;
-            border-color: #cc1818;
-        }
-        .rp-cf-btn--danger:hover {
-            background: #cc1818;
-            color: var(--color-white);
-        }
-        .rp-cf-btn--small {
-            padding: 2px 8px;
-            font-size: 11px;
-        }
-        .rp-cf-add-row {
-            padding: 12px;
-            border-top: 1px solid var(--color-gray-200);
-            background: #fafafa;
-            border-radius: 0 0 4px 4px;
-        }
-        .rp-cf-add-row__title {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--color-gray-700);
-            margin-bottom: 8px;
-        }
-        .rp-cf-add-row__fields {
-            display: flex;
-            gap: 8px;
-            align-items: flex-start;
-        }
-        .rp-cf-add-row__key-wrap {
-            flex: 0 0 30%;
-            min-width: 140px;
-        }
-        .rp-cf-add-row__value-wrap {
-            flex: 1;
-        }
-        .rp-cf-add-row__btn-wrap {
-            flex: 0 0 auto;
-            padding-top: 1px;
-        }
-        .rp-cf-key-select {
-            width: 100%;
-            padding: 6px 8px;
-            border: 1px solid var(--color-gray-400);
-            border-radius: 2px;
-            font-size: 13px;
-            font-family: var(--font-ui);
-            background: var(--color-white);
-            color: var(--color-gray-900);
-            margin-bottom: 4px;
-        }
-        .rp-cf-key-select:focus {
-            border-color: var(--wp-admin-theme-color);
-            box-shadow: 0 0 0 1px var(--wp-admin-theme-color);
-            outline: none;
-        }
-        .rp-cf-empty {
-            padding: 24px;
-            text-align: center;
-            color: var(--color-gray-700);
-            font-size: 13px;
-        }
-        .rp-cf-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 11px;
-            color: var(--color-gray-700);
-            margin-left: 8px;
-        }
-        .rp-cf-status--saving { color: var(--wp-admin-theme-color); }
-        .rp-cf-status--error { color: #cc1818; }
-
         @media (max-width: 782px) {
             .editor-inserter-panel { position: absolute; left: 0; top: 0; bottom: 0; z-index: 50; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
-            .editor-settings-sidebar { display: none; }
+            .editor-settings-sidebar { display: none !important; }
             .editor-canvas__inner { padding: 20px 16px 80px; }
             .editor-title-input { font-size: 1.6em; }
+            .rp-block__controls { left: -32px; }
         }
     </style>
 </head>
 <body>
-    <div id="rustpress-editor-loading">Loading editor...</div>
-    <div id="rustpress-editor"></div>
 
-    <script>
-    window.rpEditorSettings = {{ post_json | safe }};
-    </script>
-    <script src="/static/js/editor.js"></script>
-    <script>
-    const checkEditor = setInterval(() => {
-        const editor = document.querySelector('.editor-header');
-        if (editor) {
-            document.getElementById('rustpress-editor-loading').classList.add('hidden');
-            clearInterval(checkEditor);
+<form id="post-form" method="POST" action="/wp-admin/post.php">
+    <input type="hidden" name="post_id" id="field-post-id" value="">
+    <input type="hidden" name="post_content" id="field-post-content" value="">
+    <input type="hidden" name="post_status" id="field-post-status" value="draft">
+    <input type="hidden" name="post_type" id="field-post-type" value="post">
+    <input type="hidden" name="action" value="editpost">
+
+    <div class="editor-shell">
+        <!-- Notice area -->
+        <div id="notice-area"></div>
+
+        <!-- Header Bar -->
+        <div class="editor-header">
+            <div class="editor-header__left">
+                <a href="/wp-admin/edit.php" class="editor-header__back" title="Back to posts">&#8592;</a>
+                <button type="button" class="editor-inserter-toggle" id="toggle-inserter" title="Toggle block inserter">+</button>
+                <div class="editor-header__sep"></div>
+                <!-- Undo/Redo -->
+                <button type="button" class="editor-header__btn" id="btn-undo" title="Undo" disabled>&#8630;</button>
+                <button type="button" class="editor-header__btn" id="btn-redo" title="Redo" disabled>&#8631;</button>
+                <div class="editor-header__sep"></div>
+                <!-- Visual/Code toggle -->
+                <div class="rp-editor-mode-toggle">
+                    <button type="button" class="rp-editor-mode-btn is-active" data-mode="visual">Visual</button>
+                    <button type="button" class="rp-editor-mode-btn" data-mode="code">Code</button>
+                </div>
+            </div>
+            <div class="editor-header__right">
+                <button type="button" class="editor-header__text-btn" id="btn-save-draft">Save Draft</button>
+                <button type="button" class="editor-header__text-btn" id="btn-preview" title="Preview">Preview</button>
+                <button type="button" class="editor-publish-btn" id="btn-publish">Publish</button>
+                <div class="editor-header__sep"></div>
+                <button type="button" class="editor-header__btn" id="toggle-sidebar" title="Toggle settings">&#9881;</button>
+            </div>
+        </div>
+
+        <!-- Editor Body -->
+        <div class="editor-body">
+            <!-- Block Inserter Sidebar -->
+            <div class="editor-inserter-panel" id="inserter-panel">
+                <div class="editor-inserter-panel__header">
+                    <span>Blocks</span>
+                    <button type="button" class="editor-inserter-panel__close" id="close-inserter">&times;</button>
+                </div>
+                <div class="editor-inserter-panel__body">
+                    <input type="text" class="inserter-search" placeholder="Search for a block..." id="inserter-search">
+                    <div class="inserter-category">
+                        <div class="inserter-category__title">Text</div>
+                        <div class="inserter-blocks">
+                            <button type="button" class="inserter-block" data-block-type="paragraph">
+                                <span class="inserter-block__icon">&#182;</span>
+                                <span class="inserter-block__name">Paragraph</span>
+                            </button>
+                            <button type="button" class="inserter-block" data-block-type="heading">
+                                <span class="inserter-block__icon">H</span>
+                                <span class="inserter-block__name">Heading</span>
+                            </button>
+                            <button type="button" class="inserter-block" data-block-type="list">
+                                <span class="inserter-block__icon">&#8226;</span>
+                                <span class="inserter-block__name">List</span>
+                            </button>
+                            <button type="button" class="inserter-block" data-block-type="quote">
+                                <span class="inserter-block__icon">&#8220;</span>
+                                <span class="inserter-block__name">Quote</span>
+                            </button>
+                            <button type="button" class="inserter-block" data-block-type="code">
+                                <span class="inserter-block__icon">&lt;/&gt;</span>
+                                <span class="inserter-block__name">Code</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="inserter-category">
+                        <div class="inserter-category__title">Media</div>
+                        <div class="inserter-blocks">
+                            <button type="button" class="inserter-block" data-block-type="image">
+                                <span class="inserter-block__icon">&#128247;</span>
+                                <span class="inserter-block__name">Image</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="inserter-category">
+                        <div class="inserter-category__title">Formatting</div>
+                        <div class="inserter-blocks">
+                            <button type="button" class="inserter-block" data-block-type="html">
+                                <span class="inserter-block__icon">HTML</span>
+                                <span class="inserter-block__name">Custom HTML</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas -->
+            <div class="editor-canvas" id="editor-canvas">
+                <div class="editor-canvas__inner">
+                    <!-- Title -->
+                    <input type="text" class="editor-title-input" name="post_title" id="field-title" placeholder="Add title" autocomplete="off">
+                    <hr class="editor-title-sep">
+
+                    <!-- Visual Editor -->
+                    <div class="rp-visual-editor-wrap" id="visual-editor">
+                        <div class="rp-block-list" id="block-list">
+                            <!-- Blocks rendered by JS -->
+                        </div>
+                        <div class="rp-add-block-bottom" id="add-block-bottom">
+                            <span class="rp-add-block-bottom__icon">+</span>
+                            <span>Add block</span>
+                        </div>
+                    </div>
+
+                    <!-- Code Editor (raw HTML) -->
+                    <div class="rp-code-editor-wrap" id="code-editor-wrap">
+                        <textarea class="rp-code-editor" id="code-editor" placeholder="Write HTML..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Sidebar -->
+            <div class="editor-settings-sidebar" id="settings-sidebar">
+                <div class="editor-settings-tabs">
+                    <button type="button" class="editor-settings-tab is-active" data-tab="post">Post</button>
+                    <button type="button" class="editor-settings-tab" data-tab="block">Block</button>
+                </div>
+                <div class="editor-settings-body" id="settings-body">
+                    <!-- Post tab -->
+                    <div id="settings-tab-post">
+                        <div class="settings-panel">
+                            <div class="settings-panel__title">Status &amp; Visibility</div>
+                            <label for="field-status">Status</label>
+                            <select class="settings-select" id="field-status" name="post_status_select">
+                                <option value="draft">Draft</option>
+                                <option value="publish">Published</option>
+                                <option value="pending">Pending Review</option>
+                                <option value="private">Private</option>
+                            </select>
+                        </div>
+                        <div class="settings-panel">
+                            <div class="settings-panel__title">URL Slug</div>
+                            <label for="field-slug">Slug</label>
+                            <input type="text" class="settings-input" id="field-slug" name="post_name" placeholder="auto-generated">
+                        </div>
+                        <div class="settings-panel">
+                            <div class="settings-panel__title">Categories</div>
+                            <div id="categories-list" style="max-height: 160px; overflow-y: auto; border: 1px solid var(--color-gray-300); border-radius: 2px; padding: 8px;">
+                                <em style="color: var(--color-gray-600); font-size: 12px;">Loading categories...</em>
+                            </div>
+                        </div>
+                        <div class="settings-panel">
+                            <div class="settings-panel__title">Tags</div>
+                            <input type="text" class="settings-input" id="field-tags" name="tax_input_post_tag" placeholder="Add tags, comma separated">
+                        </div>
+                        <div class="settings-panel">
+                            <div class="settings-panel__title">Featured Image</div>
+                            <div id="featured-image-preview" style="margin-bottom: 8px;"></div>
+                            <input type="text" class="settings-input" id="field-featured-image" name="featured_image_url" placeholder="Image URL">
+                            <input type="hidden" id="field-featured-image-id" name="featured_image_id" value="0">
+                        </div>
+                        <div class="settings-panel">
+                            <div class="settings-panel__title">Excerpt</div>
+                            <textarea class="settings-textarea" id="field-excerpt" name="post_excerpt" placeholder="Write an excerpt (optional)"></textarea>
+                        </div>
+                        <div class="settings-panel">
+                            <div class="settings-panel__title">Discussion</div>
+                            <div class="settings-checkbox-row">
+                                <input type="checkbox" id="field-comments" name="comment_status" value="open" checked>
+                                <label for="field-comments">Allow comments</label>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Block tab (populated dynamically) -->
+                    <div id="settings-tab-block" style="display:none;">
+                        <div class="settings-panel">
+                            <p style="color: var(--color-gray-700);">Select a block to see its settings.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Link insertion popover -->
+<div class="rp-link-popover" id="link-popover">
+    <input type="text" id="link-url-input" placeholder="Paste or type URL...">
+    <button type="button" id="link-apply-btn">Apply</button>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ================================================================
+    // Initialize from server data
+    // ================================================================
+    var S = {{ post_json | safe }};
+
+    // ================================================================
+    // State
+    // ================================================================
+    var blocks = [];          // Array of {id, type, content, meta}
+    var selectedBlockId = null;
+    var editorMode = 'visual'; // 'visual' | 'code'
+    var undoStack = [];
+    var redoStack = [];
+    var blockIdCounter = 0;
+    var inserterDropdownTarget = null; // index at which to insert
+
+    // ================================================================
+    // DOM refs
+    // ================================================================
+    var blockListEl = document.getElementById('block-list');
+    var codeEditorEl = document.getElementById('code-editor');
+    var visualWrap = document.getElementById('visual-editor');
+    var codeWrap = document.getElementById('code-editor-wrap');
+    var titleInput = document.getElementById('field-title');
+    var statusSelect = document.getElementById('field-status');
+    var slugInput = document.getElementById('field-slug');
+    var excerptInput = document.getElementById('field-excerpt');
+    var postForm = document.getElementById('post-form');
+    var inserterPanel = document.getElementById('inserter-panel');
+    var settingsSidebar = document.getElementById('settings-sidebar');
+    var linkPopover = document.getElementById('link-popover');
+    var linkUrlInput = document.getElementById('link-url-input');
+
+    // ================================================================
+    // Populate fields from server data
+    // ================================================================
+    document.getElementById('field-post-id').value = S.postId || 0;
+    document.getElementById('field-post-type').value = S.postType || 'post';
+    document.getElementById('field-post-status').value = S.postStatus || 'draft';
+    titleInput.value = S.postTitle || '';
+    slugInput.value = S.postSlug || '';
+    excerptInput.value = S.postExcerpt || '';
+    statusSelect.value = S.postStatus || 'draft';
+
+    if (S.featuredImageUrl) {
+        document.getElementById('field-featured-image').value = S.featuredImageUrl;
+        document.getElementById('field-featured-image-id').value = S.featuredImageId || 0;
+        showFeaturedImagePreview(S.featuredImageUrl);
+    }
+    if (S.commentStatus === 'closed') {
+        document.getElementById('field-comments').checked = false;
+    }
+
+    // ================================================================
+    // Parse existing content into blocks
+    // ================================================================
+    function parseContentToBlocks(html) {
+        if (!html || !html.trim()) {
+            return [createBlock('paragraph', '')];
         }
-    }, 100);
-    setTimeout(() => {
-        const loading = document.getElementById('rustpress-editor-loading');
-        if (!loading.classList.contains('hidden')) {
-            loading.innerHTML = 'Editor failed to load. <a href="/wp-admin/edit.php">Back to posts</a>';
+
+        var result = [];
+        // Try to parse WordPress block comments
+        var wpBlockRegex = /<!--\s*wp:(\w+)(?:\s+(\{[^}]*\}))?\s*-->([\s\S]*?)<!--\s*\/wp:\1\s*-->/g;
+        var match;
+        var lastIndex = 0;
+        var foundBlocks = false;
+
+        while ((match = wpBlockRegex.exec(html)) !== null) {
+            foundBlocks = true;
+            // Any content before this block
+            var before = html.substring(lastIndex, match.index).trim();
+            if (before) {
+                result.push(createBlock('paragraph', before));
+            }
+
+            var blockType = match[1];
+            var blockAttrs = match[2] ? JSON.parse(match[2]) : {};
+            var blockContent = match[3].trim();
+
+            switch (blockType) {
+                case 'paragraph':
+                    // Strip <p> tags
+                    blockContent = blockContent.replace(/^<p>/, '').replace(/<\/p>$/, '');
+                    result.push(createBlock('paragraph', blockContent));
+                    break;
+                case 'heading':
+                    var level = blockAttrs.level || 2;
+                    var hTag = 'h' + level;
+                    blockContent = blockContent.replace(new RegExp('^<' + hTag + '[^>]*>'), '').replace(new RegExp('</' + hTag + '>$'), '');
+                    var b = createBlock('heading', blockContent);
+                    b.meta = { level: level };
+                    result.push(b);
+                    break;
+                case 'image':
+                    var imgMatch = blockContent.match(/src="([^"]+)"/);
+                    var imgUrl = imgMatch ? imgMatch[1] : (blockAttrs.url || '');
+                    var altMatch = blockContent.match(/alt="([^"]*)"/);
+                    var alt = altMatch ? altMatch[1] : '';
+                    var ib = createBlock('image', imgUrl);
+                    ib.meta = { alt: alt };
+                    result.push(ib);
+                    break;
+                case 'list':
+                    result.push(createBlock('list', blockContent));
+                    break;
+                case 'quote':
+                    blockContent = blockContent.replace(/^<blockquote[^>]*>/, '').replace(/<\/blockquote>$/, '');
+                    result.push(createBlock('quote', blockContent));
+                    break;
+                case 'code':
+                    blockContent = blockContent.replace(/^<pre[^>]*><code>/, '').replace(/<\/code><\/pre>$/, '');
+                    result.push(createBlock('code', decodeHtmlEntities(blockContent)));
+                    break;
+                case 'html':
+                    result.push(createBlock('html', blockContent));
+                    break;
+                default:
+                    result.push(createBlock('paragraph', blockContent));
+            }
+
+            lastIndex = match.index + match[0].length;
         }
-    }, 15000);
-    </script>
+
+        if (foundBlocks) {
+            var after = html.substring(lastIndex).trim();
+            if (after) {
+                result.push(createBlock('paragraph', after));
+            }
+            return result.length ? result : [createBlock('paragraph', '')];
+        }
+
+        // Fallback: split on double newlines or block-level tags
+        var parts = html.split(/\n\n+/);
+        for (var i = 0; i < parts.length; i++) {
+            var part = parts[i].trim();
+            if (!part) continue;
+            if (/^<h([2-4])[^>]*>([\s\S]*?)<\/h\1>$/i.test(part)) {
+                var hm = part.match(/^<h([2-4])[^>]*>([\s\S]*?)<\/h\1>$/i);
+                var hb = createBlock('heading', hm[2]);
+                hb.meta = { level: parseInt(hm[1]) };
+                result.push(hb);
+            } else if (/^<blockquote/i.test(part)) {
+                var qc = part.replace(/^<blockquote[^>]*>/, '').replace(/<\/blockquote>$/, '');
+                result.push(createBlock('quote', qc));
+            } else if (/^<pre/i.test(part)) {
+                var cc = part.replace(/^<pre[^>]*><code[^>]*>/, '').replace(/<\/code><\/pre>$/, '').replace(/^<pre[^>]*>/, '').replace(/<\/pre>$/, '');
+                result.push(createBlock('code', decodeHtmlEntities(cc)));
+            } else if (/^<[uo]l/i.test(part)) {
+                result.push(createBlock('list', part));
+            } else if (/^<figure/i.test(part) || /^<img/i.test(part)) {
+                var im = part.match(/src="([^"]+)"/);
+                var ib2 = createBlock('image', im ? im[1] : '');
+                result.push(ib2);
+            } else {
+                var cleaned = part.replace(/^<p>/, '').replace(/<\/p>$/, '');
+                result.push(createBlock('paragraph', cleaned));
+            }
+        }
+        return result.length ? result : [createBlock('paragraph', '')];
+    }
+
+    function decodeHtmlEntities(str) {
+        var doc = new DOMParser().parseFromString(str, 'text/html');
+        return doc.documentElement.textContent;
+    }
+
+    // ================================================================
+    // Block creation
+    // ================================================================
+    function createBlock(type, content) {
+        return {
+            id: 'block-' + (++blockIdCounter),
+            type: type,
+            content: content || '',
+            meta: {}
+        };
+    }
+
+    // ================================================================
+    // Serialize blocks to WordPress block markup
+    // ================================================================
+    function serializeBlocks() {
+        var parts = [];
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
+            var content = b.content;
+            switch (b.type) {
+                case 'paragraph':
+                    if (content.trim()) {
+                        parts.push('<!-- wp:paragraph -->\n<p>' + content + '</p>\n<!-- /wp:paragraph -->');
+                    }
+                    break;
+                case 'heading':
+                    var lvl = (b.meta && b.meta.level) || 2;
+                    var attrs = lvl !== 2 ? ' ' + JSON.stringify({level: lvl}) : '';
+                    parts.push('<!-- wp:heading' + attrs + ' -->\n<h' + lvl + ' class="wp-block-heading">' + content + '</h' + lvl + '>\n<!-- /wp:heading -->');
+                    break;
+                case 'image':
+                    var alt = (b.meta && b.meta.alt) || '';
+                    if (content) {
+                        parts.push('<!-- wp:image -->\n<figure class="wp-block-image"><img src="' + escapeAttr(content) + '" alt="' + escapeAttr(alt) + '"/></figure>\n<!-- /wp:image -->');
+                    }
+                    break;
+                case 'list':
+                    parts.push('<!-- wp:list -->\n' + content + '\n<!-- /wp:list -->');
+                    break;
+                case 'quote':
+                    parts.push('<!-- wp:quote -->\n<blockquote class="wp-block-quote">' + content + '</blockquote>\n<!-- /wp:quote -->');
+                    break;
+                case 'code':
+                    parts.push('<!-- wp:code -->\n<pre class="wp-block-code"><code>' + escapeHtml(content) + '</code></pre>\n<!-- /wp:code -->');
+                    break;
+                case 'html':
+                    parts.push('<!-- wp:html -->\n' + content + '\n<!-- /wp:html -->');
+                    break;
+            }
+        }
+        return parts.join('\n\n');
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function escapeAttr(s) {
+        return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ================================================================
+    // Undo / Redo
+    // ================================================================
+    function pushUndo() {
+        undoStack.push(JSON.stringify(blocks));
+        if (undoStack.length > 50) undoStack.shift();
+        redoStack = [];
+        updateUndoRedoButtons();
+    }
+
+    function undo() {
+        if (!undoStack.length) return;
+        redoStack.push(JSON.stringify(blocks));
+        blocks = JSON.parse(undoStack.pop());
+        renderBlocks();
+        updateUndoRedoButtons();
+    }
+
+    function redo() {
+        if (!redoStack.length) return;
+        undoStack.push(JSON.stringify(blocks));
+        blocks = JSON.parse(redoStack.pop());
+        renderBlocks();
+        updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+        document.getElementById('btn-undo').disabled = !undoStack.length;
+        document.getElementById('btn-redo').disabled = !redoStack.length;
+    }
+
+    // ================================================================
+    // Render blocks
+    // ================================================================
+    function renderBlocks() {
+        blockListEl.innerHTML = '';
+        for (var i = 0; i < blocks.length; i++) {
+            var betweenEl = createAddBetweenButton(i);
+            blockListEl.appendChild(betweenEl);
+            blockListEl.appendChild(renderBlock(blocks[i], i));
+        }
+        // One more add-between at the end
+        blockListEl.appendChild(createAddBetweenButton(blocks.length));
+    }
+
+    function createAddBetweenButton(index) {
+        var wrap = document.createElement('div');
+        wrap.className = 'rp-add-block-between';
+        wrap.innerHTML = '<div class="rp-add-block-between__line"></div><button type="button" class="rp-add-block-between__btn" title="Add block">+</button>';
+        wrap.querySelector('button').addEventListener('click', function(e) {
+            e.stopPropagation();
+            showInserterDropdown(e.target, index);
+        });
+        return wrap;
+    }
+
+    function renderBlock(block, index) {
+        var el = document.createElement('div');
+        el.className = 'rp-block' + (selectedBlockId === block.id ? ' is-selected' : '');
+        el.dataset.blockId = block.id;
+        el.dataset.type = block.type;
+        if (block.meta && block.meta.level) {
+            el.dataset.level = block.meta.level;
+        }
+
+        // Type badge
+        var badge = document.createElement('span');
+        badge.className = 'rp-block__type-badge';
+        badge.textContent = block.type;
+        el.appendChild(badge);
+
+        // Side controls
+        var controls = document.createElement('div');
+        controls.className = 'rp-block__controls';
+        controls.innerHTML =
+            '<button type="button" class="rp-block__ctrl-btn" data-action="move-up" title="Move up">&#8593;</button>' +
+            '<button type="button" class="rp-block__ctrl-btn" data-action="move-down" title="Move down">&#8595;</button>' +
+            '<button type="button" class="rp-block__ctrl-btn rp-block__ctrl-btn--delete" data-action="delete" title="Delete block">&#10005;</button>';
+        el.appendChild(controls);
+
+        // Content area
+        var contentEl = document.createElement('div');
+        contentEl.className = 'rp-block__content';
+
+        if (block.type === 'image') {
+            if (block.content) {
+                contentEl.innerHTML = '<img src="' + escapeAttr(block.content) + '" alt="' + escapeAttr((block.meta && block.meta.alt) || '') + '">';
+            } else {
+                contentEl.innerHTML =
+                    '<div class="rp-image-placeholder">' +
+                    '<div class="rp-image-placeholder__icon">&#128247;</div>' +
+                    '<p style="margin-bottom:8px; color: var(--color-gray-700);">Enter image URL below</p>' +
+                    '<input type="text" class="rp-image-url-input" placeholder="https://example.com/image.jpg" data-block-id="' + block.id + '">' +
+                    '</div>';
+            }
+        } else if (block.type === 'code') {
+            contentEl.setAttribute('contenteditable', 'true');
+            contentEl.textContent = block.content;
+            contentEl.dataset.placeholder = 'Write code...';
+        } else if (block.type === 'html') {
+            contentEl.setAttribute('contenteditable', 'true');
+            contentEl.textContent = block.content;
+            contentEl.dataset.placeholder = 'Write HTML...';
+        } else if (block.type === 'list') {
+            contentEl.setAttribute('contenteditable', 'true');
+            if (block.content.trim()) {
+                contentEl.innerHTML = block.content;
+            } else {
+                contentEl.innerHTML = '<ul><li></li></ul>';
+            }
+            contentEl.dataset.placeholder = 'List item';
+        } else {
+            contentEl.setAttribute('contenteditable', 'true');
+            contentEl.innerHTML = block.content;
+            if (block.type === 'paragraph') {
+                contentEl.dataset.placeholder = 'Type / to choose a block';
+            } else if (block.type === 'heading') {
+                contentEl.dataset.placeholder = 'Heading';
+            } else if (block.type === 'quote') {
+                contentEl.dataset.placeholder = 'Write a quote...';
+            }
+        }
+
+        el.appendChild(contentEl);
+
+        // Event: select block on click
+        el.addEventListener('mousedown', function() {
+            selectBlock(block.id);
+        });
+
+        // Event: content changes
+        if (contentEl.getAttribute('contenteditable')) {
+            contentEl.addEventListener('input', function() {
+                var b = findBlock(block.id);
+                if (!b) return;
+                if (b.type === 'code' || b.type === 'html') {
+                    b.content = contentEl.textContent;
+                } else {
+                    b.content = contentEl.innerHTML;
+                }
+            });
+
+            contentEl.addEventListener('blur', function() {
+                pushUndo();
+            });
+
+            // Enter key handling for paragraphs
+            contentEl.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey && block.type === 'paragraph') {
+                    e.preventDefault();
+                    pushUndo();
+                    // Split or create new paragraph
+                    var newBlock = createBlock('paragraph', '');
+                    var idx = findBlockIndex(block.id);
+                    blocks.splice(idx + 1, 0, newBlock);
+                    renderBlocks();
+                    focusBlock(newBlock.id);
+                }
+                // Backspace on empty paragraph removes it
+                if (e.key === 'Backspace' && block.type === 'paragraph' && !contentEl.textContent.trim() && blocks.length > 1) {
+                    e.preventDefault();
+                    pushUndo();
+                    var idx2 = findBlockIndex(block.id);
+                    blocks.splice(idx2, 1);
+                    renderBlocks();
+                    if (idx2 > 0) focusBlock(blocks[idx2 - 1].id);
+                }
+                // / at start of empty paragraph to show block picker
+                if (e.key === '/' && !contentEl.textContent.trim() && block.type === 'paragraph') {
+                    e.preventDefault();
+                    var idx3 = findBlockIndex(block.id);
+                    showInserterDropdown(contentEl, idx3, true);
+                }
+            });
+        }
+
+        // Image URL input
+        if (block.type === 'image' && !block.content) {
+            setTimeout(function() {
+                var urlInput = el.querySelector('.rp-image-url-input');
+                if (urlInput) {
+                    urlInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            var b = findBlock(block.id);
+                            if (b) {
+                                pushUndo();
+                                b.content = urlInput.value;
+                                renderBlocks();
+                            }
+                        }
+                    });
+                }
+            }, 0);
+        }
+
+        // Control button actions
+        controls.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            e.stopPropagation();
+            var action = btn.dataset.action;
+            var idx = findBlockIndex(block.id);
+            pushUndo();
+            if (action === 'move-up' && idx > 0) {
+                var tmp = blocks[idx];
+                blocks[idx] = blocks[idx - 1];
+                blocks[idx - 1] = tmp;
+                renderBlocks();
+            } else if (action === 'move-down' && idx < blocks.length - 1) {
+                var tmp2 = blocks[idx];
+                blocks[idx] = blocks[idx + 1];
+                blocks[idx + 1] = tmp2;
+                renderBlocks();
+            } else if (action === 'delete') {
+                blocks.splice(idx, 1);
+                if (!blocks.length) blocks.push(createBlock('paragraph', ''));
+                selectedBlockId = null;
+                renderBlocks();
+            }
+        });
+
+        return el;
+    }
+
+    function selectBlock(id) {
+        if (selectedBlockId === id) return;
+        selectedBlockId = id;
+        var allBlocks = blockListEl.querySelectorAll('.rp-block');
+        for (var i = 0; i < allBlocks.length; i++) {
+            allBlocks[i].classList.toggle('is-selected', allBlocks[i].dataset.blockId === id);
+        }
+        updateBlockSettings();
+    }
+
+    function focusBlock(id) {
+        selectedBlockId = id;
+        var el = blockListEl.querySelector('[data-block-id="' + id + '"] .rp-block__content');
+        if (el) {
+            el.focus();
+            // Place cursor at end
+            var range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+        var allBlocks = blockListEl.querySelectorAll('.rp-block');
+        for (var i = 0; i < allBlocks.length; i++) {
+            allBlocks[i].classList.toggle('is-selected', allBlocks[i].dataset.blockId === id);
+        }
+    }
+
+    function findBlock(id) {
+        for (var i = 0; i < blocks.length; i++) {
+            if (blocks[i].id === id) return blocks[i];
+        }
+        return null;
+    }
+
+    function findBlockIndex(id) {
+        for (var i = 0; i < blocks.length; i++) {
+            if (blocks[i].id === id) return i;
+        }
+        return -1;
+    }
+
+    // ================================================================
+    // Block settings sidebar (block tab)
+    // ================================================================
+    function updateBlockSettings() {
+        var tab = document.getElementById('settings-tab-block');
+        var block = findBlock(selectedBlockId);
+        if (!block) {
+            tab.innerHTML = '<div class="settings-panel"><p style="color: var(--color-gray-700);">Select a block to see its settings.</p></div>';
+            return;
+        }
+
+        var html = '<div class="settings-panel"><div class="settings-panel__title">Block: ' + block.type.charAt(0).toUpperCase() + block.type.slice(1) + '</div>';
+
+        if (block.type === 'heading') {
+            var lvl = (block.meta && block.meta.level) || 2;
+            html += '<label>Level</label><select class="settings-select" id="block-heading-level">';
+            for (var h = 2; h <= 4; h++) {
+                html += '<option value="' + h + '"' + (lvl === h ? ' selected' : '') + '>H' + h + '</option>';
+            }
+            html += '</select>';
+        }
+
+        if (block.type === 'image') {
+            html += '<label>Alt Text</label><input type="text" class="settings-input" id="block-image-alt" value="' + escapeAttr((block.meta && block.meta.alt) || '') + '" placeholder="Describe the image">';
+            html += '<label style="margin-top:8px;">Image URL</label><input type="text" class="settings-input" id="block-image-url" value="' + escapeAttr(block.content || '') + '">';
+        }
+
+        html += '</div>';
+        tab.innerHTML = html;
+
+        // Attach events
+        var headingLvl = document.getElementById('block-heading-level');
+        if (headingLvl) {
+            headingLvl.addEventListener('change', function() {
+                pushUndo();
+                block.meta = block.meta || {};
+                block.meta.level = parseInt(this.value);
+                renderBlocks();
+                selectBlock(block.id);
+            });
+        }
+        var imgAlt = document.getElementById('block-image-alt');
+        if (imgAlt) {
+            imgAlt.addEventListener('input', function() {
+                block.meta = block.meta || {};
+                block.meta.alt = this.value;
+            });
+        }
+        var imgUrl = document.getElementById('block-image-url');
+        if (imgUrl) {
+            imgUrl.addEventListener('change', function() {
+                pushUndo();
+                block.content = this.value;
+                renderBlocks();
+                selectBlock(block.id);
+            });
+        }
+    }
+
+    // ================================================================
+    // Inserter dropdown
+    // ================================================================
+    var inserterDropdown = null;
+
+    function showInserterDropdown(anchorEl, insertIndex, replaceCurrentBlock) {
+        closeInserterDropdown();
+        var dd = document.createElement('div');
+        dd.className = 'rp-inserter-dropdown is-open';
+        var types = [
+            { type: 'paragraph', icon: '&#182;', name: 'Paragraph' },
+            { type: 'heading', icon: 'H', name: 'Heading' },
+            { type: 'image', icon: '&#128247;', name: 'Image' },
+            { type: 'list', icon: '&#8226;', name: 'List' },
+            { type: 'quote', icon: '&#8220;', name: 'Quote' },
+            { type: 'code', icon: '&lt;/&gt;', name: 'Code' },
+            { type: 'html', icon: 'HTML', name: 'Custom HTML' }
+        ];
+        var html = '';
+        for (var i = 0; i < types.length; i++) {
+            html += '<button type="button" class="rp-inserter-dropdown__item" data-insert-type="' + types[i].type + '"><span class="rp-inserter-dropdown__icon">' + types[i].icon + '</span>' + types[i].name + '</button>';
+        }
+        dd.innerHTML = html;
+
+        // Position near anchor
+        var rect = anchorEl.getBoundingClientRect();
+        dd.style.position = 'fixed';
+        dd.style.left = rect.left + 'px';
+        dd.style.top = (rect.bottom + 4) + 'px';
+
+        document.body.appendChild(dd);
+        inserterDropdown = dd;
+
+        dd.addEventListener('click', function(e) {
+            var btn = e.target.closest('[data-insert-type]');
+            if (!btn) return;
+            pushUndo();
+            var newBlock = createBlock(btn.dataset.insertType, '');
+            if (btn.dataset.insertType === 'heading') {
+                newBlock.meta = { level: 2 };
+            }
+            if (replaceCurrentBlock) {
+                blocks[insertIndex] = newBlock;
+            } else {
+                blocks.splice(insertIndex, 0, newBlock);
+            }
+            renderBlocks();
+            focusBlock(newBlock.id);
+            closeInserterDropdown();
+        });
+
+        // Close on outside click
+        setTimeout(function() {
+            document.addEventListener('click', closeInserterDropdownOnOutside);
+        }, 0);
+    }
+
+    function closeInserterDropdownOnOutside(e) {
+        if (inserterDropdown && !inserterDropdown.contains(e.target)) {
+            closeInserterDropdown();
+        }
+    }
+
+    function closeInserterDropdown() {
+        if (inserterDropdown) {
+            inserterDropdown.remove();
+            inserterDropdown = null;
+            document.removeEventListener('click', closeInserterDropdownOnOutside);
+        }
+    }
+
+    // ================================================================
+    // Toolbar actions (formatting)
+    // ================================================================
+    function applyFormat(command, value) {
+        document.execCommand(command, false, value || null);
+    }
+
+    // ================================================================
+    // Inserter panel (sidebar)
+    // ================================================================
+    document.getElementById('toggle-inserter').addEventListener('click', function() {
+        inserterPanel.classList.toggle('is-open');
+        this.classList.toggle('is-pressed', inserterPanel.classList.contains('is-open'));
+    });
+    document.getElementById('close-inserter').addEventListener('click', function() {
+        inserterPanel.classList.remove('is-open');
+        document.getElementById('toggle-inserter').classList.remove('is-pressed');
+    });
+
+    // Inserter panel block buttons
+    inserterPanel.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-block-type]');
+        if (!btn) return;
+        pushUndo();
+        var newBlock = createBlock(btn.dataset.blockType, '');
+        if (btn.dataset.blockType === 'heading') {
+            newBlock.meta = { level: 2 };
+        }
+        blocks.push(newBlock);
+        renderBlocks();
+        focusBlock(newBlock.id);
+    });
+
+    // Inserter search filter
+    document.getElementById('inserter-search').addEventListener('input', function() {
+        var q = this.value.toLowerCase();
+        var items = inserterPanel.querySelectorAll('.inserter-block');
+        for (var i = 0; i < items.length; i++) {
+            var name = items[i].querySelector('.inserter-block__name').textContent.toLowerCase();
+            items[i].style.display = name.indexOf(q) !== -1 ? '' : 'none';
+        }
+    });
+
+    // Bottom add block
+    document.getElementById('add-block-bottom').addEventListener('click', function() {
+        pushUndo();
+        var newBlock = createBlock('paragraph', '');
+        blocks.push(newBlock);
+        renderBlocks();
+        focusBlock(newBlock.id);
+    });
+
+    // ================================================================
+    // Settings sidebar toggle
+    // ================================================================
+    document.getElementById('toggle-sidebar').addEventListener('click', function() {
+        settingsSidebar.classList.toggle('is-hidden');
+    });
+
+    // Settings tabs
+    document.querySelectorAll('.editor-settings-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.editor-settings-tab').forEach(function(t) { t.classList.remove('is-active'); });
+            this.classList.add('is-active');
+            var which = this.dataset.tab;
+            document.getElementById('settings-tab-post').style.display = which === 'post' ? '' : 'none';
+            document.getElementById('settings-tab-block').style.display = which === 'block' ? '' : 'none';
+        });
+    });
+
+    // ================================================================
+    // Visual/Code mode toggle
+    // ================================================================
+    document.querySelectorAll('.rp-editor-mode-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var mode = this.dataset.mode;
+            if (mode === editorMode) return;
+            editorMode = mode;
+            document.querySelectorAll('.rp-editor-mode-btn').forEach(function(b) { b.classList.remove('is-active'); });
+            this.classList.add('is-active');
+
+            if (mode === 'code') {
+                // Sync blocks to code editor
+                syncBlocksFromDOM();
+                codeEditorEl.value = serializeBlocks();
+                visualWrap.classList.add('is-hidden');
+                codeWrap.classList.add('is-visible');
+            } else {
+                // Parse code back to blocks
+                pushUndo();
+                blocks = parseContentToBlocks(codeEditorEl.value);
+                visualWrap.classList.remove('is-hidden');
+                codeWrap.classList.remove('is-visible');
+                renderBlocks();
+            }
+        });
+    });
+
+    // ================================================================
+    // Sync block content from DOM before serialize
+    // ================================================================
+    function syncBlocksFromDOM() {
+        var blockEls = blockListEl.querySelectorAll('.rp-block');
+        blockEls.forEach(function(el) {
+            var id = el.dataset.blockId;
+            var block = findBlock(id);
+            if (!block) return;
+            var contentEl = el.querySelector('.rp-block__content');
+            if (!contentEl) return;
+            if (block.type === 'code' || block.type === 'html') {
+                block.content = contentEl.textContent;
+            } else if (block.type !== 'image') {
+                block.content = contentEl.innerHTML;
+            }
+        });
+    }
+
+    // ================================================================
+    // Save / Publish
+    // ================================================================
+    function submitPost(status) {
+        if (editorMode === 'visual') {
+            syncBlocksFromDOM();
+            document.getElementById('field-post-content').value = serializeBlocks();
+        } else {
+            document.getElementById('field-post-content').value = codeEditorEl.value;
+        }
+        document.getElementById('field-post-status').value = status;
+
+        // Build form data manually for AJAX
+        var formData = new FormData(postForm);
+        // Add comment_status correctly
+        formData.set('comment_status', document.getElementById('field-comments').checked ? 'open' : 'closed');
+
+        var url = S.isNew ? '/wp-admin/post-new.php' : '/wp-admin/post.php';
+
+        fetch(url, {
+            method: 'POST',
+            body: formData
+        }).then(function(res) {
+            if (res.redirected) {
+                window.location.href = res.url;
+                return;
+            }
+            return res.text();
+        }).then(function(text) {
+            if (text) {
+                showNotice('Post saved successfully.', 'success');
+            }
+        }).catch(function(err) {
+            showNotice('Error saving post: ' + err.message, 'error');
+        });
+    }
+
+    document.getElementById('btn-save-draft').addEventListener('click', function() {
+        submitPost('draft');
+    });
+
+    document.getElementById('btn-publish').addEventListener('click', function() {
+        submitPost('publish');
+    });
+
+    document.getElementById('btn-preview').addEventListener('click', function() {
+        if (editorMode === 'visual') {
+            syncBlocksFromDOM();
+        }
+        var slug = slugInput.value || titleInput.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        if (S.postId) {
+            window.open('/?p=' + S.postId + '&preview=true', '_blank');
+        } else {
+            showNotice('Save the post first to preview.', 'error');
+        }
+    });
+
+    // ================================================================
+    // Undo / Redo buttons
+    // ================================================================
+    document.getElementById('btn-undo').addEventListener('click', undo);
+    document.getElementById('btn-redo').addEventListener('click', redo);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            undo();
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+            e.preventDefault();
+            redo();
+        }
+        // Ctrl+S to save
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            submitPost(statusSelect.value || 'draft');
+        }
+        // Ctrl+B, Ctrl+I for formatting
+        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+            e.preventDefault();
+            applyFormat('bold');
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+            e.preventDefault();
+            applyFormat('italic');
+        }
+        // Ctrl+K for link
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            showLinkPopover();
+        }
+    });
+
+    // ================================================================
+    // Floating block toolbar for formatting
+    // ================================================================
+    var floatingToolbar = null;
+
+    function createFloatingToolbar() {
+        var tb = document.createElement('div');
+        tb.className = 'block-toolbar';
+        tb.innerHTML =
+            '<button type="button" class="block-toolbar__btn" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>' +
+            '<button type="button" class="block-toolbar__btn" data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button>' +
+            '<div class="block-toolbar__sep"></div>' +
+            '<button type="button" class="block-toolbar__btn" data-cmd="link" title="Link (Ctrl+K)">&#128279;</button>' +
+            '<button type="button" class="block-toolbar__btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>' +
+            '<div class="block-toolbar__sep"></div>' +
+            '<button type="button" class="block-toolbar__btn" data-cmd="insertUnorderedList" title="Bulleted List">&#8226;</button>' +
+            '<button type="button" class="block-toolbar__btn" data-cmd="insertOrderedList" title="Numbered List">1.</button>';
+
+        tb.addEventListener('mousedown', function(e) {
+            e.preventDefault(); // Prevent losing selection
+            var btn = e.target.closest('[data-cmd]');
+            if (!btn) return;
+            var cmd = btn.dataset.cmd;
+            if (cmd === 'link') {
+                showLinkPopover();
+            } else {
+                applyFormat(cmd);
+            }
+        });
+
+        return tb;
+    }
+
+    // Show floating toolbar when text is selected inside a block
+    document.addEventListener('selectionchange', function() {
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed || !sel.rangeCount) {
+            hideFloatingToolbar();
+            return;
+        }
+        var range = sel.getRangeAt(0);
+        var blockContent = range.commonAncestorContainer;
+        while (blockContent && !blockContent.classList) {
+            blockContent = blockContent.parentNode;
+        }
+        if (!blockContent || !blockContent.classList.contains('rp-block__content')) {
+            hideFloatingToolbar();
+            return;
+        }
+        // Don't show for code/html blocks
+        var blockEl = blockContent.closest('.rp-block');
+        if (blockEl && (blockEl.dataset.type === 'code' || blockEl.dataset.type === 'html')) {
+            hideFloatingToolbar();
+            return;
+        }
+        showFloatingToolbar(range);
+    });
+
+    function showFloatingToolbar(range) {
+        if (!floatingToolbar) {
+            floatingToolbar = createFloatingToolbar();
+            document.body.appendChild(floatingToolbar);
+        }
+        var rect = range.getBoundingClientRect();
+        floatingToolbar.style.position = 'fixed';
+        floatingToolbar.style.left = (rect.left + rect.width / 2 - 120) + 'px';
+        floatingToolbar.style.top = (rect.top - 48) + 'px';
+        floatingToolbar.classList.add('is-visible');
+    }
+
+    function hideFloatingToolbar() {
+        if (floatingToolbar) {
+            floatingToolbar.classList.remove('is-visible');
+        }
+    }
+
+    // ================================================================
+    // Link popover
+    // ================================================================
+    var savedSelection = null;
+
+    function showLinkPopover() {
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+            savedSelection = sel.getRangeAt(0).cloneRange();
+        }
+        var rect;
+        if (savedSelection) {
+            rect = savedSelection.getBoundingClientRect();
+        } else {
+            rect = { left: window.innerWidth / 2 - 150, top: window.innerHeight / 2 };
+        }
+        linkPopover.style.left = rect.left + 'px';
+        linkPopover.style.top = (rect.bottom + 8) + 'px';
+        linkPopover.classList.add('is-open');
+        linkUrlInput.value = '';
+        linkUrlInput.focus();
+    }
+
+    document.getElementById('link-apply-btn').addEventListener('click', applyLink);
+    linkUrlInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); applyLink(); }
+        if (e.key === 'Escape') { linkPopover.classList.remove('is-open'); }
+    });
+
+    function applyLink() {
+        var url = linkUrlInput.value.trim();
+        if (!url) { linkPopover.classList.remove('is-open'); return; }
+        if (savedSelection) {
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedSelection);
+        }
+        document.execCommand('createLink', false, url);
+        linkPopover.classList.remove('is-open');
+        savedSelection = null;
+    }
+
+    // Close link popover on outside click
+    document.addEventListener('mousedown', function(e) {
+        if (linkPopover.classList.contains('is-open') && !linkPopover.contains(e.target)) {
+            linkPopover.classList.remove('is-open');
+        }
+    });
+
+    // ================================================================
+    // Notices
+    // ================================================================
+    function showNotice(msg, type) {
+        var area = document.getElementById('notice-area');
+        var n = document.createElement('div');
+        n.className = 'editor-notice editor-notice--' + type;
+        n.innerHTML = '<span>' + msg + '</span><span class="editor-notice__dismiss">&times;</span>';
+        n.addEventListener('click', function() { n.remove(); });
+        area.appendChild(n);
+        setTimeout(function() { n.remove(); }, 5000);
+    }
+
+    // ================================================================
+    // Featured image preview
+    // ================================================================
+    function showFeaturedImagePreview(url) {
+        var preview = document.getElementById('featured-image-preview');
+        if (url) {
+            preview.innerHTML = '<img src="' + escapeAttr(url) + '" style="max-width:100%; border-radius:2px; margin-bottom:4px;">';
+        } else {
+            preview.innerHTML = '';
+        }
+    }
+
+    document.getElementById('field-featured-image').addEventListener('change', function() {
+        showFeaturedImagePreview(this.value);
+    });
+
+    // ================================================================
+    // Load categories
+    // ================================================================
+    (function loadCategories() {
+        fetch('/wp-json/wp/v2/categories?per_page=100')
+            .then(function(r) { return r.json(); })
+            .then(function(cats) {
+                var container = document.getElementById('categories-list');
+                if (!cats || !cats.length) {
+                    container.innerHTML = '<em style="color: var(--color-gray-600); font-size: 12px;">No categories found</em>';
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < cats.length; i++) {
+                    html += '<div class="settings-checkbox-row"><input type="checkbox" name="post_category[]" value="' + cats[i].id + '" id="cat-' + cats[i].id + '"><label for="cat-' + cats[i].id + '">' + escapeHtml(cats[i].name) + '</label></div>';
+                }
+                container.innerHTML = html;
+            })
+            .catch(function() {
+                document.getElementById('categories-list').innerHTML = '<em style="color: var(--color-gray-600); font-size: 12px;">Could not load categories</em>';
+            });
+    })();
+
+    // ================================================================
+    // Deselect on canvas click
+    // ================================================================
+    document.getElementById('editor-canvas').addEventListener('click', function(e) {
+        if (e.target === this || e.target.classList.contains('editor-canvas__inner')) {
+            selectedBlockId = null;
+            var allBlocks = blockListEl.querySelectorAll('.rp-block');
+            for (var i = 0; i < allBlocks.length; i++) {
+                allBlocks[i].classList.remove('is-selected');
+            }
+        }
+    });
+
+    // ================================================================
+    // Init
+    // ================================================================
+    blocks = parseContentToBlocks(S.postContent || '');
+    renderBlocks();
+    pushUndo(); // initial state
+
+})();
+</script>
 </body>
 </html>

@@ -29,6 +29,7 @@ rustpress-i18n = { workspace = true }
 rustpress-forms = { workspace = true }
 rustpress-fields = { workspace = true }
 rustpress-commerce = { workspace = true }
+rustpress-multisite = { workspace = true }
 sea-orm = { workspace = true }
 regex = { workspace = true }
 axum = { workspace = true }

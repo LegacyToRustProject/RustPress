@@ -1,3 +1,5 @@
+pub mod wc_order_itemmeta;
+pub mod wc_order_items;
 pub mod wp_commentmeta;
 pub mod wp_comments;
 pub mod wp_links;
