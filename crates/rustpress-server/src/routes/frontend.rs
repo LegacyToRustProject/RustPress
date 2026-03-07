@@ -105,10 +105,15 @@ pub fn routes() -> Router<Arc<AppState>> {
         .route("/sitemap.xml", get(sitemap_xml))
         .route("/robots.txt", get(robots_txt))
         .route("/page/{num}", get(paginated_home))
+        .route("/page/{num}/", get(paginated_home))
         .route("/search", get(search_page))
+        .route("/search/", get(search_page))
         .route("/category/{slug}", get(category_archive))
+        .route("/category/{slug}/", get(category_archive))
         .route("/tag/{slug}", get(tag_archive))
+        .route("/tag/{slug}/", get(tag_archive))
         .route("/author/{slug}", get(author_archive))
+        .route("/author/{slug}/", get(author_archive))
         // Category/tag RSS feeds
         .route("/category/{slug}/feed", get(category_feed))
         .route("/category/{slug}/feed/", get(category_feed))
@@ -119,8 +124,11 @@ pub fn routes() -> Router<Arc<AppState>> {
         .route("/comments/feed/", get(comments_feed))
         // Date-based archives (WordPress compatible) — single post routes BEFORE archives
         .route("/{year}/{month}/{day}/{slug}", get(single_by_date_slug))
+        .route("/{year}/{month}/{day}/{slug}/", get(single_by_date_slug))
         .route("/{year}/{month}/{slug}", get(single_by_month_slug_or_day_archive))
+        .route("/{year}/{month}/{slug}/", get(single_by_month_slug_or_day_archive))
         .route("/{year}/{month}", get(month_archive))
+        .route("/{year}/{month}/", get(month_archive))
         .route(
             "/wp-comments-post.php",
             axum::routing::post(submit_comment),
@@ -142,6 +150,7 @@ pub fn routes() -> Router<Arc<AppState>> {
         // wp-register.php — redirect to login
         .route("/wp-register.php", get(wp_register_redirect))
         .route("/{slug}", get(single_by_slug))
+        .route("/{slug}/", get(single_by_slug))
 }
 
 async fn build_base_context(state: &AppState) -> tera::Context {

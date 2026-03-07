@@ -271,8 +271,25 @@ async fn main() -> Result<()> {
     };
     app = app.merge(rustpress_api::routes(api_state));
 
-    // Static file serving
+    // Generate CSS from theme.json if available
     let static_dir = config.static_dir.clone();
+    let theme_json_path = std::path::Path::new(&static_dir).join("theme.json");
+    if theme_json_path.exists() {
+        match rustpress_themes::theme_json::ThemeJson::from_file(&theme_json_path) {
+            Ok(theme) => {
+                let css = theme.generate_css_variables();
+                let css_path = std::path::Path::new(&static_dir).join("theme-generated.css");
+                if let Err(e) = std::fs::write(&css_path, &css) {
+                    tracing::warn!("Failed to write theme-generated.css: {}", e);
+                } else {
+                    info!("Generated theme CSS from theme.json ({} bytes)", css.len());
+                }
+            }
+            Err(e) => tracing::warn!("Failed to parse theme.json: {}", e),
+        }
+    }
+
+    // Static file serving
     if std::path::Path::new(&static_dir).exists() {
         app = app.nest_service(
             "/static",

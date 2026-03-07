@@ -2,6 +2,7 @@ pub mod engine;
 pub mod formatting;
 pub mod hierarchy;
 pub mod tags;
+pub mod theme_json;
 pub mod wp_head;
 
 pub use engine::{ThemeEngine, ThemeMeta};

@@ -490,19 +490,33 @@ pub fn apply_content_filters(content: &str) -> String {
 
     let mut result = content.to_string();
 
+    // Check if content uses the block editor before stripping comments
+    let is_block_content = has_blocks(&result);
+
     // 0. Strip WordPress block editor comments (<!-- wp:xxx --> / <!-- /wp:xxx -->)
     result = strip_block_comments(&result);
 
     // 1. Process shortcodes ([caption], [audio], [video], etc.)
     result = process_shortcodes(&result);
 
-    // 2. Apply wpautop (paragraph wrapping)
-    result = wpautop(&result);
+    // 2. Apply wpautop (paragraph wrapping) — skip for block editor content
+    //    Block content already has proper HTML structure; wpautop would break it
+    if !is_block_content {
+        result = wpautop(&result);
+    }
 
     // 3. Apply wptexturize (smart typography)
     result = wptexturize(&result);
 
     result
+}
+
+/// Check if content contains Gutenberg block markers.
+///
+/// WordPress uses this to skip wpautop for block editor content,
+/// since blocks already contain properly structured HTML.
+fn has_blocks(content: &str) -> bool {
+    content.contains("<!-- wp:")
 }
 
 /// Strip WordPress Gutenberg block comments from content.
@@ -552,6 +566,9 @@ pub fn apply_content_filters_full(
 ) -> String {
     let mut result = content.to_string();
 
+    // Check if content uses the block editor before stripping comments
+    let is_block_content = has_blocks(&result);
+
     // 0. Strip WordPress block editor comments
     result = strip_block_comments(&result);
 
@@ -561,8 +578,10 @@ pub fn apply_content_filters_full(
     // 2. Also process built-in hardcoded shortcodes as fallback
     result = super::tags::process_shortcodes(&result);
 
-    // 3. Apply wpautop (paragraph wrapping)
-    result = wpautop(&result);
+    // 3. Apply wpautop (paragraph wrapping) — skip for block editor content
+    if !is_block_content {
+        result = wpautop(&result);
+    }
 
     // 4. Apply wptexturize (smart typography)
     result = wptexturize(&result);
