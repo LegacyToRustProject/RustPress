@@ -5,6 +5,7 @@ use jsonwebtoken::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::debug;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum JwtError {
@@ -21,6 +22,8 @@ pub enum JwtError {
 /// JWT claims structure.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
+    /// JWT ID (unique per token, used for blacklisting on logout)
+    pub jti: String,
     /// Subject (user ID)
     pub sub: u64,
     /// User login name
@@ -72,6 +75,7 @@ impl JwtManager {
         let exp = now + Duration::hours(self.expiration_hours);
 
         let claims = Claims {
+            jti: Uuid::new_v4().to_string(),
             sub: user_id,
             login: login.to_string(),
             email: email.to_string(),
@@ -92,6 +96,9 @@ impl JwtManager {
     }
 
     /// Validate and decode a JWT token.
+    ///
+    /// Returns `JwtError::Invalid` if the token's `jti` is on the blacklist
+    /// (i.e. the user has already logged out).
     pub fn validate_token(&self, token: &str) -> Result<Claims, JwtError> {
         // Explicitly enforce HS256 to prevent algorithm confusion attacks
         let validation = Validation::new(Algorithm::HS256);
@@ -104,6 +111,11 @@ impl JwtManager {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => JwtError::Expired,
             _ => JwtError::Decode(e.to_string()),
         })?;
+
+        // Reject tokens that were explicitly invalidated at logout
+        if crate::jwt_blacklist::is_blacklisted(&token_data.claims.jti) {
+            return Err(JwtError::Invalid);
+        }
 
         Ok(token_data.claims)
     }
