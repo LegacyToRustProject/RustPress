@@ -47,8 +47,8 @@ Status: **Implemented** | Last updated: 2026-03-07
 - [x] Password strength validation enforced (PasswordPolicy: 8+ chars, 3 character classes)
 - [x] Common passwords rejected (dictionary check)
 - [x] Session IDs generated with UUID v4 (cryptographically random)
-- [ ] File upload MIME type validation (planned)
-- [ ] Password reset token expiry enforcement (planned)
+- [x] File upload MIME type validation — `infer` crate checks magic bytes, rejects spoofed Content-Type
+- [x] Password reset token expiry enforcement — 24h TTL stored in wp_usermeta, checked in `validate_reset_token()`
 
 ## OWASP A05: Security Misconfiguration
 
@@ -81,7 +81,7 @@ Status: **Implemented** | Last updated: 2026-03-07
 - [x] CSRF nonce system (WordPress-compatible wp_create_nonce/wp_verify_nonce)
 - [x] CSRF nonce check middleware for admin POST/PUT/DELETE endpoints
 - [ ] TOTP 2FA (planned)
-- [ ] JWT token blacklist on logout (currently relies on expiry)
+- [x] JWT token blacklist on logout — `jti` claim added to all tokens; logout via `POST /api/auth/logout` blacklists `jti` in Moka cache (24h TTL); `validate_token()` rejects blacklisted tokens
 
 ## OWASP A08: Software and Data Integrity Failures
 

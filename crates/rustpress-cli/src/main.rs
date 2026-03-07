@@ -1504,9 +1504,18 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
                 println!("       [{}] {}", severity, issue.description);
             }
 
-            println!("[6/6] Ready to start RustPress...");
-            println!("       Server would run at http://localhost:8080");
-            println!("       Migration analysis complete.");
+            println!("[6/7] Generating .env configuration...");
+            let env_path = migrate_generate_env_file(&db_url).await;
+            match env_path {
+                Ok(path) => println!("       Written: {path}"),
+                Err(e) => println!("       Warning: could not write .env — {e}"),
+            }
+
+            println!("[7/7] Ready to start RustPress...");
+            println!("       Run: cargo run -p rustpress-server");
+            println!("       Preview: http://localhost:8080");
+            println!();
+            println!("Migration complete!");
         }
 
         Some(MigrateAction::Analyze) => {
@@ -1850,6 +1859,51 @@ async fn migrate_get_permalink(db_url: &str) -> Result<String> {
     } else {
         permalink
     })
+}
+
+/// Generate a `.env` file from WordPress options.
+///
+/// Reads `siteurl` from `wp_options`, generates a fresh JWT secret, and
+/// writes `.env` to the current directory.  Returns the file path on success.
+async fn migrate_generate_env_file(db_url: &str) -> Result<String> {
+    let db = rustpress_db::connection::connect(db_url).await?;
+    let site_url = migrate_get_option(&db, "siteurl").await?;
+    let site_url = if site_url.is_empty() {
+        "http://localhost:8080".to_string()
+    } else {
+        site_url
+    };
+
+    // Generate a 256-bit JWT secret from mixed entropy
+    let jwt_secret: String = (0..32).map(|_| format!("{:02x}", entropy_byte())).collect();
+
+    let env_content = format!(
+        r#"DATABASE_URL={db_url}
+SITE_URL={site_url}
+JWT_SECRET={jwt_secret}
+RUSTPRESS_HOST=0.0.0.0
+RUSTPRESS_PORT=8080
+"#
+    );
+
+    let path = ".env";
+    std::fs::write(path, &env_content)
+        .map_err(|e| anyhow::anyhow!("Failed to write {path}: {e}"))?;
+
+    Ok(path.to_string())
+}
+
+/// Generate a pseudo-random byte from mixed system entropy.
+fn entropy_byte() -> u8 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+    static CTR: AtomicU64 = AtomicU64::new(0);
+    let n = CTR.fetch_add(1, Ordering::Relaxed);
+    let t = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(0);
+    ((t.wrapping_add(n as u32)).wrapping_mul(0x9e37_79b9)) as u8
 }
 
 /// Mask the password portion of a database URL for display.
