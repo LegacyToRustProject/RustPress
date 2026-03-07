@@ -179,6 +179,59 @@ fn phpass_encode64(input: &[u8]) -> String {
     output
 }
 
+/// Password strength requirements.
+///
+/// Enforces minimum standards to prevent weak passwords (OWASP A07).
+pub struct PasswordPolicy;
+
+impl PasswordPolicy {
+    /// Minimum password length.
+    pub const MIN_LENGTH: usize = 8;
+
+    /// Validate a password meets the minimum strength requirements.
+    ///
+    /// Returns `Ok(())` if strong enough, or `Err(reason)` describing the failure.
+    pub fn validate(password: &str) -> Result<(), String> {
+        if password.len() < Self::MIN_LENGTH {
+            return Err(format!(
+                "Password must be at least {} characters long",
+                Self::MIN_LENGTH
+            ));
+        }
+
+        let has_upper = password.chars().any(|c| c.is_ascii_uppercase());
+        let has_lower = password.chars().any(|c| c.is_ascii_lowercase());
+        let has_digit = password.chars().any(|c| c.is_ascii_digit());
+        let has_special = password.chars().any(|c| !c.is_alphanumeric());
+
+        let complexity = [has_upper, has_lower, has_digit, has_special]
+            .iter()
+            .filter(|&&b| b)
+            .count();
+
+        if complexity < 3 {
+            return Err(
+                "Password must contain at least 3 of: uppercase, lowercase, digit, special character"
+                    .to_string(),
+            );
+        }
+
+        // Check common passwords
+        let common = [
+            "password", "12345678", "qwerty12", "admin123", "letmein1", "welcome1", "monkey12",
+            "dragon12", "master12", "abc12345",
+        ];
+        let lower = password.to_lowercase();
+        for weak in &common {
+            if lower == *weak {
+                return Err("Password is too common".to_string());
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,5 +417,36 @@ mod tests {
     #[test]
     fn test_empty_hash_returns_false() {
         assert!(!PasswordHasher::verify("password", "").unwrap());
+    }
+
+    // --- Password policy tests ---
+
+    #[test]
+    fn test_password_policy_too_short() {
+        assert!(PasswordPolicy::validate("Ab1!").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_no_complexity() {
+        assert!(PasswordPolicy::validate("abcdefgh").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_strong() {
+        assert!(PasswordPolicy::validate("MyP@ssw0rd").is_ok());
+    }
+
+    #[test]
+    fn test_password_policy_common() {
+        assert!(PasswordPolicy::validate("Password").is_err()); // only 2 complexity
+        assert!(PasswordPolicy::validate("Admin123").is_err()); // common
+    }
+
+    #[test]
+    fn test_password_policy_three_classes() {
+        // upper + lower + digit = 3 classes, should pass
+        assert!(PasswordPolicy::validate("Abcdef12").is_ok());
+        // lower + digit + special = 3 classes, should pass
+        assert!(PasswordPolicy::validate("abcdef1!").is_ok());
     }
 }

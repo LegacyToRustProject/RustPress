@@ -14,5 +14,6 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 regex = { workspace = true }
 thiserror = { workspace = true }
+url = "2"
 
 [dev-dependencies]
