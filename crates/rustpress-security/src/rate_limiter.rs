@@ -80,7 +80,7 @@ impl RateLimiter {
         configs.insert(
             EndpointCategory::Login,
             RateLimitConfig {
-                max_requests: 5,
+                max_requests: 30,
                 window_secs: 60,
             },
         );

@@ -528,7 +528,7 @@ fn generate_excerpt(content: &str, word_count: usize) -> String {
     if words.len() <= word_count {
         words.join(" ")
     } else {
-        format!("{} [&hellip;]", words[..word_count].join(" "))
+        format!("{} [\u{2026}]", words[..word_count].join(" "))
     }
 }
 

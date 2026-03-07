@@ -536,8 +536,30 @@ pub fn convert_chars(text: &str) -> String {
     let mut result = text.to_string();
 
     // Convert bare & to &amp; (but not already-encoded entities)
-    let re_amp = Regex::new(r"&(?!#?\w+;)").unwrap();
-    result = re_amp.replace_all(&result, "&amp;").to_string();
+    // regex crate doesn't support lookahead, so we use manual replacement
+    let mut out = String::with_capacity(result.len());
+    let bytes = result.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'&' {
+            // Check if this is already an entity like &amp; &#123; &#x1F;
+            let rest = &result[i + 1..];
+            let is_entity = rest.starts_with('#')
+                .then(|| rest[1..].find(';').map(|p| p < 8 && rest[1..1 + p].chars().all(|c| c.is_alphanumeric())))
+                .flatten()
+                .unwrap_or(false)
+                || rest.find(';').map(|p| p > 0 && p < 10 && rest[..p].chars().all(|c| c.is_alphanumeric())).unwrap_or(false);
+            if is_entity {
+                out.push('&');
+            } else {
+                out.push_str("&amp;");
+            }
+        } else {
+            out.push(bytes[i] as char);
+        }
+        i += 1;
+    }
+    result = out;
 
     // Convert lone < that aren't part of tags
     // This is a simplified version; WordPress has more complex logic

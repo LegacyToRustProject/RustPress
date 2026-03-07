@@ -702,7 +702,6 @@ fn generate_image_sizes(
     _db: &sea_orm::DatabaseConnection,
     _post_id: u64,
 ) -> (u32, u32) {
-    use image::GenericImageView;
     use rustpress_core::media_sizes::{calculate_dimensions, default_image_sizes};
 
     let img: image::DynamicImage = match image::open(original_path) {

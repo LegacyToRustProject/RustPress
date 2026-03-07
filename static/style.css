@@ -524,15 +524,7 @@ h6 {
 	display: inline-block;
 }
 
-/* Post Content */
-.wp-block-post-content {
-	font-size: var(--wp--preset--font-size--medium);
-	line-height: 1.6;
-}
-
-.wp-block-post-content > * + * {
-	margin-block-start: var(--wp--preset--spacing--40);
-}
+/* Post Content - font-size inherited from body; archive pages add has-medium-font-size */
 
 /* Post Featured Image */
 .wp-block-post-featured-image {

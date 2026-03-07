@@ -8,7 +8,7 @@
 //! - Wordfence Security Dashboard
 
 use axum::{
-    extract::{Extension, Form, Query, State},
+    extract::{Extension, Form, State},
     response::Html,
     routing::get,
     Router,
