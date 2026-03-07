@@ -2410,10 +2410,7 @@ fn render_elementor_content(json_str: &str) -> String {
 }
 
 fn render_elementor_element(element: &serde_json::Value, html: &mut String) {
-    let eltype = element
-        .get("elType")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let eltype = element.get("elType").and_then(|v| v.as_str()).unwrap_or("");
     let widget_type = element
         .get("widgetType")
         .and_then(|v| v.as_str())
@@ -2438,10 +2435,7 @@ fn render_elementor_element(element: &serde_json::Value, html: &mut String) {
 
         // Heading widget
         ("widget", "heading") => {
-            let text = settings
-                .get("title")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let text = settings.get("title").and_then(|v| v.as_str()).unwrap_or("");
             let tag = settings
                 .get("header_size")
                 .and_then(|v| v.as_str())

@@ -45,4 +45,45 @@ mod tests {
     fn test_non_blacklisted_token() {
         assert!(!is_blacklisted("some-other-jti-not-added"));
     }
+
+    #[test]
+    fn test_empty_jti_not_blacklisted_by_default() {
+        assert!(!is_blacklisted(""));
+    }
+
+    #[test]
+    fn test_blacklist_multiple_jtis() {
+        let jti_a = "multi-test-jti-aaa";
+        let jti_b = "multi-test-jti-bbb";
+        let jti_c = "multi-test-jti-ccc-not-added";
+        blacklist_token(jti_a);
+        blacklist_token(jti_b);
+        assert!(is_blacklisted(jti_a));
+        assert!(is_blacklisted(jti_b));
+        assert!(!is_blacklisted(jti_c));
+    }
+
+    #[test]
+    fn test_blacklist_is_idempotent() {
+        let jti = "idempotent-jti-test-xyz";
+        blacklist_token(jti);
+        blacklist_token(jti); // second call should not panic
+        assert!(is_blacklisted(jti));
+    }
+
+    #[test]
+    fn test_blacklist_uuid_style_jti() {
+        let jti = "550e8400-e29b-41d4-a716-446655440000";
+        assert!(!is_blacklisted(jti));
+        blacklist_token(jti);
+        assert!(is_blacklisted(jti));
+    }
+
+    #[test]
+    fn test_is_blacklisted_with_special_chars() {
+        let jti = "jti:with-special.chars/here@test";
+        assert!(!is_blacklisted(jti));
+        blacklist_token(jti);
+        assert!(is_blacklisted(jti));
+    }
 }

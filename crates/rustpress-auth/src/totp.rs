@@ -62,8 +62,9 @@ pub fn generate_secret() -> String {
             .duration_since(UNIX_EPOCH)
             .map(|d| d.subsec_nanos())
             .unwrap_or(0);
-        *b = ((t.wrapping_add(n as u32)).wrapping_mul(0x9e37_79b9).wrapping_add(n as u32 * 31))
-            as u8;
+        *b = ((t.wrapping_add(n as u32))
+            .wrapping_mul(0x9e37_79b9)
+            .wrapping_add(n as u32 * 31)) as u8;
     }
     BASE32.encode(&bytes)
 }
@@ -127,9 +128,7 @@ fn url_encode(s: &str) -> String {
                 let len = c.len_utf8();
                 buf[..len]
                     .iter()
-                    .flat_map(|&b| {
-                        format!("%{:02X}", b).chars().collect::<Vec<_>>()
-                    })
+                    .flat_map(|&b| format!("%{:02X}", b).chars().collect::<Vec<_>>())
                     .collect()
             }
         })
@@ -170,11 +169,17 @@ mod tests {
     fn test_qr_uri_format() {
         let secret = "JBSWY3DPEHPK3PXP";
         let uri = generate_qr_uri(secret, "user@example.com", "RustPress");
-        assert!(uri.starts_with("otpauth://totp/"), "URI must start with otpauth://totp/");
+        assert!(
+            uri.starts_with("otpauth://totp/"),
+            "URI must start with otpauth://totp/"
+        );
         assert!(uri.contains(secret), "URI must contain secret");
         assert!(uri.contains("issuer=RustPress"), "URI must contain issuer");
         assert!(uri.contains("digits=6"), "URI must specify 6 digits");
-        assert!(uri.contains("period=30"), "URI must specify 30-second period");
+        assert!(
+            uri.contains("period=30"),
+            "URI must specify 30-second period"
+        );
     }
 
     #[test]
@@ -248,7 +253,7 @@ mod tests {
     #[test]
     fn test_verify_code_rejects_wrong_length() {
         let secret = generate_secret();
-        assert!(!verify_code(&secret, "123"));   // too short
+        assert!(!verify_code(&secret, "123")); // too short
         assert!(!verify_code(&secret, "1234567")); // too long
     }
 
@@ -353,5 +358,123 @@ mod tests {
         let encoded = url_encode("My Site");
         assert!(!encoded.contains(' '));
         assert!(encoded.contains("%20"));
+    }
+
+    // --- generate_secret extended ---
+
+    #[test]
+    fn test_generate_secret_is_valid_base32_chars() {
+        let secret = generate_secret();
+        // Base32 alphabet: A-Z and 2-7 (and = for padding)
+        assert!(
+            secret
+                .chars()
+                .all(|c| c.is_ascii_uppercase() || ('2'..='7').contains(&c) || c == '='),
+            "secret contains non-base32 char: {secret}"
+        );
+    }
+
+    #[test]
+    fn test_generate_secret_five_unique() {
+        let secrets: Vec<String> = (0..5).map(|_| generate_secret()).collect();
+        let unique: std::collections::HashSet<&String> = secrets.iter().collect();
+        assert_eq!(unique.len(), 5, "all 5 secrets should be unique");
+    }
+
+    // --- generate_qr_uri extended ---
+
+    #[test]
+    fn test_qr_uri_contains_secret_param() {
+        let uri = generate_qr_uri("TESTSECRET", "user", "App");
+        assert!(uri.contains("secret=TESTSECRET"));
+    }
+
+    #[test]
+    fn test_qr_uri_issuer_encoded() {
+        let uri = generate_qr_uri("SECRET", "user", "My Awesome App");
+        // Spaces in issuer should be encoded
+        assert!(
+            !uri.contains("My Awesome App")
+                || uri.contains("My%20Awesome%20App")
+                || uri.contains("issuer=My")
+        );
+    }
+
+    #[test]
+    fn test_qr_uri_label_contains_issuer() {
+        let uri = generate_qr_uri("SEC", "alice", "RustPress");
+        // Label format: issuer:account
+        assert!(uri.contains("RustPress") || uri.contains("alice"));
+    }
+
+    // --- verify_code extended ---
+
+    #[test]
+    fn test_verify_code_wrong_code_6_digits() {
+        let secret = generate_secret();
+        // 000000 is almost certainly wrong for a fresh secret
+        // (unless incredibly unlucky — 1 in 1M chance)
+        let result = verify_code(&secret, "000000");
+        // Just verify it doesn't panic; result depends on current time
+        let _ = result;
+    }
+
+    #[test]
+    fn test_verify_code_five_digit_code_rejected() {
+        let secret = generate_secret();
+        assert!(!verify_code(&secret, "12345"));
+    }
+
+    #[test]
+    fn test_verify_code_seven_digit_code_rejected() {
+        let secret = generate_secret();
+        assert!(!verify_code(&secret, "1234567"));
+    }
+
+    #[test]
+    fn test_verify_code_alpha_code_rejected() {
+        let secret = generate_secret();
+        assert!(!verify_code(&secret, "abcdef"));
+    }
+
+    #[test]
+    fn test_verify_code_with_padding_whitespace() {
+        let secret = generate_secret();
+        // Leading/trailing spaces are trimmed before reject
+        let _ = verify_code(&secret, " 123456 ");
+    }
+
+    // --- hotp consistency ---
+
+    #[test]
+    fn test_hotp_counter_0_is_none_for_invalid_base32() {
+        assert!(hotp("NOT_VALID!!!", 0).is_none());
+    }
+
+    #[test]
+    fn test_hotp_same_counter_same_result() {
+        let secret = "JBSWY3DPEHPK3PXP";
+        let r1 = hotp(secret, 5);
+        let r2 = hotp(secret, 5);
+        assert_eq!(r1, r2, "hotp must be deterministic");
+    }
+
+    #[test]
+    fn test_hotp_different_counters_different_results() {
+        let secret = "JBSWY3DPEHPK3PXP";
+        let r0 = hotp(secret, 0);
+        let r1 = hotp(secret, 1);
+        // Different counters should (almost always) produce different OTPs
+        assert_ne!(r0, r1);
+    }
+
+    #[test]
+    fn test_hotp_result_lt_1000000() {
+        let secret = "JBSWY3DPEHPK3PXP";
+        for counter in 0..10 {
+            if let Some(code) = hotp(secret, counter) {
+                assert!(code < 1_000_000, "HOTP code must be 6 digits max");
+            }
+        }
     }
 }

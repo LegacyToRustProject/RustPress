@@ -187,4 +187,186 @@ location / {
         assert!(config.contains("pattern_0"));
         assert!(config.contains("target_0"));
     }
+
+    // --- parse_htaccess ---
+
+    #[test]
+    fn test_parse_htaccess_empty_input() {
+        let rules = parse_htaccess("");
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn test_parse_htaccess_no_rewrite_rules() {
+        let content = "Options -Indexes\nDirectoryIndex index.php\n";
+        let rules = parse_htaccess(content);
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn test_parse_htaccess_single_rule_no_flags() {
+        let content = "RewriteRule ^(.*)$ /index.php\n";
+        let rules = parse_htaccess(content);
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].pattern, "^(.*)$");
+        assert_eq!(rules[0].replacement, "/index.php");
+        assert!(rules[0].flags.is_empty());
+    }
+
+    #[test]
+    fn test_parse_htaccess_qsa_flag() {
+        let content = "RewriteRule ^(.*)$ /index.php [L,QSA]\n";
+        let rules = parse_htaccess(content);
+        assert!(rules[0].flags.contains(&"QSA".to_string()));
+        assert!(rules[0].flags.contains(&"L".to_string()));
+    }
+
+    #[test]
+    fn test_parse_htaccess_multiple_rules() {
+        let content = "RewriteRule ^a$ /a [L]\nRewriteRule ^b$ /b [L]\nRewriteRule ^c$ /c [L]\n";
+        let rules = parse_htaccess(content);
+        assert_eq!(rules.len(), 3);
+    }
+
+    #[test]
+    fn test_parse_htaccess_comment_lines_ignored() {
+        let content = "# This is a comment\nRewriteRule ^(.*)$ /index.php [L]\n";
+        let rules = parse_htaccess(content);
+        assert_eq!(rules.len(), 1);
+    }
+
+    // --- parse_nginx_conf ---
+
+    #[test]
+    fn test_parse_nginx_empty() {
+        let rules = parse_nginx_conf("");
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn test_parse_nginx_no_rewrite() {
+        let content = "server { listen 80; server_name example.com; }\n";
+        let rules = parse_nginx_conf(content);
+        assert!(rules.is_empty());
+    }
+
+    #[test]
+    fn test_parse_nginx_with_flag() {
+        let content = "rewrite ^/old$ /new last;\n";
+        let rules = parse_nginx_conf(content);
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].flags, vec!["last".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_nginx_pattern_and_replacement() {
+        let content = "rewrite ^/blog/(.*)$ /articles/$1 permanent;\n";
+        let rules = parse_nginx_conf(content);
+        assert_eq!(rules[0].pattern, "^/blog/(.*)$");
+        assert_eq!(rules[0].replacement, "/articles/$1");
+    }
+
+    // --- extract_redirects ---
+
+    #[test]
+    fn test_extract_redirects_empty() {
+        let redirects = extract_redirects(&[]);
+        assert!(redirects.is_empty());
+    }
+
+    #[test]
+    fn test_extract_redirects_no_redirect_flags() {
+        let rules = vec![RewriteRule {
+            pattern: "^(.*)$".to_string(),
+            replacement: "/index.php".to_string(),
+            flags: vec!["L".to_string()],
+        }];
+        assert!(extract_redirects(&rules).is_empty());
+    }
+
+    #[test]
+    fn test_extract_redirects_302() {
+        let rules = vec![RewriteRule {
+            pattern: "^/old$".to_string(),
+            replacement: "/new".to_string(),
+            flags: vec!["R=302".to_string()],
+        }];
+        let redirects = extract_redirects(&rules);
+        assert_eq!(redirects.len(), 1);
+        assert_eq!(redirects[0].status_code, 302);
+    }
+
+    #[test]
+    fn test_extract_redirects_permanent_flag() {
+        let rules = vec![RewriteRule {
+            pattern: "^/old$".to_string(),
+            replacement: "/new".to_string(),
+            flags: vec!["permanent".to_string()],
+        }];
+        let redirects = extract_redirects(&rules);
+        assert_eq!(redirects[0].status_code, 301);
+    }
+
+    #[test]
+    fn test_extract_redirects_redirect_flag_302() {
+        let rules = vec![RewriteRule {
+            pattern: "^/temp$".to_string(),
+            replacement: "/elsewhere".to_string(),
+            flags: vec!["redirect".to_string()],
+        }];
+        let redirects = extract_redirects(&rules);
+        assert_eq!(redirects[0].status_code, 302);
+    }
+
+    #[test]
+    fn test_extract_redirects_from_to_preserved() {
+        let rules = vec![RewriteRule {
+            pattern: "^/from-path$".to_string(),
+            replacement: "/to-path".to_string(),
+            flags: vec!["R=301".to_string()],
+        }];
+        let redirects = extract_redirects(&rules);
+        assert_eq!(redirects[0].from, "^/from-path$");
+        assert_eq!(redirects[0].to, "/to-path");
+    }
+
+    // --- rules_to_rustpress_config ---
+
+    #[test]
+    fn test_rules_to_config_empty_rules() {
+        let config = rules_to_rustpress_config(&[]);
+        assert!(config.contains("RustPress Rewrite Configuration"));
+        assert!(config.contains("[rewrites]"));
+    }
+
+    #[test]
+    fn test_rules_to_config_multiple_rules() {
+        let rules = vec![
+            RewriteRule {
+                pattern: "^/a$".to_string(),
+                replacement: "/b".to_string(),
+                flags: vec![],
+            },
+            RewriteRule {
+                pattern: "^/c$".to_string(),
+                replacement: "/d".to_string(),
+                flags: vec!["L".to_string()],
+            },
+        ];
+        let config = rules_to_rustpress_config(&rules);
+        assert!(config.contains("pattern_0"));
+        assert!(config.contains("pattern_1"));
+        assert!(config.contains("flags_1"));
+    }
+
+    #[test]
+    fn test_rules_to_config_no_flags_omitted() {
+        let rules = vec![RewriteRule {
+            pattern: "^/x$".to_string(),
+            replacement: "/y".to_string(),
+            flags: vec![],
+        }];
+        let config = rules_to_rustpress_config(&rules);
+        assert!(!config.contains("flags_0"));
+    }
 }

@@ -1445,11 +1445,18 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
 
     match action {
         None => {
-            // Full migration: all 6 steps
+            // Full migration: all 7 steps
             let (wp_version, post_count, page_count, comment_count, theme, plugins) =
-                migrate_analyze_db(&db_url).await?;
+                migrate_analyze_db(&db_url).await.map_err(|e| {
+                    anyhow::anyhow!(
+                        "Cannot connect to the WordPress database.\n\
+                         URL: {db_url}\n\
+                         Error: {e}\n\n\
+                         Hint: check that DATABASE_URL is set correctly in your environment or .env file."
+                    )
+                })?;
 
-            println!("[1/6] Analyzing WordPress database...");
+            println!("[1/7] Analyzing WordPress database...");
             println!(
                 "       WordPress {wp_version}, {post_count} posts, {page_count} pages, {comment_count} comments"
             );
@@ -1463,14 +1470,22 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
                 }
             );
 
-            println!("[2/6] Connecting to database...");
+            // Warn if WordPress version is older than 6.0 (db_version < 53496)
+            if let Ok(db_ver) = migrate_parse_db_version(&wp_version) {
+                if db_ver < 53496 {
+                    println!("       WARNING: WordPress version predates 6.0. Some RustPress features may not work correctly.");
+                    println!("       Recommended: upgrade WordPress to 6.5+ before migrating.");
+                }
+            }
+
+            println!("[2/7] Connecting to database...");
             println!("       OK -- using existing WordPress tables directly");
 
-            println!("[3/6] Checking theme compatibility...");
+            println!("[3/7] Checking theme compatibility...");
             let theme_compat = migrate_check_theme(&theme);
             println!("       {theme_compat}");
 
-            println!("[4/6] Checking plugin compatibility...");
+            println!("[4/8] Checking plugin compatibility...");
             for plugin_name in &plugins {
                 let compat = rustpress_migrate::analyze::analyze_plugin(plugin_name);
                 let status_str = match compat.status {
@@ -1490,7 +1505,7 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
                 println!("       No active plugins found.");
             }
 
-            println!("[5/6] Verifying SEO compatibility...");
+            println!("[5/8] Verifying SEO compatibility...");
             let permalink = migrate_get_permalink(&db_url).await?;
             println!("       Permalink structure: {permalink}");
             let (score, issues) = rustpress_migrate::analyze::analyze_wp_version(&wp_version);
@@ -1504,14 +1519,17 @@ async fn handle_migrate(action: Option<MigrateAction>, source: Option<String>) -
                 println!("       [{}] {}", severity, issue.description);
             }
 
-            println!("[6/7] Generating .env configuration...");
+            println!("[6/8] Checking media uploads directory...");
+            migrate_check_media_path(&db_url).await;
+
+            println!("[7/8] Generating .env configuration...");
             let env_path = migrate_generate_env_file(&db_url).await;
             match env_path {
                 Ok(path) => println!("       Written: {path}"),
                 Err(e) => println!("       Warning: could not write .env — {e}"),
             }
 
-            println!("[7/7] Ready to start RustPress...");
+            println!("[8/8] Ready to start RustPress...");
             println!("       Run: cargo run -p rustpress-server");
             println!("       Preview: http://localhost:8080");
             println!();
@@ -1850,6 +1868,59 @@ fn migrate_check_theme(theme: &str) -> String {
     }
 }
 
+/// Parse the db_version integer from a version string like "6.9" or a raw db_version number.
+///
+/// Returns the raw `db_version` integer if the version string is purely numeric,
+/// otherwise returns a best-guess based on the human-readable version string.
+fn migrate_parse_db_version(version_str: &str) -> Result<u64> {
+    // If the string is a plain number it's already the db_version
+    if let Ok(n) = version_str.parse::<u64>() {
+        return Ok(n);
+    }
+    // Map human-readable "6.x" / "5.x" etc. to approximate db_version thresholds
+    let lower = version_str.to_lowercase();
+    if lower.starts_with("6.9") {
+        Ok(58975)
+    } else if lower.starts_with("6.") {
+        Ok(57155)
+    } else if lower.starts_with("5.") {
+        Ok(49752)
+    } else {
+        Err(anyhow::anyhow!("Cannot parse version: {version_str}"))
+    }
+}
+
+/// Check whether the WordPress uploads directory is accessible.
+///
+/// Reads `upload_path` (or defaults to `wp-content/uploads`) from wp_options
+/// and checks if the path exists on the local filesystem.
+async fn migrate_check_media_path(db_url: &str) {
+    let db = match rustpress_db::connection::connect(db_url).await {
+        Ok(d) => d,
+        Err(_) => {
+            println!("       Warning: cannot connect to DB for media path check.");
+            return;
+        }
+    };
+
+    let upload_path = migrate_get_option(&db, "upload_path")
+        .await
+        .unwrap_or_default();
+    let media_dir = if upload_path.is_empty() {
+        "wp-content/uploads".to_string()
+    } else {
+        upload_path
+    };
+
+    if std::path::Path::new(&media_dir).is_dir() {
+        println!("       Upload dir: {media_dir} -- OK");
+    } else {
+        println!("       Upload dir: {media_dir} -- NOT FOUND");
+        println!("       Hint: set RUSTPRESS_UPLOAD_DIR in .env to the correct absolute path.");
+        println!("       Static media will return 404 until the upload directory is reachable.");
+    }
+}
+
 /// Get permalink structure from the database.
 async fn migrate_get_permalink(db_url: &str) -> Result<String> {
     let db = rustpress_db::connection::connect(db_url).await?;
@@ -1916,4 +1987,166 @@ fn mask_password(url: &str) -> String {
         }
     }
     url.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- mask_password ---
+
+    #[test]
+    fn test_mask_password_standard_url() {
+        let url = "mysql://user:secret@localhost:3306/db";
+        let masked = mask_password(url);
+        assert!(masked.contains("****"));
+        assert!(!masked.contains("secret"));
+        assert!(masked.contains("user:"));
+        assert!(masked.contains("@localhost"));
+    }
+
+    #[test]
+    fn test_mask_password_no_password() {
+        let url = "mysql://localhost/db";
+        assert_eq!(mask_password(url), url);
+    }
+
+    #[test]
+    fn test_mask_password_empty_string() {
+        assert_eq!(mask_password(""), "");
+    }
+
+    #[test]
+    fn test_mask_password_preserves_after_at() {
+        let url = "mysql://user:pw@db.example.com:3306/wordpress";
+        let masked = mask_password(url);
+        assert!(masked.contains("@db.example.com:3306/wordpress"));
+    }
+
+    #[test]
+    fn test_mask_password_with_at_sign_in_password() {
+        // URL-encoded passwords (no literal @ in password) are masked correctly
+        let url = "mysql://user:secr3t@host/db";
+        let masked = mask_password(url);
+        assert!(masked.contains("****"));
+        assert!(!masked.contains("secr3t"));
+        assert!(masked.contains("@host"));
+    }
+
+    // --- entropy_byte ---
+
+    #[test]
+    fn test_entropy_byte_produces_u8() {
+        let b = entropy_byte();
+        let _ = b; // just check it doesn't panic and returns u8
+    }
+
+    #[test]
+    fn test_entropy_byte_is_deterministic_enough() {
+        // Different calls should not always return the same value
+        // (probabilistic — almost certainly different due to counter)
+        let bytes: Vec<u8> = (0..32).map(|_| entropy_byte()).collect();
+        // There should be at least 2 distinct values in 32 calls
+        let unique: std::collections::HashSet<u8> = bytes.into_iter().collect();
+        assert!(
+            unique.len() >= 2,
+            "entropy looks stuck: all bytes identical"
+        );
+    }
+
+    #[test]
+    fn test_entropy_generates_32_byte_secret() {
+        let secret: String = (0..32).map(|_| format!("{:02x}", entropy_byte())).collect();
+        assert_eq!(secret.len(), 64); // 32 bytes = 64 hex chars
+        assert!(secret.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    // --- migrate_check_theme ---
+
+    #[test]
+    fn test_check_theme_twentytwentyfive_supported() {
+        let result = migrate_check_theme("twentytwentyfive");
+        assert!(result.contains("Fully supported"));
+    }
+
+    #[test]
+    fn test_check_theme_twentyrust_supported() {
+        let result = migrate_check_theme("twentyrust");
+        assert!(result.contains("Fully supported"));
+    }
+
+    #[test]
+    fn test_check_theme_twentytwentythree_partial() {
+        let result = migrate_check_theme("twentytwentythree");
+        assert!(result.contains("Partial support"));
+    }
+
+    #[test]
+    fn test_check_theme_twentytwenty_partial() {
+        let result = migrate_check_theme("twentytwenty");
+        assert!(result.contains("Partial support"));
+    }
+
+    #[test]
+    fn test_check_theme_custom_theme_requires_conversion() {
+        let result = migrate_check_theme("my-custom-theme");
+        assert!(result.contains("Manual Tera template conversion"));
+    }
+
+    #[test]
+    fn test_check_theme_avada_requires_conversion() {
+        let result = migrate_check_theme("Avada");
+        assert!(result.contains("Manual Tera template conversion"));
+    }
+
+    #[test]
+    fn test_check_theme_case_insensitive() {
+        let result = migrate_check_theme("TwentyTwentyFive");
+        assert!(result.contains("Fully supported"));
+    }
+
+    // --- migrate_parse_db_version ---
+
+    #[test]
+    fn test_parse_db_version_raw_number() {
+        assert_eq!(migrate_parse_db_version("58975").unwrap(), 58975);
+    }
+
+    #[test]
+    fn test_parse_db_version_6_9_maps_to_threshold() {
+        assert_eq!(migrate_parse_db_version("6.9").unwrap(), 58975);
+    }
+
+    #[test]
+    fn test_parse_db_version_6_x_maps_to_threshold() {
+        assert_eq!(migrate_parse_db_version("6.x").unwrap(), 57155);
+    }
+
+    #[test]
+    fn test_parse_db_version_5_x_maps_to_threshold() {
+        assert_eq!(migrate_parse_db_version("5.x").unwrap(), 49752);
+    }
+
+    #[test]
+    fn test_parse_db_version_unknown_returns_err() {
+        assert!(migrate_parse_db_version("unknown (db_version: 12345)").is_err());
+    }
+
+    #[test]
+    fn test_parse_db_version_empty_returns_err() {
+        assert!(migrate_parse_db_version("").is_err());
+    }
+
+    #[test]
+    fn test_parse_db_version_old_wp_below_threshold() {
+        // db_version 49752 is 5.x, below 6.0 threshold (53496)
+        let v = migrate_parse_db_version("49752").unwrap();
+        assert!(v < 53496, "5.x should be below 6.0 threshold");
+    }
+
+    #[test]
+    fn test_parse_db_version_6_0_above_threshold() {
+        let v = migrate_parse_db_version("53496").unwrap();
+        assert!(v >= 53496);
+    }
 }

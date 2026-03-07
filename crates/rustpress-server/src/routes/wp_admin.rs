@@ -771,10 +771,7 @@ async fn two_fa_page(State(state): State<Arc<AppState>>) -> Html<String> {
 }
 
 /// Process the TOTP code form (POST /wp-login.php?action=2fa).
-async fn two_fa_submit(
-    State(state): State<Arc<AppState>>,
-    form: TotpCodeForm,
-) -> Response {
+async fn two_fa_submit(State(state): State<Arc<AppState>>, form: TotpCodeForm) -> Response {
     let render_error = |err: &str| {
         let mut ctx = tera::Context::new();
         ctx.insert("site_name", &"");
@@ -854,15 +851,14 @@ async fn totp_setup_page(
 
     // Check if 2FA is already enrolled
     let existing_secret = get_usermeta(&state.db, session.user_id, "_totp_secret").await;
-    let totp_enabled = existing_secret.as_deref().map(|s| !s.is_empty()).unwrap_or(false);
+    let totp_enabled = existing_secret
+        .as_deref()
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
 
     // Generate a fresh pending secret for QR display
     let pending_secret = rustpress_auth::generate_secret();
-    let qr_uri = rustpress_auth::generate_qr_uri(
-        &pending_secret,
-        &session.login,
-        "RustPress",
-    );
+    let qr_uri = rustpress_auth::generate_qr_uri(&pending_secret, &session.login, "RustPress");
 
     ctx.insert("totp_enabled", &totp_enabled);
     ctx.insert("pending_secret", &pending_secret);
@@ -888,7 +884,8 @@ async fn totp_setup_save(
             let code = form.totp_code.as_deref().unwrap_or("").trim();
 
             if pending_secret.is_empty() || code.is_empty() {
-                let qr_uri = rustpress_auth::generate_qr_uri(pending_secret, &session.login, "RustPress");
+                let qr_uri =
+                    rustpress_auth::generate_qr_uri(pending_secret, &session.login, "RustPress");
                 ctx.insert("totp_enabled", &false);
                 ctx.insert("pending_secret", &pending_secret);
                 ctx.insert("qr_uri", &qr_uri);
@@ -898,11 +895,15 @@ async fn totp_setup_save(
             }
 
             if !rustpress_auth::verify_totp(pending_secret, code) {
-                let qr_uri = rustpress_auth::generate_qr_uri(pending_secret, &session.login, "RustPress");
+                let qr_uri =
+                    rustpress_auth::generate_qr_uri(pending_secret, &session.login, "RustPress");
                 ctx.insert("totp_enabled", &false);
                 ctx.insert("pending_secret", &pending_secret);
                 ctx.insert("qr_uri", &qr_uri);
-                ctx.insert("error", "Invalid code. Please scan the QR code and try again.");
+                ctx.insert(
+                    "error",
+                    "Invalid code. Please scan the QR code and try again.",
+                );
                 ctx.insert("saved", &false);
                 return render_admin(&state, "admin/profile-2fa.html", &ctx);
             }
@@ -932,7 +933,8 @@ async fn totp_setup_save(
         }
         _ => {
             let pending_secret = rustpress_auth::generate_secret();
-            let qr_uri = rustpress_auth::generate_qr_uri(&pending_secret, &session.login, "RustPress");
+            let qr_uri =
+                rustpress_auth::generate_qr_uri(&pending_secret, &session.login, "RustPress");
             ctx.insert("totp_enabled", &false);
             ctx.insert("pending_secret", &pending_secret);
             ctx.insert("qr_uri", &qr_uri);
