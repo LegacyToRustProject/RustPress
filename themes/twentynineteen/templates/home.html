@@ -1,48 +1,18 @@
 {% extends "base.html" %}
-
 {% block title %}{{ site_name | default(value="RustPress") }} &#8211; {{ site_description | default(value="Just another RustPress site") }}{% endblock %}
 {% block body_class %}home blog{% endblock %}
-
 {% block content %}
 {% for post in posts %}
 {% set has_media = post.featured_image_url %}
 <article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard{% if has_media %} has-post-thumbnail has-media{% endif %} hentry">
-
 <header class="entry-header{% if has_media %} has-media{% endif %}">
-{% if has_media %}
-<div class="post-thumbnail">
-<a href="{{ post.permalink | default(value='/' ~ post.slug) }}"><img src="{{ post.featured_image_url }}" alt="{{ post.title }}" loading="lazy"></a>
-</div>
-{% endif %}
-<div class="entry-header-inner">
-<div class="entry-meta">
-<span class="posted-on"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></span>
-{% if post.author_name %} &mdash; <span class="byline">By <a href="{{ site_url | default(value='') }}/?author={{ post.author_id | default(value=1) }}">{{ post.author_name }}</a></span>{% endif %}
-</div>
-<h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2>
-</div>
+{% if has_media %}<div class="post-thumbnail"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}"><img src="{{ post.featured_image_url }}" alt="{{ post.title }}" loading="lazy"></a></div>{% endif %}
+<div class="entry-header-inner"><div class="entry-meta"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time>{% if post.author_name %} &mdash; <span class="byline">By <a href="{{ site_url | default(value='') }}/?author={{ post.author_id | default(value=1) }}">{{ post.author_name }}</a></span>{% endif %}</div>
+<h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2></div>
 </header>
-
-<div class="entry-content">
-{{ post.excerpt | default(value="") | safe }}
-<a href="{{ post.permalink | default(value='/' ~ post.slug) }}" class="more-link">Continue reading <span class="screen-reader-text">"{{ post.title }}"</span></a>
-</div>
-
-<footer class="entry-footer">
-{% if post.categories %}
-<span class="cat-links">{% for cat in post.categories %}<a href="{{ site_url | default(value='') }}/category/{{ cat.slug }}">{{ cat.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
-{% endif %}
-</footer>
-
+<div class="entry-content">{{ post.excerpt | default(value="") | safe }}<a href="{{ post.permalink | default(value='/' ~ post.slug) }}" class="more-link">Continue reading</a></div>
+<footer class="entry-footer">{% if post.categories %}{% for cat in post.categories %}<a href="{{ site_url | default(value='') }}/category/{{ cat.slug }}">{{ cat.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}</footer>
 </article>
-{% else %}
-<p>No posts found.</p>
-{% endfor %}
-
-{% if pagination %}
-<nav class="pagination" role="navigation"><div class="nav-links">
-{% if pagination.prev_url %}<a href="{{ pagination.prev_url }}">&larr; Newer posts</a>{% endif %}
-{% if pagination.next_url %}<a href="{{ pagination.next_url }}">Older posts &rarr;</a>{% endif %}
-</div></nav>
-{% endif %}
+{% else %}<p>No posts found.</p>{% endfor %}
+{% if pagination %}<nav class="pagination" role="navigation"><div class="nav-links">{% if pagination.prev_url %}<a href="{{ pagination.prev_url }}">&larr; Newer posts</a>{% endif %}{% if pagination.next_url %}<a href="{{ pagination.next_url }}">Older posts &rarr;</a>{% endif %}</div></nav>{% endif %}
 {% endblock %}

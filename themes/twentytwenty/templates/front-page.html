@@ -1,33 +1,13 @@
 {% extends "base.html" %}
-
 {% block title %}{{ site_name | default(value="RustPress") }} &#8211; {{ site_description | default(value="Just another RustPress site") }}{% endblock %}
 {% block body_class %}home page page-template-default{% endblock %}
-
 {% block main %}
-<div class="cover-header" style="background-color:var(--color-foreground);min-height:60vh">
-<div class="cover-header-inner">
-<h1 class="entry-title" style="font-size:clamp(2.5rem,8vw,5rem)">{{ site_name | default(value="RustPress") }}</h1>
-<p style="color:rgba(255,255,255,0.8);font-size:1.25rem;max-width:600px">{{ site_description | default(value="") }}</p>
-<a href="{{ site_url | default(value='/') }}/blog" class="wp-block-button__link" style="margin-top:1rem">Read the blog</a>
-</div>
-</div>
-
-<div id="primary" class="content-area">
-<main id="main" class="site-main">
-{% if posts and posts | length > 0 %}
-<div style="padding-top:3rem">
-<h2 style="text-align:center;margin-bottom:2rem">Latest Posts</h2>
-{% for post in posts | slice(end=4) %}
+<div class="cover-header" style="background-color:var(--color-foreground);min-height:60vh"><div class="cover-header-inner"><h1 class="entry-title" style="font-size:clamp(2.5rem,8vw,5rem)">{{ site_name | default(value="RustPress") }}</h1><p style="color:rgba(255,255,255,0.8);font-size:1.25rem;max-width:600px">{{ site_description | default(value="") }}</p><a href="{{ site_url | default(value='/') }}/blog" class="wp-block-button__link" style="margin-top:1rem">Read the blog</a></div></div>
+<div id="primary" class="content-area"><main id="main" class="site-main">
+{% if posts and posts | length > 0 %}<div style="padding-top:3rem"><h2 style="text-align:center;margin-bottom:2rem">Latest Posts</h2>{% for post in posts | slice(end=4) %}
 <article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry">
-<header class="entry-header">
-<h3 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}">{{ post.title }}</a></h3>
-<div class="entry-meta"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></div>
-</header>
+<header class="entry-header"><h3 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}">{{ post.title }}</a></h3><div class="entry-meta"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></div></header>
 <div class="entry-content">{{ post.excerpt | default(value="") | safe }}</div>
-</article>
-{% endfor %}
-</div>
-{% endif %}
-</main>
-</div>
+</article>{% endfor %}</div>{% endif %}
+</main></div>
 {% endblock %}

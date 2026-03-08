@@ -5,12 +5,9 @@
 {% if site_description %}<p class="site-description">{{ site_description }}</p>{% endif %}
 </div>
 </div>
-<nav id="site-navigation" class="primary-navigation">
+<nav id="site-navigation" class="primary-navigation" aria-label="Primary menu">
 <ul>
-{% if header_menu and header_menu | length > 0 %}
-{% for item in header_menu %}
-<li class="menu-item"><a href="{{ item.url }}">{{ item.label }}</a></li>
-{% endfor %}
+{% if header_menu and header_menu | length > 0 %}{% for item in header_menu %}<li class="menu-item"><a href="{{ item.url }}">{{ item.label }}</a></li>{% endfor %}
 {% else %}
 <li class="menu-item"><a href="{{ site_url | default(value='/') }}">Home</a></li>
 <li class="menu-item"><a href="{{ site_url | default(value='/') }}/about">About</a></li>
