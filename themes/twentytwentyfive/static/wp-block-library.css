@@ -468,6 +468,55 @@
 .wp-block-navigation .wp-block-page-list{align-items:var(--navigation-layout-align,initial);background-color:inherit;display:flex;flex-direction:var(--navigation-layout-direction,initial);flex-wrap:var(--navigation-layout-wrap,wrap);justify-content:var(--navigation-layout-justify,initial)}
 .wp-block-navigation .wp-block-navigation-item{background-color:inherit}
 
+/* Navigation responsive — hamburger and overlay */
+.wp-block-navigation__responsive-container-close,
+.wp-block-navigation__responsive-container-open {
+	background: transparent;
+	border: none;
+	color: currentColor;
+	cursor: pointer;
+	margin: 0;
+	padding: 0;
+	vertical-align: middle;
+}
+.wp-block-navigation__responsive-container-close svg,
+.wp-block-navigation__responsive-container-open svg {
+	fill: currentColor;
+	display: block;
+	height: 24px;
+	pointer-events: none;
+	width: 24px;
+}
+/* Default (mobile): hamburger visible, container hidden */
+.wp-block-navigation__responsive-container-open {
+	display: flex;
+}
+.wp-block-navigation__responsive-container {
+	bottom: 0;
+	display: none;
+	left: 0;
+	position: fixed;
+	right: 0;
+	top: 0;
+	z-index: 100000;
+}
+/* At 600px+: hamburger hidden, container shown inline */
+@media (min-width: 600px) {
+	.wp-block-navigation__responsive-container-open:not(.always-shown) {
+		display: none;
+	}
+	.wp-block-navigation__responsive-container:not(.hidden-by-default):not(.is-menu-open) {
+		background-color: inherit;
+		display: block;
+		position: relative;
+		width: 100%;
+		z-index: auto;
+	}
+	.wp-block-navigation__responsive-container:not(.hidden-by-default):not(.is-menu-open) .wp-block-navigation__responsive-container-close {
+		display: none;
+	}
+}
+
 /* Paragraph — WordPress inline CSS */
 .is-small-text{font-size:.875em}
 .is-regular-text{font-size:1em}
