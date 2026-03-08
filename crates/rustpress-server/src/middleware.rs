@@ -270,6 +270,18 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
         "Permissions-Policy",
         HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
     );
+    headers.insert(
+        "Cross-Origin-Resource-Policy",
+        HeaderValue::from_static("same-origin"),
+    );
+    headers.insert(
+        "Cross-Origin-Embedder-Policy",
+        HeaderValue::from_static("require-corp"),
+    );
+    headers.insert(
+        "Cross-Origin-Opener-Policy",
+        HeaderValue::from_static("same-origin"),
+    );
 
     response
 }
@@ -718,6 +730,28 @@ mod tests {
         assert_eq!(
             resp.headers().get("Permissions-Policy").unwrap(),
             "camera=(), microphone=(), geolocation=()"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_security_headers_corp_coep_coop() {
+        let app = security_headers_app();
+        let req = HttpRequest::builder()
+            .uri("/test")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(
+            resp.headers().get("Cross-Origin-Resource-Policy").unwrap(),
+            "same-origin"
+        );
+        assert_eq!(
+            resp.headers().get("Cross-Origin-Embedder-Policy").unwrap(),
+            "require-corp"
+        );
+        assert_eq!(
+            resp.headers().get("Cross-Origin-Opener-Policy").unwrap(),
+            "same-origin"
         );
     }
 
