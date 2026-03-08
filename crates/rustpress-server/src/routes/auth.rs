@@ -1,4 +1,9 @@
-use axum::{extract::State, http::StatusCode, routing::post, Json, Router};
+use axum::{
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    routing::post,
+    Json, Router,
+};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -24,7 +29,9 @@ pub struct LoginResponse {
 }
 
 pub fn routes() -> Router<Arc<AppState>> {
-    Router::new().route("/api/auth/login", post(login))
+    Router::new()
+        .route("/api/auth/login", post(login))
+        .route("/api/auth/logout", post(logout))
 }
 
 async fn login(
@@ -81,4 +88,40 @@ async fn login(
         user_login: user.user_login,
         display_name: user.display_name,
     }))
+}
+
+/// Invalidate the caller's JWT by adding its `jti` to the blacklist.
+///
+/// The token must be passed in the `Authorization: Bearer <token>` header.
+/// After this call, the token is rejected by `require_auth` middleware even
+/// if it has not yet expired.
+async fn logout(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let token = headers
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "));
+
+    let Some(token) = token else {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "Missing Authorization header"})),
+        );
+    };
+
+    match state.jwt.validate_token(token) {
+        Ok(claims) => {
+            rustpress_auth::blacklist_token(&claims.jti);
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"message": "Logged out"})),
+            )
+        }
+        Err(_) => (
+            StatusCode::UNAUTHORIZED,
+            Json(serde_json::json!({"error": "Invalid or expired token"})),
+        ),
+    }
 }

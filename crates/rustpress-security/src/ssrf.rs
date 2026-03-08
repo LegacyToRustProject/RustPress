@@ -142,4 +142,127 @@ mod tests {
         assert!(validate_url("http://server.local/api").is_err());
         assert!(validate_url("http://db.internal/query").is_err());
     }
+
+    // --- is_private_ip extended ---
+
+    #[test]
+    fn test_private_ip_rfc6598_shared_space() {
+        // 100.64.0.0/10 (RFC 6598 shared address space)
+        assert!(is_private_ip("100.64.0.1".parse().unwrap()));
+        assert!(is_private_ip("100.127.255.255".parse().unwrap()));
+    }
+
+    #[test]
+    fn test_private_ip_broadcast() {
+        assert!(is_private_ip("255.255.255.255".parse().unwrap()));
+    }
+
+    #[test]
+    fn test_private_ip_documentation_ranges() {
+        // 192.0.2.0/24 (TEST-NET-1)
+        assert!(is_private_ip("192.0.2.1".parse().unwrap()));
+        // 198.51.100.0/24 (TEST-NET-2)
+        assert!(is_private_ip("198.51.100.1".parse().unwrap()));
+        // 203.0.113.0/24 (TEST-NET-3)
+        assert!(is_private_ip("203.0.113.1".parse().unwrap()));
+    }
+
+    #[test]
+    fn test_public_ip_not_private() {
+        assert!(!is_private_ip("8.8.8.8".parse().unwrap()));
+        assert!(!is_private_ip("1.1.1.1".parse().unwrap()));
+        assert!(!is_private_ip("204.0.0.1".parse().unwrap()));
+        assert!(!is_private_ip("93.184.216.34".parse().unwrap())); // example.com
+    }
+
+    #[test]
+    fn test_private_ipv6_mapped_v4() {
+        // IPv4-mapped IPv6: ::ffff:10.0.0.1 should be private
+        let ip: IpAddr = "::ffff:10.0.0.1".parse().unwrap();
+        assert!(is_private_ip(ip));
+    }
+
+    #[test]
+    fn test_public_ipv6_not_private() {
+        // Google's public IPv6 DNS
+        assert!(!is_private_ip("2001:4860:4860::8888".parse().unwrap()));
+    }
+
+    // --- validate_url extended ---
+
+    #[test]
+    fn test_validate_url_https_allowed() {
+        assert!(validate_url("https://example.com/").is_ok());
+    }
+
+    #[test]
+    fn test_validate_url_http_allowed() {
+        assert!(validate_url("http://example.com/").is_ok());
+    }
+
+    #[test]
+    fn test_validate_url_ftp_blocked() {
+        assert!(validate_url("ftp://files.example.com/").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_file_scheme_blocked() {
+        assert!(validate_url("file:///etc/passwd").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_data_scheme_blocked() {
+        assert!(validate_url("data:text/html,<h1>test</h1>").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_localhost_blocked() {
+        assert!(validate_url("http://localhost/").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_172_16_blocked() {
+        assert!(validate_url("http://172.16.0.1/").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_dot_local_blocked() {
+        assert!(validate_url("http://myserver.local/").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_dot_internal_blocked() {
+        assert!(validate_url("http://api.internal/v1/").is_err());
+    }
+
+    #[test]
+    fn test_validate_url_invalid_string_rejected() {
+        assert!(validate_url("not a url").is_err());
+        assert!(validate_url("").is_err());
+    }
+
+    // --- validate_resolved_ip ---
+
+    #[test]
+    fn test_validate_resolved_ip_public_ok() {
+        assert!(validate_resolved_ip("8.8.8.8".parse().unwrap()).is_ok());
+    }
+
+    #[test]
+    fn test_validate_resolved_ip_private_blocked() {
+        assert!(validate_resolved_ip("192.168.1.1".parse().unwrap()).is_err());
+        assert!(validate_resolved_ip("10.0.0.1".parse().unwrap()).is_err());
+        assert!(validate_resolved_ip("127.0.0.1".parse().unwrap()).is_err());
+    }
+
+    #[test]
+    fn test_validate_resolved_ip_ipv6_private_blocked() {
+        assert!(validate_resolved_ip("::1".parse().unwrap()).is_err());
+        assert!(validate_resolved_ip("fc00::1".parse().unwrap()).is_err());
+    }
+
+    #[test]
+    fn test_validate_resolved_ip_ipv6_public_ok() {
+        assert!(validate_resolved_ip("2001:4860:4860::8888".parse().unwrap()).is_ok());
+    }
 }

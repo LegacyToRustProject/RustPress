@@ -342,4 +342,224 @@ mod tests {
         assert!(output.contains("Posts: 100"));
         assert!(output.contains("rustpress-seo"));
     }
+
+    // --- analyze_plugin: NativeAvailable ---
+
+    #[test]
+    fn test_analyze_woocommerce() {
+        let r = analyze_plugin("woocommerce");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+        assert_eq!(r.alternative, Some("rustpress-commerce".to_string()));
+    }
+
+    #[test]
+    fn test_analyze_woocommerce_case_insensitive() {
+        let r = analyze_plugin("WooCommerce");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    #[test]
+    fn test_analyze_contact_form_7() {
+        let r = analyze_plugin("contact-form-7");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+        assert_eq!(r.alternative, Some("rustpress-forms".to_string()));
+    }
+
+    #[test]
+    fn test_analyze_wpforms() {
+        let r = analyze_plugin("wpforms");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    #[test]
+    fn test_analyze_advanced_custom_fields() {
+        let r = analyze_plugin("advanced-custom-fields");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+        assert_eq!(r.alternative, Some("rustpress-fields".to_string()));
+    }
+
+    #[test]
+    fn test_analyze_acf_alias() {
+        let r = analyze_plugin("acf");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    #[test]
+    fn test_analyze_wordfence() {
+        let r = analyze_plugin("wordfence");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+        assert_eq!(r.alternative, Some("rustpress-security".to_string()));
+    }
+
+    #[test]
+    fn test_analyze_rank_math() {
+        let r = analyze_plugin("rank-math");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    #[test]
+    fn test_analyze_wp_super_cache() {
+        let r = analyze_plugin("wp-super-cache");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    #[test]
+    fn test_analyze_w3_total_cache() {
+        let r = analyze_plugin("w3-total-cache");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    #[test]
+    fn test_analyze_wp_rocket() {
+        let r = analyze_plugin("wp-rocket");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    #[test]
+    fn test_analyze_sucuri() {
+        let r = analyze_plugin("sucuri-scanner");
+        assert_eq!(r.status, PluginCompatStatus::NativeAvailable);
+    }
+
+    // --- analyze_plugin: Convertible ---
+
+    #[test]
+    fn test_analyze_akismet_convertible() {
+        let r = analyze_plugin("akismet");
+        assert_eq!(r.status, PluginCompatStatus::Convertible);
+    }
+
+    // --- analyze_plugin: Incompatible ---
+
+    #[test]
+    fn test_analyze_jetpack_incompatible() {
+        let r = analyze_plugin("jetpack");
+        assert_eq!(r.status, PluginCompatStatus::Incompatible);
+    }
+
+    #[test]
+    fn test_analyze_elementor_incompatible() {
+        let r = analyze_plugin("elementor");
+        assert_eq!(r.status, PluginCompatStatus::Incompatible);
+    }
+
+    // --- analyze_plugin: Unknown ---
+
+    #[test]
+    fn test_analyze_empty_name() {
+        let r = analyze_plugin("");
+        assert_eq!(r.status, PluginCompatStatus::Unknown);
+    }
+
+    #[test]
+    fn test_analyze_completely_unknown() {
+        let r = analyze_plugin("my-custom-plugin-xyz-99");
+        assert_eq!(r.status, PluginCompatStatus::Unknown);
+        assert!(r.alternative.is_none());
+    }
+
+    #[test]
+    fn test_analyze_plugin_name_preserved() {
+        let r = analyze_plugin("My Fancy Plugin");
+        assert_eq!(r.name, "My Fancy Plugin");
+    }
+
+    // --- analyze_wp_version ---
+
+    #[test]
+    fn test_wp6_1() {
+        let (score, issues) = analyze_wp_version("6.1");
+        assert_eq!(score, 95);
+        assert!(issues.is_empty());
+    }
+
+    #[test]
+    fn test_wp6_5() {
+        let (score, issues) = analyze_wp_version("6.5");
+        assert_eq!(score, 95);
+        assert!(issues.is_empty());
+    }
+
+    #[test]
+    fn test_wp6_0() {
+        let (score, issues) = analyze_wp_version("6.0");
+        assert_eq!(score, 95);
+        assert!(issues.is_empty());
+    }
+
+    #[test]
+    fn test_wp5_0_returns_info() {
+        let (score, issues) = analyze_wp_version("5.0");
+        assert_eq!(score, 80);
+        assert!(!issues.is_empty());
+        assert_eq!(issues[0].severity, IssueSeverity::Info);
+    }
+
+    #[test]
+    fn test_wp5_9() {
+        let (score, _) = analyze_wp_version("5.9");
+        assert_eq!(score, 80);
+    }
+
+    #[test]
+    fn test_wp4_4_returns_warning() {
+        let (score, issues) = analyze_wp_version("4.4");
+        assert_eq!(score, 60);
+        assert_eq!(issues[0].severity, IssueSeverity::Warning);
+    }
+
+    #[test]
+    fn test_wp4_9() {
+        let (score, _) = analyze_wp_version("4.9");
+        assert_eq!(score, 60);
+    }
+
+    #[test]
+    fn test_wp3_x_critical() {
+        let (score, issues) = analyze_wp_version("3.5");
+        assert_eq!(score, 20);
+        assert_eq!(issues[0].severity, IssueSeverity::Critical);
+    }
+
+    #[test]
+    fn test_wp1_x_critical() {
+        let (score, issues) = analyze_wp_version("1.0");
+        assert_eq!(score, 20);
+        assert_eq!(issues[0].severity, IssueSeverity::Critical);
+    }
+
+    #[test]
+    fn test_wp_unknown_version() {
+        let (score, issues) = analyze_wp_version("unknown");
+        assert_eq!(score, 20);
+        assert!(!issues.is_empty());
+    }
+
+    #[test]
+    fn test_wp_empty_version() {
+        let (score, _) = analyze_wp_version("");
+        assert_eq!(score, 20);
+    }
+
+    // --- CompatibilityReport field access ---
+
+    #[test]
+    fn test_report_fields_accessible() {
+        let report = CompatibilityReport {
+            wordpress_version: "6.9".to_string(),
+            db_version: "58975".to_string(),
+            compatibility_score: 95,
+            post_count: 42,
+            page_count: 7,
+            user_count: 3,
+            comment_count: 15,
+            attachment_count: 100,
+            active_theme: "twentytwentyfive".to_string(),
+            active_plugins: vec![],
+            issues: vec![],
+            recommendations: vec![],
+        };
+        assert_eq!(report.post_count, 42);
+        assert_eq!(report.compatibility_score, 95);
+    }
 }

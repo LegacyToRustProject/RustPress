@@ -24,3 +24,7 @@ axum = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 md-5 = { workspace = true }
+moka = { workspace = true }
+sha1 = { workspace = true }
+hmac = { workspace = true }
+data-encoding = { workspace = true }

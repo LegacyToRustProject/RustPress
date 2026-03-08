@@ -537,6 +537,15 @@ async fn main() -> Result<()> {
         }
     }
 
+    // WordPress core includes path — serves Gutenberg JS/CSS assets
+    let wp_includes_dir = format!("{}/wp-includes", static_dir);
+    if std::path::Path::new(&wp_includes_dir).exists() {
+        app = app.nest_service(
+            "/wp-includes",
+            tower_http::services::ServeDir::new(&wp_includes_dir),
+        );
+    }
+
     // Apply global middleware (order matters: outermost layer runs first)
     // 1. Block sensitive files (.env, .git, etc.) — first line of defense
     // 2. WAF — block malicious patterns

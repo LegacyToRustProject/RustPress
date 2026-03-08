@@ -47,8 +47,8 @@ Status: **Implemented** | Last updated: 2026-03-07
 - [x] Password strength validation enforced (PasswordPolicy: 8+ chars, 3 character classes)
 - [x] Common passwords rejected (dictionary check)
 - [x] Session IDs generated with UUID v4 (cryptographically random)
-- [ ] File upload MIME type validation (planned)
-- [ ] Password reset token expiry enforcement (planned)
+- [x] File upload MIME type validation — `infer` crate checks magic bytes, rejects spoofed Content-Type
+- [x] Password reset token expiry enforcement — 24h TTL stored in wp_usermeta, checked in `validate_reset_token()`
 
 ## OWASP A05: Security Misconfiguration
 
@@ -80,8 +80,8 @@ Status: **Implemented** | Last updated: 2026-03-07
 - [x] WordPress legacy hash verification (PHPass, bcrypt, MD5) with Argon2 rehash
 - [x] CSRF nonce system (WordPress-compatible wp_create_nonce/wp_verify_nonce)
 - [x] CSRF nonce check middleware for admin POST/PUT/DELETE endpoints
-- [ ] TOTP 2FA (planned)
-- [ ] JWT token blacklist on logout (currently relies on expiry)
+- [x] TOTP 2FA — RFC 6238 HMAC-SHA1, 30-second window, ±1 drift tolerance; enrollment at `/wp-admin/profile-2fa`; login redirects to `/wp-login.php?action=2fa` when `_totp_secret` set; intermediate state uses 5-minute "2FA pending" JWT (role=`2fa_pending`); code entry required before session is created
+- [x] JWT token blacklist on logout — `jti` claim added to all tokens; logout via `POST /api/auth/logout` blacklists `jti` in Moka cache (24h TTL); `validate_token()` rejects blacklisted tokens
 
 ## OWASP A08: Software and Data Integrity Failures
 
@@ -124,8 +124,9 @@ Status: **Implemented** | Last updated: 2026-03-07
 
 ## Test Coverage
 
-- **Total workspace tests**: 883 (all passing)
-- **Security crate tests**: 87 (OWASP-focused)
-- **Auth crate tests**: 43 (including password policy)
-- **All tests pass with `cargo test --workspace --lib --bins -- --skip e2e`**
+- **Total workspace tests**: 1098 (all passing, +200 added in beta-sprint-03)
+- **Security crate tests**: 116 (OWASP-focused, +29)
+- **Auth crate tests**: 154 (including TOTP, JWT pending token, blacklist, password policy, roles, +89)
+- **Migrate crate tests**: 70 (analyze + rewrites, +59)
+- **All tests pass with `cargo test --workspace --lib --bins`**
 - **`cargo clippy --workspace -- -D warnings` passes clean**

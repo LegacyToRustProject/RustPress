@@ -785,7 +785,7 @@ async fn single_post_by_slug(
                 } else {
                     "article".to_string()
                 }),
-                og_site_name: Some(site_name),
+                og_site_name: Some(site_name.clone()),
                 twitter_card: Some("summary_large_image".to_string()),
                 ..Default::default()
             };
@@ -812,6 +812,70 @@ async fn single_post_by_slug(
                         }
                     }
                 }
+            }
+
+            // Load all postmeta for plugin compatibility:
+            // Yoast SEO, ACF, WooCommerce, Elementor, and any other plugin using wp_postmeta.
+            let all_meta = load_all_postmeta(&state.db, post_id).await;
+            if !all_meta.is_empty() {
+                // Yoast SEO: override auto-generated SEO meta if Yoast data is present
+                let has_yoast = all_meta.contains_key("_yoast_wpseo_title")
+                    || all_meta.contains_key("_yoast_wpseo_metadesc");
+                if has_yoast {
+                    let yoast =
+                        rustpress_seo::yoast_compat::YoastPostSeo::from_meta(post_id, &all_meta);
+                    let permalink =
+                        format!("{}/{}", state.site_url.trim_end_matches('/'), p.post_name);
+                    let seo = yoast.to_seo_meta(&p.post_title, &site_name, &permalink);
+                    context.insert("seo_meta_tags", &rustpress_seo::generate_meta_tags(&seo));
+                }
+
+                // ACF: inject custom fields as `acf_fields` template variable
+                let acf_data =
+                    rustpress_fields::acf_compat::AcfPostData::from_meta(post_id, &all_meta);
+                if !acf_data.fields.is_empty() {
+                    let acf_map: std::collections::HashMap<String, String> = acf_data
+                        .fields
+                        .iter()
+                        .map(|f| (f.field_name.clone(), f.value.clone()))
+                        .collect();
+                    context.insert("acf_fields", &acf_map);
+                }
+
+                // WooCommerce: if this is a product CPT, inject structured product data
+                if post_type == "product" {
+                    let woo = rustpress_commerce::woo_compat::WooProductData::from_post_and_meta(
+                        post_id,
+                        &p.post_title,
+                        &p.post_name,
+                        &p.post_content,
+                        &p.post_excerpt,
+                        &all_meta,
+                    );
+                    context.insert("product", &woo);
+                }
+
+                // Elementor: convert stored JSON widget tree to HTML
+                if let Some(el_data) = all_meta.get("_elementor_data") {
+                    if !el_data.is_empty() && el_data != "[]" {
+                        let rendered = render_elementor_content(el_data);
+                        if !rendered.is_empty() {
+                            context.insert("the_content", &rendered);
+                        }
+                    }
+                }
+
+                // Expose raw postmeta to templates (filtered: skip large/noisy internal keys)
+                let filtered_meta: std::collections::HashMap<String, String> = all_meta
+                    .into_iter()
+                    .filter(|(k, _)| {
+                        !k.starts_with("_edit_")
+                            && !k.starts_with("_wp_old_")
+                            && k != "_elementor_data"
+                            && k != "_elementor_css"
+                    })
+                    .collect();
+                context.insert("post_meta", &filtered_meta);
             }
 
             // Load approved comments for this post and build threaded tree
@@ -2306,4 +2370,188 @@ async fn post_comment_feed(
         xml,
     )
         .into_response()
+}
+
+/// Load ALL wp_postmeta for a given post_id.
+///
+/// Returns a `HashMap<meta_key, meta_value>` for use by plugin compatibility layers
+/// (Yoast SEO, ACF, WooCommerce, Elementor, etc.).
+async fn load_all_postmeta(
+    db: &sea_orm::DatabaseConnection,
+    post_id: u64,
+) -> std::collections::HashMap<String, String> {
+    wp_postmeta::Entity::find()
+        .filter(wp_postmeta::Column::PostId.eq(post_id))
+        .all(db)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|m| Some((m.meta_key?, m.meta_value.unwrap_or_default())))
+        .collect()
+}
+
+/// Convert Elementor page-builder JSON (`_elementor_data` postmeta) to HTML.
+///
+/// Elementor stores a recursive widget tree as JSON. This renderer handles the
+/// most common widget types: heading, text-editor, image, button, icon-list,
+/// video, divider, spacer, and falls back to recursing into children for any
+/// container / section / column elements.
+fn render_elementor_content(json_str: &str) -> String {
+    let Ok(data) = serde_json::from_str::<serde_json::Value>(json_str) else {
+        return String::new();
+    };
+    let mut html = String::new();
+    if let Some(sections) = data.as_array() {
+        for section in sections {
+            render_elementor_element(section, &mut html);
+        }
+    }
+    html
+}
+
+fn render_elementor_element(element: &serde_json::Value, html: &mut String) {
+    let eltype = element.get("elType").and_then(|v| v.as_str()).unwrap_or("");
+    let widget_type = element
+        .get("widgetType")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let settings = element
+        .get("settings")
+        .cloned()
+        .unwrap_or_else(|| serde_json::Value::Object(Default::default()));
+
+    match (eltype, widget_type) {
+        // Structural containers — recurse into children
+        ("section" | "container", _) => {
+            html.push_str("<section class=\"elementor-section\">");
+            recurse_elementor_children(element, html);
+            html.push_str("</section>\n");
+        }
+        ("column", _) => {
+            html.push_str("<div class=\"elementor-column\">");
+            recurse_elementor_children(element, html);
+            html.push_str("</div>\n");
+        }
+
+        // Heading widget
+        ("widget", "heading") => {
+            let text = settings.get("title").and_then(|v| v.as_str()).unwrap_or("");
+            let tag = settings
+                .get("header_size")
+                .and_then(|v| v.as_str())
+                .unwrap_or("h2");
+            let safe_tag = match tag {
+                "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => tag,
+                _ => "h2",
+            };
+            html.push_str(&format!(
+                "<{safe_tag} class=\"elementor-heading-title\">{text}</{safe_tag}>\n"
+            ));
+        }
+
+        // Text / rich-text editor widget
+        ("widget", "text-editor") => {
+            let content = settings
+                .get("editor")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            html.push_str(&format!(
+                "<div class=\"elementor-text-editor\">{content}</div>\n"
+            ));
+        }
+
+        // Image widget
+        ("widget", "image") => {
+            let url = settings
+                .get("image")
+                .and_then(|v| v.get("url"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let alt = settings
+                .get("image")
+                .and_then(|v| v.get("alt"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            if !url.is_empty() {
+                html.push_str(&format!(
+                    "<figure class=\"elementor-image\"><img src=\"{url}\" alt=\"{alt}\"/></figure>\n"
+                ));
+            }
+        }
+
+        // Button widget
+        ("widget", "button") => {
+            let text = settings
+                .get("text")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Button");
+            let url = settings
+                .get("link")
+                .and_then(|v| v.get("url"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("#");
+            html.push_str(&format!(
+                "<a href=\"{url}\" class=\"elementor-button\">{text}</a>\n"
+            ));
+        }
+
+        // Icon list widget
+        ("widget", "icon-list") => {
+            if let Some(items) = settings.get("icon_list").and_then(|v| v.as_array()) {
+                html.push_str("<ul class=\"elementor-icon-list-items\">\n");
+                for item in items {
+                    let text = item.get("text").and_then(|v| v.as_str()).unwrap_or("");
+                    html.push_str(&format!(
+                        "  <li class=\"elementor-icon-list-item\">{text}</li>\n"
+                    ));
+                }
+                html.push_str("</ul>\n");
+            }
+        }
+
+        // Video widget (YouTube / Vimeo link fallback)
+        ("widget", "video") => {
+            let provider = settings
+                .get("video_type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("youtube");
+            let url = if provider == "youtube" {
+                settings
+                    .get("youtube_url")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+            } else {
+                settings
+                    .get("vimeo_url")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+            };
+            if !url.is_empty() {
+                html.push_str(&format!(
+                    "<div class=\"elementor-video\"><a href=\"{url}\">Watch Video</a></div>\n"
+                ));
+            }
+        }
+
+        // Divider / spacer
+        ("widget", "divider") => {
+            html.push_str("<hr class=\"elementor-divider\"/>\n");
+        }
+        ("widget", "spacer") => {
+            html.push_str("<div class=\"elementor-spacer\"></div>\n");
+        }
+
+        // Unknown element — recurse into children if any
+        _ => {
+            recurse_elementor_children(element, html);
+        }
+    }
+}
+
+fn recurse_elementor_children(element: &serde_json::Value, html: &mut String) {
+    if let Some(children) = element.get("elements").and_then(|v| v.as_array()) {
+        for child in children {
+            render_elementor_element(child, html);
+        }
+    }
 }

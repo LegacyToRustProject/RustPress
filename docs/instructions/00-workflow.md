@@ -43,6 +43,7 @@
 
 3. CI が自動実行（check, test, clippy, fmt）
    → 全ジョブ green 必須
+   → **CI が赤い間は「作業完了」ではない。CI グリーンにするまでが担当者の仕事。**
 
 4. QAが検証
    #09 ─→ コードレビュー + 統合テスト
@@ -80,6 +81,73 @@ main (常にビルド・テスト通過)
 3. **PRはQAレビュー + オーナー承認の2段階。**
 4. **mainは常にグリーン。** ビルド・テストが通らない状態にしない。
 5. **作業前に `git pull origin main` を実行。** 常に最新のmainから分岐する。
+6. **CIグリーンになるまでが担当者の仕事。** pushして終わりではない。GitHubのCI結果を確認し、失敗していれば即修正すること。
+
+### ブランチ命名規則
+
+ブランチ名は**機能の内容**を表すこと。担当者名・テーマ名・汎用名はNG。
+
+```
+✅ 良い例:
+  feat/gutenberg-js-integration
+  feat/security-totp-2fa
+  feat/rest-api-pagination
+  fix/logout-session-cookie
+
+❌ 悪い例:
+  feat/theme-compat-tt23-tt22-astra  ← テーマ名の列挙（複数機能が混入しやすい）
+  feat/next-iteration                ← 汎用すぎる（何でも入れてしまう）
+  feat/agent-02-work                 ← 担当者名（1人の作業を別担当者が継続できない）
+```
+
+ブランチ名から「何の機能か」が1行で分かるようにする。
+
+### 作業開始前の必須確認
+
+新しい作業を始める前に以下を必ず確認する:
+
+```bash
+# 1. 今いるブランチを確認
+git branch
+
+# 2. 混入物（別タスクのファイル変更）がないか確認
+git status
+
+# 3. mainから何コミット分岐しているか確認
+git log --oneline main..HEAD
+
+# 4. 最新のmainから分岐する
+git checkout main
+git pull origin main
+git checkout -b feat/<機能名>
+```
+
+**`git status` で無関係なファイルが表示された場合は作業を止める。**
+まず `git stash` で退避し、ブランチ構成を整理してから再開する。
+
+### 1担当者 = 1PR 原則
+
+- 1つのPRに複数担当者の成果を混入させない。
+- 別担当者の作業を引き継ぐ場合は、**引き継ぎ元のPRをマージしてからmainを起点に新ブランチを作成する**。
+- やむを得ず同一ブランチで複数担当者が作業した場合は、PRの説明欄に全担当者と担当範囲を明記する。
+
+### ブランチ汚染が発生したときの対処
+
+```bash
+# 現在の変更を一時保存
+git stash
+
+# mainに戻る
+git checkout main
+git pull origin main
+
+# 正しいブランチを切り直す
+git checkout -b feat/<正しい機能名>
+
+# 保存した変更を戻す（必要なファイルだけ選択して復元）
+git stash pop
+git add -p  # 対話的に必要な変更だけステージング
+```
 
 ## セットアップ
 
@@ -113,10 +181,12 @@ git clone https://github.com/LegacyToRustProject/perl-to-rust.git ~/perl-to-rust
 
 全リポジトリ共通ルール:
 1. **mainに直接pushしない。** 必ずPR経由。
-2. **featureブランチで作業。** 例: `feat/next-iteration`
+2. **featureブランチで作業。** ブランチ名は機能の内容を表すこと（例: `feat/oss-test-cjson`, `feat/cobol-batch-shadow-run`）。`feat/next-iteration` のような汎用名はNG。
 3. **PRはQAレビュー + オーナー承認の2段階。**
 4. **mainは常にグリーン。** ビルド・テストが通らない状態にしない。
 5. **GitHub Actions CI** が全リポジトリに設定済み（check, test, fmt, clippy）。PRマージ前にCIグリーン必須。
+6. **作業開始前に `git status` で混入物がないことを確認。** 上記「作業開始前の必須確認」手順に従う。
+7. **CIがグリーンになるまでが仕事。** pushしてCIが失敗した場合は、即座に修正してグリーンに戻すこと。「実装は完了した」は CI グリーンを意味しない。
 
 ## CI/CD
 

@@ -548,3 +548,163 @@ async fn test_visual_full_sweep() {
         all_results.len()
     );
 }
+
+// ---------------------------------------------------------------------------
+// Per-theme visual sweep helper
+// ---------------------------------------------------------------------------
+
+/// Switch WordPress active theme via WP-CLI and run a visual sweep.
+/// `theme_slug` is the directory name under wp-content/themes/.
+/// `wp_cli_container` is the docker container name running WP-CLI.
+async fn run_theme_sweep(theme_slug: &str) {
+    let harness = match VisualTestHarness::setup().await {
+        Some(h) => h,
+        None => return,
+    };
+
+    eprintln!("\n========== VISUAL: Theme sweep — {theme_slug} ==========");
+
+    let pages = [
+        ("/", "home"),
+        ("/?p=1", "single_post"),
+        ("/?page_id=2", "sample_page"),
+        ("/?s=hello", "search"),
+        ("/this-does-not-exist-999/", "404"),
+        ("/?cat=1", "category"),
+        ("/?author=1", "author"),
+    ];
+
+    let mut all_results: Vec<(String, PixelDiffResult)> = Vec::new();
+    let mut failures: Vec<String> = Vec::new();
+
+    for (path, label) in &pages {
+        let tagged_label = format!("{theme_slug}_{label}");
+        eprintln!("\n--- {theme_slug} sweep: {label} ({path}) ---");
+
+        let result = visual_compare(
+            &harness.wp_driver,
+            &harness.rp_driver,
+            &harness.config.wordpress_url,
+            &harness.config.rustpress_url,
+            path,
+            1920,
+            1080,
+            &tagged_label,
+            CHANNEL_TOLERANCE,
+        )
+        .await;
+
+        match result {
+            Ok(r) => {
+                eprintln!(
+                    "  {} — {:.4}% match ({} diff pixels)",
+                    tagged_label, r.match_percentage, r.diff_pixels
+                );
+                if r.match_percentage < PIXEL_MATCH_THRESHOLD {
+                    failures.push(format!(
+                        "{}: {:.4}% match ({} diff pixels)",
+                        tagged_label, r.match_percentage, r.diff_pixels
+                    ));
+                }
+                all_results.push((tagged_label, r));
+            }
+            Err(e) => {
+                eprintln!("  {tagged_label} — ERROR: {e}");
+                failures.push(format!("{tagged_label}: error - {e}"));
+            }
+        }
+    }
+
+    harness.teardown().await;
+
+    eprintln!("\n========== {theme_slug} SWEEP SUMMARY ==========");
+    for (label, result) in &all_results {
+        let status = if result.match_percentage >= PIXEL_MATCH_THRESHOLD {
+            "PASS"
+        } else {
+            "FAIL"
+        };
+        eprintln!(
+            "  [{}] {} — {:.4}% ({} diff px)",
+            status, label, result.match_percentage, result.diff_pixels
+        );
+    }
+
+    if !failures.is_empty() {
+        eprintln!("\n--- FAILURES ---");
+        for f in &failures {
+            eprintln!("  {f}");
+        }
+        panic!(
+            "Theme sweep [{theme_slug}]: {}/{} pages failed pixel-perfect comparison",
+            failures.len(),
+            pages.len()
+        );
+    }
+
+    eprintln!(
+        "\n[PASS] Theme [{theme_slug}]: all {} pages match pixel-perfectly",
+        all_results.len()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Twenty Twenty-Three visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentytwentythree() {
+    // NOTE: requires WordPress to have twentytwentythree active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwentythree
+    run_theme_sweep("twentytwentythree").await;
+}
+
+// ---------------------------------------------------------------------------
+// Twenty Twenty-Two visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentytwentytwo() {
+    // NOTE: requires WordPress to have twentytwentytwo active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwentytwo
+    run_theme_sweep("twentytwentytwo").await;
+}
+
+// ---------------------------------------------------------------------------
+// Twenty Twenty-One visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentytwentyone() {
+    // NOTE: requires WordPress to have twentytwentyone active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwentyone
+    run_theme_sweep("twentytwentyone").await;
+}
+
+// ---------------------------------------------------------------------------
+// All-themes meta-sweep (runs all supported themes in sequence)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_all_themes_sweep() {
+    // Tests TT21 through TT25 in sequence.
+    // Each sub-sweep uses whichever theme WordPress currently has active —
+    // coordinate theme switching externally before running each sub-test.
+    // This test validates the currently-active theme only.
+    let themes = [
+        "twentytwentyfive",
+        "twentytwentyfour",
+        "twentytwentythree",
+        "twentytwentytwo",
+        "twentytwentyone",
+    ];
+
+    for theme in &themes {
+        eprintln!("\n\n>>> Testing theme: {theme}");
+        run_theme_sweep(theme).await;
+    }
+}

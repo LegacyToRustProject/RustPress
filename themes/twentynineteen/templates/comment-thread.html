@@ -1,0 +1,51 @@
+{% if comments and comments | length > 0 %}
+<div class="comments-area">
+<h2 class="comments-title">{{ comments | length }} comment{% if comments | length != 1 %}s{% endif %}</h2>
+<ol class="comment-list">
+{% for comment in comments %}
+<li id="comment-{{ comment.id }}" class="comment even thread-even depth-1">
+<article id="div-comment-{{ comment.id }}" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<b class="fn">{{ comment.author_name | default(value="Anonymous") }}</b>
+</div>
+<div class="comment-metadata">
+<time datetime="{{ comment.date_iso | default(value=comment.date) }}">{{ comment.date_formatted | default(value=comment.date) }}</time>
+</div>
+</footer>
+<div class="comment-content">{{ comment.content | safe }}</div>
+</article>
+</li>
+{% endfor %}
+</ol>
+</div>
+{% endif %}
+
+{% if comments_open %}
+<div id="respond" class="comment-respond">
+<h3 id="reply-title" class="comment-reply-title">Leave a Reply</h3>
+<form action="{{ site_url | default(value='') }}/wp-comments-post.php" method="post" id="commentform" class="comment-form">
+<input type="hidden" name="_wpnonce" value="{{ wpnonce_comment | default(value='') }}" />
+<input type="hidden" name="comment_post_ID" value="{{ post.id | default(value=0) }}" />
+<p class="comment-form-author">
+<label for="author">Name <span class="required">*</span></label>
+<input id="author" name="author" type="text" value="" required>
+</p>
+<p class="comment-form-email">
+<label for="email">Email <span class="required">*</span></label>
+<input id="email" name="email" type="email" value="" required>
+</p>
+<p class="comment-form-url">
+<label for="url">Website</label>
+<input id="url" name="url" type="url" value="">
+</p>
+<p class="comment-form-comment">
+<label for="comment">Comment <span class="required">*</span></label>
+<textarea id="comment" name="comment" rows="10" required></textarea>
+</p>
+<p class="form-submit">
+<input name="submit" type="submit" id="submit" class="submit" value="Post Comment">
+</p>
+</form>
+</div>
+{% endif %}

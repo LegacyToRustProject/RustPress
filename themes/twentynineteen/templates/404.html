@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Page not found &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}error404{% endblock %}
+
+{% block content %}
+<div class="error-404 not-found">
+<header class="page-header">
+<h1 class="page-title">Oops! That page can&#8217;t be found.</h1>
+</header>
+<div class="page-content">
+<p>It looks like nothing was found at this location. Maybe try a search?</p>
+<form role="search" method="get" action="{{ site_url | default(value='') }}/" class="search-form">
+<label class="screen-reader-text" for="s">Search for:</label>
+<input type="search" id="s" class="search-field" name="s" placeholder="Search&hellip;" required>
+<input type="submit" class="search-submit" value="Search">
+</form>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="{{ language | default(value='en-US') }}" class="no-js">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ site_name | default(value="RustPress") }}{% endblock %}</title>
+<meta name="generator" content="RustPress">
+<link rel="stylesheet" href="/wp-content/themes/twentytwentyone/style.css">
+<link rel="stylesheet" href="/wp-content/themes/twentytwentyone/theme-generated.css">
+{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
+{% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %} twentytwentyone">
+<a class="skip-link" href="#content">Skip to content</a>
+<div id="page" class="site">
+{% include "header.html" %}
+<div id="content" class="site-content">
+{% block main %}
+<div id="primary" class="content-area">
+<main id="main" class="site-main">
+{% block content %}{% endblock %}
+</main>
+</div>
+{% endblock %}
+</div>
+{% include "footer.html" %}
+</div>
+</body>
+</html>

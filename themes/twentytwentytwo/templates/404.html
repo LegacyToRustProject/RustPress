@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Page not found &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}error404{% endblock %}
+
+{% block main %}
+<main class="wp-block-group is-layout-flow" style="padding-top:var(--wp--preset--spacing--50);padding-bottom:var(--wp--preset--spacing--50)">
+<div class="wp-block-group has-global-padding is-layout-constrained">
+
+<h1 class="wp-block-heading">Page not found</h1>
+<p>The page you are looking for doesn&#8217;t exist, or it has been moved. Please try searching below.</p>
+
+<form role="search" method="get" action="{{ site_url | default(value='') }}/" class="wp-block-search__button-outside wp-block-search__text-button wp-block-search">
+<label class="wp-block-search__label screen-reader-text" for="wp-block-search__input-2">Search</label>
+<div class="wp-block-search__inside-wrapper"><input class="wp-block-search__input" id="wp-block-search__input-2" placeholder="Type here..." value="" type="search" name="s" required /><button aria-label="Search" class="wp-block-search__button wp-element-button" type="submit">Search</button></div>
+</form>
+
+</div>
+</main>
+{% endblock %}

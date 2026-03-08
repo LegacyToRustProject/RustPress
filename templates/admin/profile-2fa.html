@@ -1,0 +1,86 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Two-Factor Authentication{% endblock %}
+
+{% block content %}
+<h1>Two-Factor Authentication</h1>
+
+{% if saved %}
+<div class="notice notice-success">
+    <p>{% if totp_enabled %}Two-factor authentication has been <strong>enabled</strong>.{% else %}Two-factor authentication has been <strong>disabled</strong>.{% endif %}</p>
+</div>
+{% endif %}
+
+{% if error and error != "" %}
+<div class="notice notice-error">
+    <p>{{ error }}</p>
+</div>
+{% endif %}
+
+<div class="card" style="max-width:700px;padding:1.5rem;background:#fff;border:1px solid #c3c4c7;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:1.5rem;">
+    <h2 style="font-size:1.1rem;font-weight:600;margin:0 0 0.75rem;">
+        Status:
+        {% if totp_enabled %}
+        <span style="color:#00a32a;">Enabled</span>
+        {% else %}
+        <span style="color:#d63638;">Disabled</span>
+        {% endif %}
+    </h2>
+    <p style="color:#50575e;margin-bottom:1rem;">
+        Two-factor authentication adds an extra layer of security to your account.
+        After entering your password you will be asked for a code from your authenticator app.
+    </p>
+
+    {% if not totp_enabled %}
+    <h3 style="font-size:1rem;font-weight:600;margin:1rem 0 0.5rem;">Enable Two-Factor Authentication</h3>
+    <ol style="margin:0.5rem 0 1rem 1.5rem;color:#3c434a;line-height:1.8;">
+        <li>Install an authenticator app (Google Authenticator, Authy, etc.)</li>
+        <li>Scan the QR code below or enter the secret key manually</li>
+        <li>Enter the 6-digit code from your app to verify</li>
+    </ol>
+
+    <div style="margin:1.5rem 0;text-align:center;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={{ qr_uri | urlencode }}"
+             alt="TOTP QR Code" width="180" height="180"
+             style="border:4px solid #f0f0f1;display:block;margin:0 auto 0.75rem;" />
+        <p style="font-size:12px;color:#646970;margin-top:0.5rem;">
+            Manual entry key:<br>
+            <code style="font-size:14px;letter-spacing:2px;color:#2c3338;">{{ pending_secret }}</code>
+        </p>
+    </div>
+
+    <form method="post" action="/wp-admin/profile-2fa">
+        <input type="hidden" name="totp_action" value="enable" />
+        <input type="hidden" name="pending_secret" value="{{ pending_secret }}" />
+        <table class="form-table">
+            <tr>
+                <th><label for="totp_code">Verification Code</label></th>
+                <td>
+                    <input type="text" id="totp_code" name="totp_code" class="regular-text"
+                        placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]{6}"
+                        autocomplete="one-time-code" required />
+                    <p class="description" style="color:#646970;font-size:13px;margin-top:4px;">
+                        Enter the 6-digit code from your authenticator app.
+                    </p>
+                </td>
+            </tr>
+        </table>
+        <p class="submit">
+            <button type="submit" class="button button-primary">Enable Two-Factor Authentication</button>
+        </p>
+    </form>
+    {% else %}
+    <form method="post" action="/wp-admin/profile-2fa" onsubmit="return confirm('Are you sure you want to disable two-factor authentication?');">
+        <input type="hidden" name="totp_action" value="disable" />
+        <p>
+            <button type="submit" class="button" style="color:#d63638;border-color:#d63638;">
+                Disable Two-Factor Authentication
+            </button>
+        </p>
+    </form>
+    {% endif %}
+</div>
+
+<p><a href="/wp-admin/profile.php">&larr; Back to Profile</a></p>
+
+{% endblock %}

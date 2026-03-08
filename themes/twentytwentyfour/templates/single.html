@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}{{ the_title }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}single single-post postid-{{ post.id | default(value=1) }} single-format-standard{% endblock %}
+{% block meta_extra %}
+<link rel="canonical" href="{{ the_permalink }}" />
+{% endblock %}
+
+{% block content %}
+<div class="wp-block-group alignfull has-global-padding is-layout-constrained wp-block-group-is-layout-constrained" style="padding-top:var(--wp--preset--spacing--60);padding-bottom:var(--wp--preset--spacing--60)">
+{% if featured_image_url is defined and featured_image_url %}
+<figure class="wp-block-post-featured-image"><img decoding="async" width="1024" height="576" src="{{ featured_image_url }}" class="attachment-post-thumbnail size-post-thumbnail wp-post-image" alt="{{ the_title }}" loading="lazy" /></figure>
+{% endif %}
+
+<h1 class="wp-block-post-title">{{ the_title }}</h1>
+
+<div class="wp-block-group has-contrast-2-color has-text-color has-small-font-size is-layout-flex wp-block-group-is-layout-flex" style="margin-bottom:var(--wp--preset--spacing--60)">
+<p>Written by </p>
+<div class="wp-block-post-author-name"><a href="{{ site_url | default(value='') }}/author/{{ author_slug | default(value='admin') }}/" class="wp-block-post-author-name__link">{{ author_name | default(value="admin") }}</a></div>
+<p>in</p>
+<div class="taxonomy-category wp-block-post-terms">{% if categories is defined and categories %}{% for cat in categories %}<a href="{{ site_url | default(value='') }}/category/{{ cat.slug }}/" rel="tag">{{ cat.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}<a href="{{ site_url | default(value='') }}/category/uncategorized/" rel="tag">Uncategorized</a>{% endif %}</div>
+</div>
+
+<div class="entry-content alignfull wp-block-post-content has-global-padding is-layout-constrained wp-block-post-content-is-layout-constrained">
+{{ the_content | safe }}
+</div>
+
+{% if prev_post is defined and prev_post or next_post is defined and next_post %}
+<div class="wp-block-group is-layout-flex wp-block-group-is-layout-flex" style="justify-content:space-between;padding-top:var(--wp--preset--spacing--40);border-top:1px solid var(--wp--preset--color--accent)">
+{% if prev_post is defined and prev_post %}
+<a href="{{ prev_post.permalink }}" rel="prev">&#8592; {{ prev_post.title }}</a>
+{% endif %}
+{% if next_post is defined and next_post %}
+<a href="{{ next_post.permalink }}" rel="next">{{ next_post.title }} &#8594;</a>
+{% endif %}
+</div>
+{% endif %}
+
+{% if post.comment_status == "open" %}
+<div class="wp-block-post-comments-form" style="padding-top:var(--wp--preset--spacing--50)">
+<div id="respond" class="comment-respond">
+<h3 id="reply-title" class="comment-reply-title">Leave a Reply</h3>
+{% if current_user is defined and current_user %}
+<p class="logged-in-as">Logged in as <a href="{{ site_url | default(value='') }}/wp-admin/profile.php">{{ current_user.display_name }}</a>. <a href="{{ site_url | default(value='') }}/wp-login.php?action=logout">Log out?</a></p>
+{% endif %}
+<form action="{{ site_url | default(value='') }}/wp-comments-post.php" method="post" id="commentform" class="comment-form">
+{% if current_user is not defined or not current_user %}
+<p class="comment-form-author"><label for="author">Name <span class="required" aria-hidden="true">*</span></label> <input id="author" name="author" type="text" value="" size="30" maxlength="245" autocomplete="name" required="required" /></p>
+<p class="comment-form-email"><label for="email">Email <span class="required" aria-hidden="true">*</span></label> <input id="email" name="email" type="email" value="" size="30" maxlength="100" autocomplete="email" required="required" /></p>
+<p class="comment-form-url"><label for="url">Website</label> <input id="url" name="url" type="url" value="" size="30" maxlength="200" autocomplete="url" /></p>
+{% endif %}
+<p class="comment-form-comment"><label for="comment">Comment <span class="required" aria-hidden="true">*</span></label> <textarea id="comment" name="comment" cols="45" rows="8" maxlength="65525" required="required"></textarea></p>
+<p class="form-submit"><input name="submit" type="submit" id="submit" class="submit" value="Post Comment" /> <input type="hidden" name="comment_post_ID" value="{{ post.id }}" id="comment_post_ID" />
+<input type="hidden" name="comment_parent" id="comment_parent" value="0" />
+</p>
+</form>
+</div>
+</div>
+
+{% if comments is defined and comments | length > 0 %}
+<div class="wp-block-post-comments" style="padding-top:var(--wp--preset--spacing--40)">
+<h2 class="wp-block-post-comments__title">{{ comment_count | default(value=0) }} response{% if comment_count is defined and comment_count != 1 %}s{% endif %} to &#8220;{{ the_title }}&#8221;</h2>
+<ol class="wp-block-post-comments__list commentlist">
+{% for comment in comments %}
+{% include "comment-thread.html" %}
+{% endfor %}
+</ol>
+</div>
+{% endif %}
+{% endif %}
+</div>
+{% endblock %}

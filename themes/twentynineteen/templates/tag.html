@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Tag: {{ archive_title | default(value="Tag") }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}archive tag{% endblock %}
+
+{% block content %}
+<header class="page-header">
+<h1 class="page-title">Tag: <span>{{ archive_title | default(value="Tag") }}</span></h1>
+</header>
+
+{% for post in posts %}
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry">
+<header class="entry-header">
+<h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2>
+<div class="entry-meta"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></div>
+</header>
+<div class="entry-content">{{ post.excerpt | default(value="") | safe }}</div>
+</article>
+{% else %}
+<p>No posts found with this tag.</p>
+{% endfor %}
+
+{% if pagination %}
+<nav class="pagination" role="navigation">
+<div class="nav-links">
+{% if pagination.prev_url %}<a href="{{ pagination.prev_url }}">&larr; Newer posts</a>{% endif %}
+{% if pagination.next_url %}<a href="{{ pagination.next_url }}">Older posts &rarr;</a>{% endif %}
+</div>
+</nav>
+{% endif %}
+{% endblock %}

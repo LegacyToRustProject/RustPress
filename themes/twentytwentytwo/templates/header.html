@@ -1,0 +1,22 @@
+<header class="wp-block-template-part site-header">
+<div class="wp-block-group alignfull has-global-padding is-layout-flex wp-block-group-is-layout-flex" style="padding-top:var(--wp--preset--spacing--20);padding-bottom:var(--wp--preset--spacing--20);border-bottom:1px solid var(--wp--preset--color--foreground)">
+<div class="wp-block-site-title"><a href="{{ site_url | default(value='/') }}" rel="home">{{ site_name | default(value="RustPress") }}</a></div>
+{% if header_menu and header_menu | length > 0 %}
+<nav class="wp-block-navigation is-content-justification-right is-nowrap" aria-label="Primary menu">
+<ul class="wp-block-navigation__container">
+{% for item in header_menu %}
+<li class="wp-block-navigation-item"><a href="{{ item.url }}">{{ item.label }}</a></li>
+{% endfor %}
+</ul>
+</nav>
+{% else %}
+<nav class="wp-block-navigation is-content-justification-right is-nowrap" aria-label="Primary menu">
+<ul class="wp-block-navigation__container">
+<li class="wp-block-navigation-item"><a href="{{ site_url | default(value='/') }}">Home</a></li>
+<li class="wp-block-navigation-item"><a href="{{ site_url | default(value='/') }}/about">About</a></li>
+<li class="wp-block-navigation-item"><a href="{{ site_url | default(value='/') }}/contact">Contact</a></li>
+</ul>
+</nav>
+{% endif %}
+</div>
+</header>

@@ -246,6 +246,19 @@ pub struct AdminAjaxForm {
     pub ajax_nonce: Option<String>,
 }
 
+#[derive(Deserialize)]
+pub struct TotpCodeForm {
+    pub totp_code: String,
+    pub pending_token: String,
+}
+
+#[derive(Deserialize)]
+pub struct TotpSetupForm {
+    pub totp_action: String,
+    pub totp_code: Option<String>,
+    pub pending_secret: Option<String>,
+}
+
 pub fn routes(state: Arc<AppState>) -> Router {
     let public = Router::new()
         .route(
@@ -363,7 +376,6 @@ pub fn routes(state: Arc<AppState>) -> Router {
             get(post_editor_edit).post(post_submit),
         )
         .route("/wp-admin/admin-post.php", post(admin_post_handler))
-        .route("/wp-admin/admin-ajax.php", post(admin_ajax_handler))
         .route(
             "/wp-admin/upload.php",
             get(media_library).post(media_edit_save),
@@ -374,6 +386,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route(
             "/wp-admin/profile.php",
             get(profile_page).post(profile_save),
+        )
+        .route(
+            "/wp-admin/profile-2fa",
+            get(totp_setup_page).post(totp_setup_save),
         )
         .route("/wp-admin/logout", get(logout))
         .layer(axum::middleware::from_fn_with_state(
@@ -537,6 +553,7 @@ async fn login_page_dispatch(
             )
                 .into_response()
         }
+        Some("2fa") => two_fa_page(State(state)).await.into_response(),
         Some("lostpassword") => lost_password_page(State(state)).await.into_response(),
         Some("rp") => {
             let key = params.key.unwrap_or_default();
@@ -564,6 +581,20 @@ async fn login_post_dispatch(
     form_bytes: axum::body::Bytes,
 ) -> Response {
     match params.action.as_deref() {
+        Some("2fa") => {
+            let form: TotpCodeForm = match serde_urlencoded::from_bytes(&form_bytes) {
+                Ok(f) => f,
+                Err(_) => {
+                    let mut ctx = tera::Context::new();
+                    let site_name = state.options.get_blogname().await.unwrap_or_default();
+                    ctx.insert("site_name", &site_name);
+                    ctx.insert("error", "Invalid form data.");
+                    ctx.insert("pending_token", &"");
+                    return render_admin(&state, "admin/login-2fa.html", &ctx).into_response();
+                }
+            };
+            two_fa_submit(State(state), form).await
+        }
         Some("lostpassword") => {
             let form: LostPasswordForm = match serde_urlencoded::from_bytes(&form_bytes) {
                 Ok(f) => f,
@@ -664,6 +695,31 @@ async fn login_submit(
         return render_admin(&state, "admin/login.html", &ctx).into_response();
     }
 
+    // Check for TOTP enrollment: if user has a TOTP secret, redirect to 2FA step
+    let totp_secret = get_usermeta(&state.db, user.id, "_totp_secret").await;
+    if let Some(secret) = totp_secret {
+        if !secret.is_empty() {
+            // Issue a short-lived "2FA pending" token and show the code entry form
+            let pending_token = match state.jwt.generate_pending_token(user.id, &user.user_login) {
+                Ok(t) => t,
+                Err(_) => {
+                    let mut ctx = tera::Context::new();
+                    let site_name = state.options.get_blogname().await.unwrap_or_default();
+                    ctx.insert("site_name", &site_name);
+                    ctx.insert("error", "Internal error. Please try again.");
+                    ctx.insert("wpnonce_login", &state.nonces.create_nonce("login", 0));
+                    return render_admin(&state, "admin/login.html", &ctx).into_response();
+                }
+            };
+            let mut ctx = tera::Context::new();
+            let site_name = state.options.get_blogname().await.unwrap_or_default();
+            ctx.insert("site_name", &site_name);
+            ctx.insert("error", &"");
+            ctx.insert("pending_token", &pending_token);
+            return render_admin(&state, "admin/login-2fa.html", &ctx).into_response();
+        }
+    }
+
     // Resolve role from wp_usermeta; default to "subscriber" if not found
     let role_str = get_user_role(user.id, &state.db)
         .await
@@ -700,6 +756,192 @@ async fn login_submit(
         ],
     )
         .into_response()
+}
+
+/// Show the TOTP code entry page (GET /wp-login.php?action=2fa).
+/// The pending_token query param carries the intermediate JWT.
+async fn two_fa_page(State(state): State<Arc<AppState>>) -> Html<String> {
+    let mut ctx = tera::Context::new();
+    let site_name = state.options.get_blogname().await.unwrap_or_default();
+    ctx.insert("site_name", &site_name);
+    ctx.insert("error", &"");
+    ctx.insert("pending_token", &"");
+    render_admin(&state, "admin/login-2fa.html", &ctx)
+}
+
+/// Process the TOTP code form (POST /wp-login.php?action=2fa).
+async fn two_fa_submit(State(state): State<Arc<AppState>>, form: TotpCodeForm) -> Response {
+    let render_error = |err: &str| {
+        let mut ctx = tera::Context::new();
+        ctx.insert("site_name", &"");
+        ctx.insert("error", err);
+        ctx.insert("pending_token", &form.pending_token);
+        Html(format!(
+            "<!-- 2FA error: {} --><meta http-equiv='refresh' content='0;url=/wp-login.php?action=2fa'>",
+            err
+        ))
+        .into_response()
+    };
+
+    // Validate the pending token
+    let (user_id, _login) = match state.jwt.validate_pending_token(&form.pending_token) {
+        Ok(pair) => pair,
+        Err(_) => return render_error("Session expired. Please log in again."),
+    };
+
+    // Fetch the user's TOTP secret from usermeta
+    let secret = match get_usermeta(&state.db, user_id, "_totp_secret").await {
+        Some(s) if !s.is_empty() => s,
+        _ => return render_error("2FA not configured."),
+    };
+
+    // Verify the submitted TOTP code
+    if !rustpress_auth::verify_totp(&secret, &form.totp_code) {
+        return render_error("Invalid authentication code.");
+    }
+
+    // Fetch full user from DB
+    let user = match wp_users::Entity::find_by_id(user_id)
+        .one(&state.db)
+        .await
+        .ok()
+        .flatten()
+    {
+        Some(u) => u,
+        None => return render_error("User not found."),
+    };
+
+    let role_str = get_user_role(user_id, &state.db)
+        .await
+        .unwrap_or_else(|| "subscriber".to_string());
+
+    let session = state
+        .sessions
+        .create_session(user_id, &user.user_login, &role_str)
+        .await;
+
+    let secure_flag = if state.site_url.starts_with("https") {
+        "; Secure"
+    } else {
+        ""
+    };
+    let cookie = format!(
+        "rustpress_session={}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400{}",
+        session.id, secure_flag
+    );
+
+    (
+        StatusCode::SEE_OTHER,
+        [
+            (header::SET_COOKIE, cookie),
+            (header::LOCATION, "/wp-admin/index.php".to_string()),
+        ],
+    )
+        .into_response()
+}
+
+/// Show the TOTP setup page (GET /wp-admin/profile-2fa).
+async fn totp_setup_page(
+    State(state): State<Arc<AppState>>,
+    Extension(session): Extension<Session>,
+) -> Html<String> {
+    let mut ctx = admin_context(&state, &session).await;
+    ctx.insert("active_page", "profile");
+
+    // Check if 2FA is already enrolled
+    let existing_secret = get_usermeta(&state.db, session.user_id, "_totp_secret").await;
+    let totp_enabled = existing_secret
+        .as_deref()
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+
+    // Generate a fresh pending secret for QR display
+    let pending_secret = rustpress_auth::generate_secret();
+    let qr_uri = rustpress_auth::generate_qr_uri(&pending_secret, &session.login, "RustPress");
+
+    ctx.insert("totp_enabled", &totp_enabled);
+    ctx.insert("pending_secret", &pending_secret);
+    ctx.insert("qr_uri", &qr_uri);
+    ctx.insert("error", &"");
+    ctx.insert("saved", &false);
+
+    render_admin(&state, "admin/profile-2fa.html", &ctx)
+}
+
+/// Save TOTP setup (POST /wp-admin/profile-2fa).
+async fn totp_setup_save(
+    State(state): State<Arc<AppState>>,
+    Extension(session): Extension<Session>,
+    Form(form): Form<TotpSetupForm>,
+) -> Html<String> {
+    let mut ctx = admin_context(&state, &session).await;
+    ctx.insert("active_page", "profile");
+
+    match form.totp_action.as_str() {
+        "enable" => {
+            let pending_secret = form.pending_secret.as_deref().unwrap_or("").trim();
+            let code = form.totp_code.as_deref().unwrap_or("").trim();
+
+            if pending_secret.is_empty() || code.is_empty() {
+                let qr_uri =
+                    rustpress_auth::generate_qr_uri(pending_secret, &session.login, "RustPress");
+                ctx.insert("totp_enabled", &false);
+                ctx.insert("pending_secret", &pending_secret);
+                ctx.insert("qr_uri", &qr_uri);
+                ctx.insert("error", "Code and secret are required.");
+                ctx.insert("saved", &false);
+                return render_admin(&state, "admin/profile-2fa.html", &ctx);
+            }
+
+            if !rustpress_auth::verify_totp(pending_secret, code) {
+                let qr_uri =
+                    rustpress_auth::generate_qr_uri(pending_secret, &session.login, "RustPress");
+                ctx.insert("totp_enabled", &false);
+                ctx.insert("pending_secret", &pending_secret);
+                ctx.insert("qr_uri", &qr_uri);
+                ctx.insert(
+                    "error",
+                    "Invalid code. Please scan the QR code and try again.",
+                );
+                ctx.insert("saved", &false);
+                return render_admin(&state, "admin/profile-2fa.html", &ctx);
+            }
+
+            set_usermeta(&state.db, session.user_id, "_totp_secret", pending_secret).await;
+
+            let new_secret = rustpress_auth::generate_secret();
+            let qr_uri = rustpress_auth::generate_qr_uri(&new_secret, &session.login, "RustPress");
+            ctx.insert("totp_enabled", &true);
+            ctx.insert("pending_secret", &new_secret);
+            ctx.insert("qr_uri", &qr_uri);
+            ctx.insert("error", &"");
+            ctx.insert("saved", &true);
+            render_admin(&state, "admin/profile-2fa.html", &ctx)
+        }
+        "disable" => {
+            delete_usermeta(&state.db, session.user_id, "_totp_secret").await;
+
+            let new_secret = rustpress_auth::generate_secret();
+            let qr_uri = rustpress_auth::generate_qr_uri(&new_secret, &session.login, "RustPress");
+            ctx.insert("totp_enabled", &false);
+            ctx.insert("pending_secret", &new_secret);
+            ctx.insert("qr_uri", &qr_uri);
+            ctx.insert("error", &"");
+            ctx.insert("saved", &true);
+            render_admin(&state, "admin/profile-2fa.html", &ctx)
+        }
+        _ => {
+            let pending_secret = rustpress_auth::generate_secret();
+            let qr_uri =
+                rustpress_auth::generate_qr_uri(&pending_secret, &session.login, "RustPress");
+            ctx.insert("totp_enabled", &false);
+            ctx.insert("pending_secret", &pending_secret);
+            ctx.insert("qr_uri", &qr_uri);
+            ctx.insert("error", "Unknown action.");
+            ctx.insert("saved", &false);
+            render_admin(&state, "admin/profile-2fa.html", &ctx)
+        }
+    }
 }
 
 async fn logout(
@@ -1157,6 +1399,29 @@ async fn post_editor_new(
     });
     ctx.insert("post_json", &post_json.to_string());
 
+    // Gutenberg editor template variables
+    ctx.insert("post_id", &0u64);
+    ctx.insert("post_type", &post_type);
+    ctx.insert(
+        "post_title_json",
+        &serde_json::to_string("").unwrap_or_default(),
+    );
+    ctx.insert(
+        "post_content_json",
+        &serde_json::to_string("").unwrap_or_default(),
+    );
+    ctx.insert(
+        "post_excerpt_json",
+        &serde_json::to_string("").unwrap_or_default(),
+    );
+    ctx.insert("post_status", &"draft");
+    ctx.insert("post_slug", &"");
+    ctx.insert("site_url", &state.site_url);
+    ctx.insert(
+        "api_nonce",
+        &state.nonces.create_nonce("wp_rest", session.user_id),
+    );
+
     render_admin(&state, "admin/post-edit.html", &ctx)
 }
 
@@ -1259,6 +1524,29 @@ async fn post_editor_edit(
                 "isNew": false,
             });
             ctx.insert("post_json", &post_json.to_string());
+
+            // Gutenberg editor template variables
+            ctx.insert("post_id", &p.id);
+            ctx.insert("post_type", p.post_type.as_str());
+            ctx.insert(
+                "post_title_json",
+                &serde_json::to_string(&p.post_title).unwrap_or_default(),
+            );
+            ctx.insert(
+                "post_content_json",
+                &serde_json::to_string(&p.post_content).unwrap_or_default(),
+            );
+            ctx.insert(
+                "post_excerpt_json",
+                &serde_json::to_string(&p.post_excerpt).unwrap_or_default(),
+            );
+            ctx.insert("post_status", p.post_status.as_str());
+            ctx.insert("post_slug", p.post_name.as_str());
+            ctx.insert("site_url", &state.site_url);
+            ctx.insert(
+                "api_nonce",
+                &state.nonces.create_nonce("wp_rest", session.user_id),
+            );
 
             render_admin(&state, "admin/post-edit.html", &ctx).into_response()
         }
@@ -4060,19 +4348,12 @@ async fn media_upload(
     };
 
     let raw_name = field.file_name().unwrap_or("upload").to_string();
-    let content_type = field
+    let declared_content_type = field
         .content_type()
         .unwrap_or("application/octet-stream")
         .to_string();
 
-    if !ALLOWED_UPLOAD_MIME_TYPES.contains(&content_type.as_str()) {
-        return (
-            StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            Json(serde_json::json!({"error": format!("File type '{}' is not allowed.", content_type)})),
-        )
-            .into_response();
-    }
-
+    // Read file bytes first so we can inspect magic bytes
     let data = match field.bytes().await {
         Ok(d) => d,
         Err(e) => {
@@ -4091,6 +4372,33 @@ async fn media_upload(
         )
             .into_response();
     }
+
+    // Validate MIME type from magic bytes (prevents Content-Type spoofing)
+    let content_type = match infer::get(&data) {
+        Some(kind) => {
+            // Magic bytes detected — use the real type, ignore declared type
+            let detected = kind.mime_type();
+            if !ALLOWED_UPLOAD_MIME_TYPES.contains(&detected) {
+                return (
+                    StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                    Json(serde_json::json!({"error": format!("File type '{}' is not allowed.", detected)})),
+                )
+                    .into_response();
+            }
+            detected.to_string()
+        }
+        None => {
+            // No magic bytes matched (e.g. plain text / CSV) — fall back to declared type
+            if !ALLOWED_UPLOAD_MIME_TYPES.contains(&declared_content_type.as_str()) {
+                return (
+                    StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                    Json(serde_json::json!({"error": format!("File type '{}' is not allowed.", declared_content_type)})),
+                )
+                    .into_response();
+            }
+            declared_content_type.clone()
+        }
+    };
 
     let file_name = raw_name
         .chars()
@@ -4369,7 +4677,7 @@ async fn admin_post_handler(
 }
 
 // --- POST /wp-admin/admin-ajax.php ---
-
+#[allow(dead_code)]
 async fn admin_ajax_handler(
     State(state): State<Arc<AppState>>,
     Extension(session): Extension<Session>,

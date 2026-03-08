@@ -361,4 +361,145 @@ mod tests {
         assert!(Severity::Info < Severity::Warning);
         assert!(Severity::Warning < Severity::Critical);
     }
+
+    // --- Extended audit log tests ---
+
+    #[test]
+    fn test_audit_log_empty_on_new() {
+        let log = AuditLog::new(100);
+        assert!(log.recent(10).is_empty());
+    }
+
+    #[test]
+    fn test_audit_log_login_success_has_user_id() {
+        let log = AuditLog::new(100);
+        log.log_login_success("1.2.3.4", 42, "alice");
+        let recent = log.recent(1);
+        assert_eq!(recent[0].user_id, Some(42));
+        assert_eq!(recent[0].username, Some("alice".to_string()));
+    }
+
+    #[test]
+    fn test_audit_log_login_failure_has_username() {
+        let log = AuditLog::new(100);
+        log.log_login_failure("5.6.7.8", "badguy");
+        let recent = log.recent(1);
+        assert_eq!(recent[0].username, Some("badguy".to_string()));
+        assert!(recent[0].user_id.is_none());
+    }
+
+    #[test]
+    fn test_audit_log_waf_block_event_type() {
+        let log = AuditLog::new(100);
+        log.log_waf_block("9.9.9.9", "sqli-001", "/admin/");
+        let recent = log.recent(1);
+        assert_eq!(recent[0].event_type, AuditEventType::WafBlock);
+    }
+
+    #[test]
+    fn test_audit_log_rate_limited_logged() {
+        let log = AuditLog::new(100);
+        log.log_rate_limited("1.1.1.1", "/api/");
+        let by_type = log.by_type(&AuditEventType::RateLimited, 10);
+        assert_eq!(by_type.len(), 1);
+    }
+
+    #[test]
+    fn test_audit_log_brute_force_logged() {
+        let log = AuditLog::new(100);
+        log.log_brute_force("2.2.2.2");
+        let recent = log.recent(1);
+        assert_eq!(recent[0].event_type, AuditEventType::BruteForceDetected);
+    }
+
+    #[test]
+    fn test_audit_log_settings_change_logged() {
+        let log = AuditLog::new(100);
+        log.log_settings_change("3.3.3.3", 1, "blogname");
+        let recent = log.recent(1);
+        assert_eq!(recent[0].event_type, AuditEventType::SettingsChange);
+    }
+
+    #[test]
+    fn test_audit_log_recent_limit_respected() {
+        let log = AuditLog::new(100);
+        for _ in 0..10 {
+            log.log_login_failure("1.1.1.1", "bot");
+        }
+        let recent = log.recent(5);
+        assert_eq!(recent.len(), 5);
+    }
+
+    #[test]
+    fn test_audit_log_by_type_filters_correctly() {
+        let log = AuditLog::new(100);
+        log.log_login_success("1.1.1.1", 1, "admin");
+        log.log_waf_block("2.2.2.2", "rule-1", "/path");
+        log.log_login_failure("3.3.3.3", "bad");
+
+        let successes = log.by_type(&AuditEventType::LoginSuccess, 10);
+        assert_eq!(successes.len(), 1);
+
+        let waf = log.by_type(&AuditEventType::WafBlock, 10);
+        assert_eq!(waf.len(), 1);
+    }
+
+    #[test]
+    fn test_count_since_zero_for_empty_log() {
+        let log = AuditLog::new(100);
+        assert_eq!(log.count_since(&AuditEventType::LoginFailure, 60), 0);
+    }
+
+    // --- Severity display ---
+
+    #[test]
+    fn test_severity_info_display() {
+        assert_eq!(Severity::Info.to_string(), "info");
+    }
+
+    #[test]
+    fn test_severity_warning_display() {
+        assert_eq!(Severity::Warning.to_string(), "warning");
+    }
+
+    #[test]
+    fn test_severity_critical_display() {
+        assert_eq!(Severity::Critical.to_string(), "critical");
+    }
+
+    #[test]
+    fn test_audit_log_content_change_logged() {
+        let log = AuditLog::new(100);
+        log.log_content_change(AuditEventType::ContentCreate, "5.5.5.5", 1, "Post created");
+        let recent = log.recent(1);
+        assert_eq!(recent[0].event_type, AuditEventType::ContentCreate);
+    }
+
+    #[test]
+    fn test_audit_log_ip_address_stored() {
+        let log = AuditLog::new(100);
+        log.log_login_failure("10.20.30.40", "testuser");
+        let recent = log.recent(1);
+        assert_eq!(recent[0].ip_address, "10.20.30.40");
+    }
+
+    // --- AuditEventType display ---
+
+    #[test]
+    fn test_event_type_login_failure_display() {
+        assert_eq!(AuditEventType::LoginFailure.to_string(), "login_failure");
+    }
+
+    #[test]
+    fn test_event_type_rate_limited_display() {
+        assert_eq!(AuditEventType::RateLimited.to_string(), "rate_limited");
+    }
+
+    #[test]
+    fn test_event_type_brute_force_display() {
+        assert_eq!(
+            AuditEventType::BruteForceDetected.to_string(),
+            "brute_force_detected"
+        );
+    }
 }

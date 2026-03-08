@@ -1,10 +1,14 @@
 [advisories]
-# rsa 0.9.x: Marvin Attack timing side-channel — no fixed version available upstream.
+# RUSTSEC-2023-0071: rsa Marvin Attack timing side-channel — no upstream fix available.
 # RustPress uses rsa only as a transitive dependency (via jsonwebtoken).
 # Risk is acceptable for Alpha; revisit when rsa publishes a fix.
-ignore = ["RUSTSEC-2023-0071"]
+#
+# RUSTSEC-2024-0436: paste crate unmaintained — no known vulnerabilities.
+# Transitive dependency via thirtyfour (e2e tests) and rav1e (image encoding).
+# Cannot remove directly; impact is limited to test/encoding paths.
+ignore = ["RUSTSEC-2023-0071", "RUSTSEC-2024-0436"]
 
 [output]
-# fxhash and paste are flagged as "unmaintained" — no known vulnerabilities.
-# They are transitive dependencies we cannot remove directly.
+# fxhash is flagged as "unmaintained" — no known vulnerabilities.
+# Transitive dependency we cannot remove directly.
 informational_advisories = "warn"

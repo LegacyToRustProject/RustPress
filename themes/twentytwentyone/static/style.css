@@ -1,0 +1,387 @@
+/*
+Theme Name: Twenty Twenty-One
+Text Domain: twentytwentyone
+Version: 2.3
+Requires at least: 5.3
+Tested up to: 6.5
+Requires PHP: 5.6
+Description: Twenty Twenty-One is a blank canvas for your ideas and it makes the block editor your best brush. With new block patterns, which allow you to create a beautiful layout in a matter of seconds, this theme's soft colors and eye-catching — yet timeless — design will let your work shine. Take it for a spin! See how Twenty Twenty-One elevates your portfolio, business website, or personal blog.
+Author: WordPress.org
+Author URI: https://wordpress.org
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+*/
+
+/* === TT21 CSS Custom Properties === */
+:root {
+    --color-primary: #6d4fc2;
+    --color-secondary: #f0ede8;
+    --color-foreground: #333333;
+    --color-background: #ffffff;
+    --color-tertiary: #ddd9d0;
+    --color-border: #ddd9d0;
+    --color-link: #6d4fc2;
+    --color-link-hover: #4c3796;
+
+    --font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+    --font-size-small: 0.875rem;
+    --font-size-normal: 1.125rem;
+    --font-size-large: 1.5rem;
+    --font-size-huge: 2.25rem;
+
+    --spacing-unit: 1rem;
+    --content-width: 680px;
+    --wide-width: 1200px;
+}
+
+/* === Reset & Base === */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    background-color: var(--color-secondary);
+    color: var(--color-foreground);
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-normal);
+    line-height: 1.6;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--color-foreground);
+    margin-top: 0;
+}
+
+h1 { font-size: var(--font-size-huge); }
+h2 { font-size: var(--font-size-large); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: var(--font-size-normal); }
+h5 { font-size: var(--font-size-small); }
+h6 { font-size: var(--font-size-small); }
+
+a {
+    color: var(--color-link);
+    text-decoration: underline;
+}
+a:hover {
+    color: var(--color-link-hover);
+    text-decoration: none;
+}
+
+img { max-width: 100%; height: auto; }
+
+/* === Site Structure === */
+#page {
+    background-color: var(--color-secondary);
+    min-height: 100vh;
+}
+
+.site-header {
+    background-color: var(--color-secondary);
+    border-bottom: 2px solid var(--color-foreground);
+    padding: 1.5rem 0;
+}
+
+.site-header .inside-header {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.site-branding { flex-shrink: 0; }
+
+.site-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+.site-title a { text-decoration: none; color: var(--color-foreground); }
+.site-title a:hover { color: var(--color-primary); text-decoration: none; }
+
+.site-description {
+    font-size: var(--font-size-small);
+    color: #666;
+    margin: 0.25rem 0 0;
+}
+
+/* === Main Navigation === */
+.main-navigation {
+    font-size: var(--font-size-small);
+    font-weight: 600;
+}
+
+.main-navigation ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 1.5rem;
+}
+
+.main-navigation li a {
+    text-decoration: none;
+    color: var(--color-foreground);
+}
+.main-navigation li a:hover { color: var(--color-primary); }
+
+/* === Content Area === */
+#content {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 2rem 2rem;
+}
+
+.site-main {
+    max-width: var(--content-width);
+    margin: 0 auto;
+}
+
+.site-main.has-sidebar {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 2rem;
+    max-width: var(--wide-width);
+}
+
+/* === Posts === */
+article.hentry {
+    background-color: var(--color-background);
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    border-radius: 2px;
+}
+
+.entry-header { margin-bottom: 1.5rem; }
+
+.entry-title {
+    font-size: var(--font-size-large);
+    margin: 0;
+}
+.entry-title a { text-decoration: none; color: var(--color-foreground); }
+.entry-title a:hover { color: var(--color-primary); }
+
+.entry-meta {
+    color: #666;
+    font-size: var(--font-size-small);
+    margin-top: 0.5rem;
+}
+.entry-meta a { color: #666; }
+.entry-meta a:hover { color: var(--color-primary); }
+
+.entry-content {
+    margin-top: 1rem;
+}
+.entry-content p { margin-bottom: 1.2rem; }
+.entry-content ul, .entry-content ol { padding-left: 1.5rem; margin-bottom: 1.2rem; }
+
+.entry-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-tertiary);
+    font-size: var(--font-size-small);
+    color: #666;
+}
+
+/* === Featured Image === */
+.post-thumbnail {
+    margin-bottom: 1.5rem;
+}
+.post-thumbnail img {
+    width: 100%;
+    height: auto;
+    border-radius: 2px;
+}
+
+/* === Read More === */
+.more-link {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: var(--font-size-small);
+    font-weight: 600;
+}
+
+/* === Pagination === */
+.pagination,
+.post-navigation {
+    margin: 2rem 0;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--color-tertiary);
+}
+
+.pagination .nav-links,
+.post-navigation .nav-links {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.pagination a,
+.post-navigation a {
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    text-decoration: none;
+}
+.pagination a:hover,
+.post-navigation a:hover { text-decoration: underline; }
+
+/* === Buttons === */
+.wp-block-button .wp-block-button__link,
+button,
+input[type="submit"],
+.button {
+    background-color: var(--color-primary);
+    color: #ffffff;
+    border: 2px solid var(--color-primary);
+    border-radius: 0;
+    padding: 0.6rem 1.2rem;
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-family: var(--font-family-sans);
+    line-height: 1.4;
+}
+.wp-block-button .wp-block-button__link:hover,
+button:hover,
+input[type="submit"]:hover,
+.button:hover {
+    background-color: var(--color-link-hover);
+    border-color: var(--color-link-hover);
+    color: #ffffff;
+}
+
+/* === Search Form === */
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+.search-field {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-tertiary);
+    border-radius: 2px;
+    font-size: var(--font-size-small);
+    font-family: var(--font-family-sans);
+    background: var(--color-background);
+}
+
+/* === Sidebar & Widgets === */
+.widget-area aside {
+    background-color: var(--color-background);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 2px;
+}
+.widget-title {
+    font-size: var(--font-size-small);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-foreground);
+}
+.widget ul { list-style: none; padding: 0; margin: 0; }
+.widget ul li { padding: 0.3rem 0; border-bottom: 1px solid var(--color-tertiary); }
+.widget ul li:last-child { border-bottom: none; }
+.widget ul li a { text-decoration: none; font-size: var(--font-size-small); }
+
+/* === Footer === */
+.site-footer {
+    background-color: var(--color-secondary);
+    border-top: 2px solid var(--color-foreground);
+    padding: 2rem 0;
+    margin-top: 2rem;
+}
+.site-footer .inside-footer {
+    max-width: var(--wide-width);
+    margin: 0 auto;
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--font-size-small);
+}
+.site-footer a { color: var(--color-foreground); }
+.site-footer a:hover { color: var(--color-primary); }
+
+/* === Block Editor Utilities === */
+.wp-block-quote {
+    border-left: 4px solid var(--color-primary);
+    padding: 1rem 1.5rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+    font-size: var(--font-size-large);
+    color: #555;
+}
+
+.wp-block-separator {
+    border: none;
+    border-top: 1px solid var(--color-tertiary);
+    margin: 2rem 0;
+}
+
+/* === Comment Form === */
+.comment-form input[type="text"],
+.comment-form input[type="email"],
+.comment-form input[type="url"],
+.comment-form textarea {
+    border: 1px solid var(--color-tertiary);
+    border-radius: 2px;
+    padding: 0.5rem 0.75rem;
+    width: 100%;
+    max-width: 600px;
+    background: var(--color-background);
+    font-size: var(--font-size-normal);
+    font-family: var(--font-family-sans);
+}
+.comment-respond { margin-top: 2rem; }
+.comment-list { list-style: none; padding: 0; margin: 0; }
+.comment-body { padding: 1rem 0; border-top: 1px solid var(--color-tertiary); }
+.comment-author { font-weight: 700; }
+.comment-metadata { font-size: var(--font-size-small); color: #666; margin-bottom: 0.5rem; }
+
+/* === Archive & Category === */
+.page-header { margin-bottom: 2rem; }
+.page-title { font-size: var(--font-size-huge); }
+.archive-description { color: #666; font-size: var(--font-size-small); }
+
+/* === 404 === */
+.error-404 .page-content { margin-top: 1.5rem; }
+
+/* === Skip Link === */
+.skip-link {
+    position: absolute;
+    left: -9999rem;
+    top: 2.5rem;
+    z-index: 999999999;
+    text-decoration: underline;
+}
+.skip-link:focus {
+    clip: auto;
+    width: auto;
+    height: auto;
+    left: 6px;
+    top: 7px;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 15px 23px;
+    background: var(--color-primary);
+    color: #ffffff;
+    border-radius: 3px;
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+    #content { padding: 1rem; }
+    .site-header .inside-header { flex-direction: column; gap: 1rem; }
+    .main-navigation ul { flex-wrap: wrap; gap: 1rem; }
+    .site-main.has-sidebar { grid-template-columns: 1fr; }
+    .site-footer .inside-footer { flex-direction: column; gap: 1rem; text-align: center; }
+}

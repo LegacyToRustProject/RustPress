@@ -41,6 +41,17 @@ impl PasswordHasher {
     /// Verify a password against a stored hash.
     /// Automatically detects hash type (Argon2, bcrypt, or WordPress PHPass).
     pub fn verify(password: &str, hash: &str) -> Result<bool, PasswordError> {
+        // WordPress 6.8+ argon2id hashes start with $wp$
+        // Format: $wp$argon2id$v=19$m=65536,t=1,p=1$<salt>$<hash>
+        if let Some(inner) = hash.strip_prefix("$wp$") {
+            debug!("verifying WordPress 6.8+ argon2id hash");
+            let parsed =
+                PasswordHash::new(inner).map_err(|e| PasswordError::Hash(e.to_string()))?;
+            return Ok(Argon2::default()
+                .verify_password(password.as_bytes(), &parsed)
+                .is_ok());
+        }
+
         // Argon2 hashes start with $argon2
         if hash.starts_with("$argon2") {
             debug!("verifying argon2 hash");
@@ -77,7 +88,8 @@ impl PasswordHasher {
 
     /// Upgrade a password hash to Argon2 if it's using an older algorithm.
     pub fn needs_rehash(hash: &str) -> bool {
-        !hash.starts_with("$argon2")
+        // $argon2 = RustPress native, $wp$ = WordPress 6.8+ argon2id — both are modern
+        !hash.starts_with("$argon2") && !hash.starts_with("$wp$")
     }
 }
 
@@ -460,5 +472,171 @@ mod tests {
         assert!(PasswordPolicy::validate("Abcdef12").is_ok());
         // lower + digit + special = 3 classes, should pass
         assert!(PasswordPolicy::validate("abcdef1!").is_ok());
+    }
+
+    // --- PasswordPolicy: length boundary ---
+
+    #[test]
+    fn test_password_policy_exactly_min_length() {
+        // 8 chars with enough complexity should pass
+        assert!(PasswordPolicy::validate("Abc1defg").is_ok());
+    }
+
+    #[test]
+    fn test_password_policy_seven_chars_fails() {
+        // Even with all complexity classes, 7 chars fails
+        assert!(PasswordPolicy::validate("Abc1!fg").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_empty_fails() {
+        assert!(PasswordPolicy::validate("").is_err());
+    }
+
+    // --- PasswordPolicy: common password list ---
+
+    #[test]
+    fn test_password_policy_rejects_password_common() {
+        assert!(PasswordPolicy::validate("password").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_rejects_12345678() {
+        assert!(PasswordPolicy::validate("12345678").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_rejects_qwerty12() {
+        assert!(PasswordPolicy::validate("qwerty12").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_case_insensitive_common_check() {
+        // Common password list is checked case-insensitively
+        assert!(PasswordPolicy::validate("ADMIN123").is_err());
+    }
+
+    // --- PasswordPolicy: complexity ---
+
+    #[test]
+    fn test_password_policy_all_lowercase_fails() {
+        assert!(PasswordPolicy::validate("abcdefghij").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_all_digits_fails() {
+        assert!(PasswordPolicy::validate("123456789").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_all_uppercase_fails() {
+        assert!(PasswordPolicy::validate("ABCDEFGHIJ").is_err());
+    }
+
+    #[test]
+    fn test_password_policy_four_classes_passes() {
+        // All four: upper + lower + digit + special
+        assert!(PasswordPolicy::validate("Abc1!xyz").is_ok());
+    }
+
+    #[test]
+    fn test_password_policy_unicode_counts_as_special() {
+        // Unicode char is non-alphanumeric, counts as special
+        assert!(PasswordPolicy::validate("Abc1😀yz").is_ok());
+    }
+
+    // --- PasswordHasher: bcrypt extended ---
+
+    #[test]
+    fn test_bcrypt_hash_starts_with_dollar() {
+        let pw = "bcrypt_test_pw_99_extra";
+        let hash = PasswordHasher::hash_bcrypt(pw).unwrap();
+        assert!(hash.starts_with("$2"));
+    }
+
+    #[test]
+    fn test_bcrypt_correct_password_accepted() {
+        let hash = PasswordHasher::hash_bcrypt("correct-horse-battery").unwrap();
+        assert!(PasswordHasher::verify("correct-horse-battery", &hash).unwrap());
+    }
+
+    #[test]
+    fn test_bcrypt_wrong_password_rejected_ext() {
+        let hash = PasswordHasher::hash_bcrypt("correct-horse-ext").unwrap();
+        assert!(!PasswordHasher::verify("wrong-horse-ext", &hash).unwrap());
+    }
+
+    // --- PasswordHasher: needs_rehash extended ---
+
+    #[test]
+    fn test_needs_rehash_argon2_returns_false() {
+        let hash = PasswordHasher::hash_argon2("test_pw_123_ext").unwrap();
+        assert!(!PasswordHasher::needs_rehash(&hash));
+    }
+
+    #[test]
+    fn test_needs_rehash_md5_bare_returns_true() {
+        // A bare md5 hex hash should need rehash
+        assert!(PasswordHasher::needs_rehash(
+            "5f4dcc3b5aa765d61d8327deb882cf99"
+        ));
+    }
+
+    #[test]
+    fn test_needs_rehash_bcrypt_returns_true() {
+        // Only argon2 hashes are considered "up to date"; bcrypt hashes need rehash
+        let hash = PasswordHasher::hash_bcrypt("some_pw_abc_ext").unwrap();
+        assert!(PasswordHasher::needs_rehash(&hash));
+    }
+
+    // --- PasswordHasher: argon2 wrong password rejected ---
+
+    #[test]
+    fn test_argon2_wrong_password_rejected_ext() {
+        let hash = PasswordHasher::hash_argon2("correct_pass_xyz_ext").unwrap();
+        assert!(!PasswordHasher::verify("wrong_pass_xyz_ext", &hash).unwrap());
+    }
+
+    // --- PasswordHasher: verify with empty hash ---
+
+    #[test]
+    fn test_verify_empty_hash_graceful() {
+        // Empty hash should not match any password
+        assert!(!PasswordHasher::verify("password123", "").unwrap_or(false));
+    }
+
+    // --- BUG-NEW-2: WordPress 6.8+ $wp$ argon2id hash support ---
+
+    #[test]
+    fn test_verify_wp_argon2id_hash() {
+        // Simulate a $wp$ hash: generate argon2id, prepend "$wp$"
+        let inner = PasswordHasher::hash_argon2("mysecretpassword").unwrap();
+        let wp_hash = format!("$wp${inner}");
+        assert!(
+            PasswordHasher::verify("mysecretpassword", &wp_hash).unwrap(),
+            "$wp$ argon2id hash should verify correctly"
+        );
+        assert!(
+            !PasswordHasher::verify("wrongpassword", &wp_hash).unwrap(),
+            "$wp$ argon2id hash should reject wrong password"
+        );
+    }
+
+    #[test]
+    fn test_needs_rehash_wp_argon2id_returns_false() {
+        // $wp$ hashes are modern (WordPress 6.8+ argon2id) — no rehash needed
+        let inner = PasswordHasher::hash_argon2("test").unwrap();
+        let wp_hash = format!("$wp${inner}");
+        assert!(
+            !PasswordHasher::needs_rehash(&wp_hash),
+            "$wp$ hash should not need rehash"
+        );
+    }
+
+    #[test]
+    fn test_verify_wp_prefix_wrong_password_rejected() {
+        let inner = PasswordHasher::hash_argon2("correct").unwrap();
+        let wp_hash = format!("$wp${inner}");
+        assert!(!PasswordHasher::verify("incorrect", &wp_hash).unwrap());
     }
 }

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site_name | default(value="RustPress") }} &#8211; {{ site_description | default(value="Just another RustPress site") }}{% endblock %}
+{% block body_class %}home blog{% endblock %}
+
+{% block content %}
+{% for post in posts %}
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry">
+
+<header class="entry-header">
+<h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2>
+<div class="entry-meta">
+<span class="posted-on"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></span>
+{% if post.author_name %}<span class="byline"> &mdash; by <a href="{{ site_url | default(value='') }}/?author={{ post.author_id | default(value=1) }}">{{ post.author_name }}</a></span>{% endif %}
+</div>
+</header>
+
+{% if post.featured_image_url %}
+<div class="post-thumbnail">
+<a href="{{ post.permalink | default(value='/' ~ post.slug) }}"><img src="{{ post.featured_image_url }}" alt="{{ post.title }}" loading="lazy"></a>
+</div>
+{% endif %}
+
+<div class="entry-content">
+{{ post.excerpt | default(value="") | safe }}
+<p><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" class="more-link">Continue reading <span class="screen-reader-text">{{ post.title }}</span></a></p>
+</div>
+
+<footer class="entry-footer">
+{% if post.categories %}
+<span class="cat-links">Categories: {% for cat in post.categories %}<a href="{{ site_url | default(value='') }}/category/{{ cat.slug }}">{{ cat.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</span>
+{% endif %}
+</footer>
+
+</article>
+{% else %}
+<p class="no-posts">No posts found.</p>
+{% endfor %}
+
+{% if pagination %}
+<nav class="pagination" role="navigation" aria-label="Posts navigation">
+<div class="nav-links">
+{% if pagination.prev_url %}<a class="prev page-numbers" href="{{ pagination.prev_url }}">&larr; Newer posts</a>{% endif %}
+{% if pagination.next_url %}<a class="next page-numbers" href="{{ pagination.next_url }}">Older posts &rarr;</a>{% endif %}
+</div>
+</nav>
+{% endif %}
+{% endblock %}
