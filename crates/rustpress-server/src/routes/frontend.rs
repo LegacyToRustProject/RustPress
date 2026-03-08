@@ -2551,3 +2551,24 @@ fn recurse_elementor_children(element: &serde_json::Value, html: &mut String) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_author_query_var_parsed() {
+        // Ensure ?author=1 is correctly deserialized so the 403 gate triggers
+        let qv: WpQueryVars =
+            serde_urlencoded::from_str("author=1").expect("should parse author=1");
+        assert_eq!(qv.author, Some(1));
+    }
+
+    #[test]
+    fn test_author_query_var_absent() {
+        // Without ?author, the field is None and enumeration guard is skipped
+        let qv: WpQueryVars =
+            serde_urlencoded::from_str("s=hello").expect("should parse without author");
+        assert!(qv.author.is_none());
+    }
+}
