@@ -3,9 +3,9 @@
 //! Implements the subset of the WordPress XML-RPC API used by desktop blogging
 //! clients such as MarsEdit, Windows Live Writer, and Open Live Writer.
 //!
-//! The endpoint lives at `POST /xmlrpc.php` (matching real WordPress) and also
-//! responds to `GET /xmlrpc.php?rsd` with an RSD (Really Simple Discovery)
-//! document so that auto-discovery works.
+//! **Security**: XML-RPC is disabled by default. All requests to `/xmlrpc.php`
+//! return 405 Method Not Allowed. The implementation is retained for optional
+//! re-enablement via configuration.
 
 use axum::{
     body::Body,
@@ -38,12 +38,25 @@ use crate::state::AppState;
 pub fn routes() -> Router<Arc<AppState>> {
     Router::new().route(
         "/xmlrpc.php",
-        get(xmlrpc_get_handler).post(xmlrpc_post_handler),
+        get(xmlrpc_blocked)
+            .post(xmlrpc_blocked)
+            .put(xmlrpc_blocked)
+            .delete(xmlrpc_blocked)
+            .patch(xmlrpc_blocked),
+    )
+}
+
+/// XML-RPC is disabled for security. Returns 405 Method Not Allowed
+/// without an X-Pingback header.
+async fn xmlrpc_blocked() -> impl IntoResponse {
+    (
+        StatusCode::METHOD_NOT_ALLOWED,
+        "XML-RPC services are disabled on this site.",
     )
 }
 
 // ---------------------------------------------------------------------------
-// GET handler – RSD discovery & informational page
+// GET handler – RSD discovery & informational page (legacy, kept for reference)
 // ---------------------------------------------------------------------------
 
 #[derive(Deserialize)]
@@ -2669,5 +2682,24 @@ mod tests {
         assert!(value_int(42).contains("<int>42</int>"));
         assert!(value_bool(true).contains("<boolean>1</boolean>"));
         assert!(value_bool(false).contains("<boolean>0</boolean>"));
+    }
+
+    #[tokio::test]
+    async fn test_xmlrpc_blocked_returns_405() {
+        let resp = xmlrpc_blocked().await.into_response();
+        assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn test_xmlrpc_blocked_no_pingback_header() {
+        let resp = xmlrpc_blocked().await.into_response();
+        assert!(resp.headers().get("X-Pingback").is_none());
+    }
+
+    #[tokio::test]
+    async fn test_xmlrpc_blocked_body() {
+        let resp = xmlrpc_blocked().await.into_response();
+        let body = axum::body::to_bytes(resp.into_body(), 1024).await.unwrap();
+        assert!(String::from_utf8_lossy(&body).contains("XML-RPC services are disabled"));
     }
 }

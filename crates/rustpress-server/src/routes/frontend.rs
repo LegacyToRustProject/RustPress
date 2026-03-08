@@ -647,18 +647,14 @@ async fn front_page_or_query(
         }
     }
 
-    // ?author=N — author archive by user ID → redirect to /author/{nicename}/
-    if let Some(author_id) = qv.author {
-        let user = wp_users::Entity::find_by_id(author_id).one(&state.db).await;
-        return match user {
-            Ok(Some(u)) => {
-                Redirect::permanent(&format!("/author/{}/", u.user_nicename)).into_response()
-            }
-            Ok(None) => {
-                (StatusCode::NOT_FOUND, Html("Author not found".to_string())).into_response()
-            }
-            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())).into_response(),
-        };
+    // ?author=N — block user enumeration (security hardening).
+    // WordPress normally redirects /?author=1 to /author/{nicename}/, leaking usernames.
+    if qv.author.is_some() {
+        return (
+            StatusCode::FORBIDDEN,
+            Html("Author enumeration is disabled.".to_string()),
+        )
+            .into_response();
     }
 
     // No special query vars — render the front page
