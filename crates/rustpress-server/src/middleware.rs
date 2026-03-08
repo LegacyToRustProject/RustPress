@@ -271,6 +271,19 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
         HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
     );
     headers.insert(
+        "Content-Security-Policy",
+        HeaderValue::from_static(concat!(
+            "default-src 'self'; ",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; ",
+            "style-src 'self' 'unsafe-inline'; ",
+            "img-src 'self' data: https:; ",
+            "font-src 'self' data:; ",
+            "object-src 'none'; ",
+            "base-uri 'self'; ",
+            "frame-src 'self'"
+        )),
+    );
+    headers.insert(
         "Cross-Origin-Resource-Policy",
         HeaderValue::from_static("same-origin"),
     );
@@ -731,6 +744,25 @@ mod tests {
             resp.headers().get("Permissions-Policy").unwrap(),
             "camera=(), microphone=(), geolocation=()"
         );
+    }
+
+    #[tokio::test]
+    async fn test_security_headers_csp() {
+        let app = security_headers_app();
+        let req = HttpRequest::builder()
+            .uri("/test")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        let csp = resp
+            .headers()
+            .get("Content-Security-Policy")
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(csp.contains("default-src 'self'"));
+        assert!(csp.contains("object-src 'none'"));
+        assert!(csp.contains("base-uri 'self'"));
     }
 
     #[tokio::test]
