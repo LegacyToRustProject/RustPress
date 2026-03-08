@@ -280,7 +280,9 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
             "font-src 'self' data:; ",
             "object-src 'none'; ",
             "base-uri 'self'; ",
-            "frame-src 'self'"
+            "form-action 'self'; ",
+            "frame-src 'self'; ",
+            "frame-ancestors 'self'"
         )),
     );
     headers.insert(
