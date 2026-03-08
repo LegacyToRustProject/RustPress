@@ -1,5 +1,5 @@
-use serde_json::Value;
 use super::{extra_classes, text_align_class};
+use serde_json::Value;
 
 pub fn render(attrs: &Value, inner_html: &str) -> String {
     let level = attrs
@@ -28,11 +28,7 @@ pub fn render(attrs: &Value, inner_html: &str) -> String {
     let tag = format!("h{}", level);
     let content = strip_outer_heading(inner_html, level);
 
-    format!(
-        "<{tag} class=\"{}\">{}</{tag}>",
-        classes.join(" "),
-        content
-    )
+    format!("<{tag} class=\"{}\">{}</{tag}>", classes.join(" "), content)
 }
 
 fn strip_outer_heading(html: &str, level: u64) -> &str {

@@ -1,10 +1,13 @@
-use serde_json::Value;
 use super::{align_class, extra_classes};
+use serde_json::Value;
 
 pub fn render(attrs: &Value, inner_html: &str) -> String {
     let url = attrs.get("url").and_then(|v| v.as_str()).unwrap_or("");
     let alt = attrs.get("alt").and_then(|v| v.as_str()).unwrap_or("");
-    let size_slug = attrs.get("sizeSlug").and_then(|v| v.as_str()).unwrap_or("full");
+    let size_slug = attrs
+        .get("sizeSlug")
+        .and_then(|v| v.as_str())
+        .unwrap_or("full");
     let caption = attrs.get("caption").and_then(|v| v.as_str()).unwrap_or("");
 
     let mut figure_classes = vec!["wp-block-image".to_string()];
@@ -39,7 +42,11 @@ pub fn render(attrs: &Value, inner_html: &str) -> String {
     };
 
     if caption.is_empty() {
-        format!("<figure class=\"{}\">{}</figure>", figure_classes.join(" "), img_wrapped)
+        format!(
+            "<figure class=\"{}\">{}</figure>",
+            figure_classes.join(" "),
+            img_wrapped
+        )
     } else {
         format!(
             "<figure class=\"{}\">{}<figcaption class=\"wp-element-caption\">{}</figcaption></figure>",

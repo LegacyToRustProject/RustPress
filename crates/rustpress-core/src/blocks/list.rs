@@ -1,8 +1,11 @@
-use serde_json::Value;
 use super::extra_classes;
+use serde_json::Value;
 
 pub fn render(attrs: &Value, inner_html: &str) -> String {
-    let ordered = attrs.get("ordered").and_then(|v| v.as_bool()).unwrap_or(false);
+    let ordered = attrs
+        .get("ordered")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let tag = if ordered { "ol" } else { "ul" };
 
     let mut classes = vec!["wp-block-list".to_string()];
@@ -61,7 +64,10 @@ fn inject_class(html: &str, extra: &str, tag: &str, start_attr: &str) -> String 
         let mut result = html.to_string();
         result.insert_str(insert_at, &format!(" class=\"{}\"", extra));
         if !start_attr.is_empty() {
-            result.insert_str(insert_at + format!(" class=\"{}\"", extra).len(), start_attr);
+            result.insert_str(
+                insert_at + format!(" class=\"{}\"", extra).len(),
+                start_attr,
+            );
         }
         return result;
     }

@@ -1,5 +1,5 @@
-use serde_json::Value;
 use super::{color_style, extra_classes, text_align_class};
+use serde_json::Value;
 
 pub fn render(attrs: &Value, inner_html: &str) -> String {
     let mut classes = vec!["wp-block-paragraph".to_string()];
@@ -7,7 +7,11 @@ pub fn render(attrs: &Value, inner_html: &str) -> String {
     if let Some(ta) = text_align_class(attrs) {
         classes.push(ta);
     }
-    if attrs.get("dropCap").and_then(|v| v.as_bool()).unwrap_or(false) {
+    if attrs
+        .get("dropCap")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
         classes.push("has-drop-cap".to_string());
     }
     if let Some(fs) = attrs.get("fontSize").and_then(|v| v.as_str()) {
@@ -22,10 +26,18 @@ pub fn render(attrs: &Value, inner_html: &str) -> String {
         classes.push("has-text-color".to_string());
     }
     classes.push(extra_classes(attrs).trim().to_string());
-    let classes: Vec<&str> = classes.iter().map(|s| s.as_str()).filter(|s| !s.is_empty()).collect();
+    let classes: Vec<&str> = classes
+        .iter()
+        .map(|s| s.as_str())
+        .filter(|s| !s.is_empty())
+        .collect();
 
     let style = color_style(attrs);
-    let style_attr = if style.is_empty() { String::new() } else { format!(" style=\"{}\"", style) };
+    let style_attr = if style.is_empty() {
+        String::new()
+    } else {
+        format!(" style=\"{}\"", style)
+    };
 
     // Strip outer <p>...</p> from inner_html to avoid double-wrapping
     let content = strip_outer_tag(inner_html, "p");
