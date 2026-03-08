@@ -440,7 +440,23 @@ async fn front_page(
     }
 
     insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
-    let result = render_theme_page(&state, &PageType::FrontPage, &context).await?;
+
+    // When show_on_front = 'posts', use the blog listing template (Home/Index)
+    // rather than front-page.html (which is only for static front pages).
+    let show_on_front = state
+        .options
+        .get_option("show_on_front")
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "posts".to_string());
+    let page_type = if show_on_front == "page" {
+        PageType::FrontPage
+    } else {
+        PageType::Home
+    };
+
+    let result = render_theme_page(&state, &page_type, &context).await?;
 
     // Store in cache
     state
@@ -647,14 +663,18 @@ async fn front_page_or_query(
         }
     }
 
-    // ?author=N — block user enumeration (security hardening).
-    // WordPress normally redirects /?author=1 to /author/{nicename}/, leaking usernames.
-    if qv.author.is_some() {
-        return (
-            StatusCode::FORBIDDEN,
-            Html("Author enumeration is disabled.".to_string()),
-        )
-            .into_response();
+    // ?author=N — redirect to /author/{nicename}/ like WordPress does.
+    if let Some(author_id) = qv.author {
+        use rustpress_db::entities::wp_users;
+        if let Ok(Some(user)) = wp_users::Entity::find_by_id(author_id)
+            .one(&state.db)
+            .await
+        {
+            let url = format!("/author/{}/", user.user_nicename);
+            return Redirect::permanent(&url).into_response();
+        }
+        // Author not found — fall through to 404
+        return conv(Err((StatusCode::NOT_FOUND, axum::response::Html("Author not found".to_string()))));
     }
 
     // No special query vars — render the front page
@@ -1137,6 +1157,8 @@ async fn author_archive(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
 
     if let Some(user) = user {
+        context.insert("author_name", &user.display_name);
+        context.insert("archive_title", &format!("Author: {}", user.display_name));
         let page = params.page.unwrap_or(1);
         let per_page = 10u64;
 
@@ -1161,11 +1183,16 @@ async fn author_archive(
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
 
         let rewrite = state.rewrite_rules.read().await;
-        let posts: Vec<PostTemplateData> = models
+        let mut posts: Vec<PostTemplateData> = models
             .iter()
             .map(|m| PostTemplateData::from_model_with_rewrite(m, &state.site_url, &rewrite))
             .collect();
         drop(rewrite);
+        // Populate author info on each post (all by the same author in an author archive)
+        for post in &mut posts {
+            post.author_name = user.display_name.clone();
+            post.author_nicename = user.user_nicename.clone();
+        }
         let pagination = PaginationData::new(page, total_pages, total);
         insert_posts_context_with_hooks(&mut context, &posts, &pagination, Some(&state.hooks));
     } else {

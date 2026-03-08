@@ -58,6 +58,15 @@ pub struct PostTemplateData {
     /// Featured image URL (from _thumbnail_id postmeta -> attachment guid).
     #[serde(default)]
     pub featured_image_url: String,
+    /// Whether the post has a manual excerpt or <!--more--> tag (show "Continue reading").
+    #[serde(default)]
+    pub has_more: bool,
+    /// Display name of the post author (for archive templates).
+    #[serde(default)]
+    pub author_name: String,
+    /// Nicename/slug of the post author (for archive templates).
+    #[serde(default)]
+    pub author_nicename: String,
 }
 
 impl PostTemplateData {
@@ -88,6 +97,9 @@ impl PostTemplateData {
             sticky: false,
             password_required: !post.post_password.is_empty(),
             featured_image_url: String::new(),
+            has_more: !post.post_excerpt.is_empty(),
+            author_name: String::new(),
+            author_nicename: String::new(),
         }
     }
 
@@ -123,6 +135,9 @@ impl PostTemplateData {
             sticky: false,
             password_required: !post.post_password.is_empty(),
             featured_image_url: String::new(),
+            has_more: !post.post_excerpt.is_empty(),
+            author_name: String::new(),
+            author_nicename: String::new(),
         }
     }
 }

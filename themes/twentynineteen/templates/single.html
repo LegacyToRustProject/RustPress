@@ -2,7 +2,7 @@
 {% block title %}{{ the_title }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
 {% block body_class %}single single-post postid-{{ post.id | default(value=0) }} single-format-standard{% endblock %}
 {% block content %}
-<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard{% if post.featured_image_url %} has-post-thumbnail has-media{% endif %} hentry">
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard{% if post.featured_image_url %} has-post-thumbnail has-media{% endif %} hentry entry">
 <header class="entry-header{% if post.featured_image_url %} has-media{% endif %}">
 {% if post.featured_image_url %}<div class="post-thumbnail"><img src="{{ post.featured_image_url }}" alt="{{ the_title }}" loading="eager"></div>{% endif %}
 <div class="entry-header-inner"><div class="entry-meta"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time>{% if post.author_name %} &mdash; By <a href="{{ site_url | default(value='') }}/?author={{ post.author_id | default(value=1) }}">{{ post.author_name }}</a>{% endif %}</div><h1 class="entry-title">{{ the_title }}</h1></div>

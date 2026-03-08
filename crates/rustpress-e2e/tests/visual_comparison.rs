@@ -649,6 +649,30 @@ async fn run_theme_sweep(theme_slug: &str) {
 }
 
 // ---------------------------------------------------------------------------
+// Twenty Twenty visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentytwenty() {
+    // NOTE: requires WordPress to have twentytwenty active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwenty
+    run_theme_sweep("twentytwenty").await;
+}
+
+// ---------------------------------------------------------------------------
+// Twenty Nineteen visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentynineteen() {
+    // NOTE: requires WordPress to have twentynineteen active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentynineteen
+    run_theme_sweep("twentynineteen").await;
+}
+
+// ---------------------------------------------------------------------------
 // Twenty Twenty-Three visual sweep
 // ---------------------------------------------------------------------------
 
@@ -682,22 +706,6 @@ async fn test_visual_theme_twentytwentyone() {
     // NOTE: requires WordPress to have twentytwentyone active.
     // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwentyone
     run_theme_sweep("twentytwentyone").await;
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_visual_theme_twentytwenty() {
-    // NOTE: requires WordPress to have twentytwenty active.
-    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwenty
-    run_theme_sweep("twentytwenty").await;
-}
-
-#[tokio::test]
-#[ignore]
-async fn test_visual_theme_twentynineteen() {
-    // NOTE: requires WordPress to have twentynineteen active.
-    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentynineteen
-    run_theme_sweep("twentynineteen").await;
 }
 
 // ---------------------------------------------------------------------------

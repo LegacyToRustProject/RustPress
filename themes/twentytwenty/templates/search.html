@@ -2,12 +2,75 @@
 {% block title %}Search Results for &#8220;{{ search_query | default(value="") }}&#8221; &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
 {% block body_class %}search search-results{% endblock %}
 {% block content %}
-<header class="page-header"><h1 class="page-title">Search Results for: <span>{{ search_query | default(value="") }}</span></h1></header>
-<form role="search" method="get" action="{{ site_url | default(value='') }}/" class="search-form"><label class="screen-reader-text" for="s">Search for:</label><input type="search" id="s" class="search-field" name="s" value="{{ search_query | default(value='') }}" placeholder="Search&hellip;" required><input type="submit" class="search-submit" value="Search"></form>
-{% if posts and posts | length > 0 %}{% for post in posts %}
-<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry">
-<header class="entry-header"><h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2><div class="entry-meta"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></div></header>
-<div class="entry-content">{{ post.excerpt | default(value="") | safe }}</div>
+<header class="archive-header has-text-align-center header-footer-group">
+	<div class="archive-header-inner section-inner medium">
+		<p class="archive-subtitle">Search results for:</p>
+		<h1 class="archive-title">&#8220;{{ search_query | default(value="") }}&#8221;</h1>
+	</div>
+</header>
+{% if posts and posts | length > 0 %}
+{% for post in posts %}
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry{% for cat in post.categories | default(value=[]) %} category-{{ cat.slug }}{% endfor %}">
+	<header class="entry-header has-text-align-center">
+		<div class="entry-header-inner section-inner medium">
+			{% if post.categories | default(value=[]) | length > 0 %}
+			<div class="entry-categories">
+				<span class="screen-reader-text">Categories</span>
+				<div class="entry-categories-inner">
+					{% for cat in post.categories %}<a href="{{ site_url | default(value='') }}/category/{{ cat.slug }}" class="category-{{ cat.slug }}">{{ cat.name }}</a>{% endfor %}
+				</div>
+			</div>
+			{% endif %}
+			<h2 class="entry-title heading-size-1"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}">{{ post.title }}</a></h2>
+			<div class="post-meta-wrapper post-meta-single post-meta-single-top">
+				<ul class="post-meta">
+					<li class="post-author meta-wrapper">
+						<span class="meta-icon">
+							<span class="screen-reader-text">Post author</span>
+							<svg class="svg-icon" aria-hidden="true" role="img" focusable="false" xmlns="http://www.w3.org/2000/svg" width="18" height="20" viewBox="0 0 18 20"><path fill="" d="M18,19 C18,19.5522847 17.5522847,20 17,20 C16.4477153,20 16,19.5522847 16,19 L16,17 C16,15.3431458 14.6568542,14 13,14 L5,14 C3.34314575,14 2,15.3431458 2,17 L2,19 C2,19.5522847 1.55228475,20 1,20 C0.44771525,20 0,19.5522847 0,19 L0,17 C0,14.2385763 2.23857625,12 5,12 L13,12 C15.7614237,12 18,14.2385763 18,17 L18,19 Z M9,10 C6.23857625,10 4,7.76142375 4,5 C4,2.23857625 6.23857625,0 9,0 C11.7614237,0 14,2.23857625 14,5 C14,7.76142375 11.7614237,10 9,10 Z M9,8 C10.6568542,8 12,6.65685425 12,5 C12,3.34314575 10.6568542,2 9,2 C7.34314575,2 6,3.34314575 6,5 C6,6.65685425 7.34314575,8 9,8 Z" /></svg>
+						</span>
+						<span class="meta-text">By <a href="{{ site_url | default(value='') }}/?author={{ post.author_id | default(value=1) }}">{{ post.author_name | default(value="Admin") }}</a></span>
+					</li>
+					<li class="post-date meta-wrapper">
+						<span class="meta-icon">
+							<span class="screen-reader-text">Post date</span>
+							<svg class="svg-icon" aria-hidden="true" role="img" focusable="false" xmlns="http://www.w3.org/2000/svg" width="18" height="19" viewBox="0 0 18 19"><path fill="" d="M4.60069444,4.09375 L3.25,4.09375 C2.47334957,4.09375 1.84375,4.72334957 1.84375,5.5 L1.84375,7.26736111 L16.15625,7.26736111 L16.15625,5.5 C16.15625,4.72334957 15.5266504,4.09375 14.75,4.09375 L13.3993056,4.09375 L13.3993056,4.55555556 C13.3993056,5.02154581 13.0215458,5.39930556 12.5555556,5.39930556 C12.0895653,5.39930556 11.7118056,5.02154581 11.7118056,4.55555556 L11.7118056,4.09375 L6.28819444,4.09375 L6.28819444,4.55555556 C6.28819444,5.02154581 5.9104347,5.39930556 5.44444444,5.39930556 C4.97845419,5.39930556 4.60069444,5.02154581 4.60069444,4.55555556 L4.60069444,4.09375 Z M6.28819444,2.40625 L11.7118056,2.40625 L11.7118056,1 C11.7118056,0.534009742 12.0895653,0.15625 12.5555556,0.15625 C13.0215458,0.15625 13.3993056,0.534009742 13.3993056,1 L13.3993056,2.40625 L14.75,2.40625 C16.4586309,2.40625 17.84375,3.79136906 17.84375,5.5 L17.84375,15.875 C17.84375,17.5836309 16.4586309,18.96875 14.75,18.96875 L3.25,18.96875 C1.54136906,18.96875 0.15625,17.5836309 0.15625,15.875 L0.15625,5.5 C0.15625,3.79136906 1.54136906,2.40625 3.25,2.40625 L4.60069444,2.40625 L4.60069444,1 C4.60069444,0.534009742 4.97845419,0.15625 5.44444444,0.15625 C5.9104347,0.15625 6.28819444,0.534009742 6.28819444,1 L6.28819444,2.40625 Z M1.84375,8.95486111 L1.84375,15.875 C1.84375,16.6516504 2.47334957,17.28125 3.25,17.28125 L14.75,17.28125 C15.5266504,17.28125 16.15625,16.6516504 16.15625,15.875 L16.15625,8.95486111 L1.84375,8.95486111 Z" /></svg>
+						</span>
+						<span class="meta-text"><time datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></span>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</header>
+	<div class="post-inner thin">
+		<div class="entry-content">
+			{{ post.excerpt | default(value="") | safe }}
+			<a class="more-link" href="{{ post.permalink | default(value='/' ~ post.slug) }}">Continue reading<span class="screen-reader-text"> "{{ post.title }}"</span></a>
+		</div>
+	</div>
 </article>
-{% endfor %}{% else %}<p>Sorry, nothing matched your search. Please try with different keywords.</p>{% endif %}
+{% if not loop.last %}<hr class="post-separator styled-separator is-style-wide section-inner" aria-hidden="true" />{% endif %}
+{% endfor %}
+{% else %}
+<div class="no-results not-found">
+	<div class="post-inner thin">
+		<div class="entry-content">
+			<p>Sorry, but nothing matched your search terms. Please try again with some different keywords.</p>
+			<form role="search" method="get" class="search-form" action="{{ site_url | default(value='/') }}">
+				<label for="search-form-404"><span class="screen-reader-text">Search for:</span><input type="search" id="search-form-404" class="search-field" placeholder="Search &hellip;" value="{{ search_query | default(value='') }}" name="s" /></label>
+				<input type="submit" class="search-submit" value="Search" />
+			</form>
+		</div>
+	</div>
+</div>
+{% endif %}
+{% if pagination and pagination.total_pages > 1 %}
+<nav class="pagination" role="navigation" aria-label="Posts">
+	<hr class="styled-separator is-style-wide section-inner" aria-hidden="true" />
+	<div class="section-inner pagination-wrapper">
+		{% if pagination.prev_url %}<a class="prev" href="{{ pagination.prev_url }}"><svg class="svg-icon" aria-hidden="true" role="img" focusable="false" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 17 17"><path d="M0,9.0027027 L15.2043243,9.0027027 L15.2043243,8.0027027 L0,8.0027027 L0,9.0027027 Z M10.2043243,14 L16.2043243,8.5027027 L10.2043243,3 L10.2043243,14 Z" /></svg>Older posts</a>{% endif %}
+		{% if pagination.next_url %}<a class="next" href="{{ pagination.next_url }}">Newer posts<svg class="svg-icon" aria-hidden="true" role="img" focusable="false" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 17 17"><path d="M0,9.0027027 L15.2043243,9.0027027 L15.2043243,8.0027027 L0,8.0027027 L0,9.0027027 Z M10.2043243,14 L16.2043243,8.5027027 L10.2043243,3 L10.2043243,14 Z" /></svg></a>{% endif %}
+	</div>
+</nav>
+{% endif %}
 {% endblock %}
