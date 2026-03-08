@@ -657,6 +657,18 @@ async fn login_submit(
     // Extract client IP from request headers for audit logging
     let client_ip = extract_client_ip_from_headers(&headers);
 
+    // Rate limit check: block if too many failed attempts from this IP
+    let parsed_ip: std::net::IpAddr = client_ip
+        .parse()
+        .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)));
+    if state.login_tracker.is_locked(&parsed_ip) {
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            "Too many login attempts. Please try again in 15 minutes.",
+        )
+            .into_response();
+    }
+
     // Find user
     let user = wp_users::Entity::find()
         .filter(wp_users::Column::UserLogin.eq(&form.username))
@@ -670,6 +682,7 @@ async fn login_submit(
             state
                 .audit_log
                 .log_login_failure(&client_ip, &form.username);
+            let _ = state.login_tracker.check_and_record(parsed_ip);
             let mut ctx = tera::Context::new();
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
@@ -687,6 +700,7 @@ async fn login_submit(
         state
             .audit_log
             .log_login_failure(&client_ip, &form.username);
+        let _ = state.login_tracker.check_and_record(parsed_ip);
         let mut ctx = tera::Context::new();
         let site_name = state.options.get_blogname().await.unwrap_or_default();
         ctx.insert("site_name", &site_name);
@@ -725,11 +739,18 @@ async fn login_submit(
         .await
         .unwrap_or_else(|| "subscriber".to_string());
 
-    // Create session
+    // Create session and immediately regenerate ID (session fixation prevention)
     let session = state
         .sessions
         .create_session(user.id, &user.user_login, &role_str)
         .await;
+    let session_id = match state.sessions.regenerate_id(&session.id).await {
+        Some(new_id) => new_id,
+        None => session.id.clone(), // fallback: use original if regeneration fails
+    };
+
+    // Clear rate limiter on successful login
+    state.login_tracker.clear(&parsed_ip);
 
     // Log successful login
     state
@@ -745,7 +766,7 @@ async fn login_submit(
     };
     let cookie = format!(
         "rustpress_session={}; HttpOnly; Path=/; SameSite=Lax; Max-Age=86400{}",
-        session.id, secure_flag
+        session_id, secure_flag
     );
 
     (

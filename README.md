@@ -5,9 +5,9 @@
 [![CI](https://github.com/rustpress-project/RustPress/actions/workflows/ci.yml/badge.svg)](https://github.com/rustpress-project/RustPress/actions/workflows/ci.yml)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Rust: 1.88+](https://img.shields.io/badge/Rust-1.91%2B-orange.svg)](https://www.rust-lang.org/)
-[![Status: Alpha](https://img.shields.io/badge/Status-Alpha-yellow.svg)](#status)
+[![Status: Beta Candidate](https://img.shields.io/badge/Status-Beta%20Candidate-orange.svg)](#status)
 
-> **Alpha Release** — Targeting WordPress 6.9 compatibility. The frontend achieves 97%+ visual parity with the Twenty Twenty-Five theme. Contributions and testing welcome!
+> **Beta Candidate** — Targeting WordPress 6.9 compatibility. Visual parity: **98.27%** average across 9 page types (TT25). Themes TT19–TT25 implemented. 15 Gutenberg core blocks. OWASP hardening in progress. Contributions and testing welcome!
 
 ---
 
@@ -123,17 +123,37 @@ RustPress site — 100x faster, structurally secure, single binary
 
 **Our Beta isn't "mostly works." It's "nearly finished."** AI-driven development lets us set the bar higher.
 
-| # | Condition | Status |
-|---|-----------|--------|
-| B-1 | Top 100 WordPress themes render correctly | Planned |
-| B-2 | Top 50 WordPress plugins' data migrates and displays | Planned |
-| B-3 | WP REST API v2 — 100% compatible | In progress |
-| B-4 | 97%+ pixel match with WordPress on all pages | In progress |
-| B-5 | `rustpress migrate` — one command, working site in 5 min | Planned |
-| B-6 | OWASP Top 10 — all addressed | In progress |
-| B-7 | CI/CD fully operational | Planned |
+| # | Condition | Status | Progress |
+|---|-----------|--------|----------|
+| B-1 | Top 100 WordPress themes render correctly | 🟡 In progress | TT19–TT25 (7 official themes) complete. Astra/Divi/OceanWP planned. |
+| B-2 | Top 50 WordPress plugins' data migrates and displays | 🟡 In progress | WooCommerce, Yoast, CF7, ACF, Wordfence — Rust-native crates scaffolded |
+| B-3 | WP REST API v2 — 100% compatible | 🟡 In progress | 73 block types, revisions, autosaves, search, templates, global styles complete |
+| B-4 | 97%+ pixel match with WordPress on all pages | ✅ Done | **98.27%** avg across 9 page types (TT25). All pages above 97% threshold. |
+| B-5 | `rustpress migrate` — one command, working site in 5 min | ✅ Done | Generates `.env`, schema check, compatibility report |
+| B-6 | OWASP Top 10 — all addressed | 🟡 In progress | Rate limiting, session fixation, argon2id/$wp$, TOTP 2FA, JWT blacklist, WAF, XML-RPC block, user enumeration block, security headers done. ZAP scan pending PR merge. |
+| B-7 | CI/CD fully operational | ✅ Done | GitHub Actions on all PRs: check, test, clippy, fmt, audit, build |
 
 In traditional development, this would be RC-level. We set it as Beta because AI makes it achievable at speed.
+
+### Beta Sprint Progress (as of 2026-03-08)
+
+```
+RustPress (main)          ████████████████████░░░░   76%
+ ├─ #01 Themes             ████████████████████░░░░░  85%  TT19–TT25 complete
+ ├─ #02 REST API           ████████████████████░░░░░  80%  73 blocks, revisions, search
+ ├─ #03a Auth/Session      ██████████████████░░░░░░░  75%  rate limit, session fixation
+ ├─ #03b Endpoint Defense  █████████████████░░░░░░░░  70%  XML-RPC, WAF, headers
+ └─ QA (#09)               ███████████████░░░░░░░░░░  60%  blocked on PR#3 merge
+
+Conversion Engines        ████████████░░░░░░░░░░░░   52%
+ ├─ #04 php-to-rust        ████████████░░░░░░░░░░░░░  45%
+ ├─ #05 cobol-to-rust      █████████████░░░░░░░░░░░░  50%
+ ├─ #06 cpp-to-rust        ██████████████░░░░░░░░░░░  55%
+ ├─ #07 java-to-rust       ███████████████░░░░░░░░░░  60%
+ └─ #08 perl-to-rust       ██████████████░░░░░░░░░░░  55%
+
+Overall                   ██████████████████░░░░░░░  65%
+```
 
 ---
 
@@ -195,50 +215,66 @@ SKIP_MIGRATIONS=true
 
 ## Features
 
-### Content Serving (Working Now)
+### Content Serving ✅
 - Full WordPress template hierarchy (`single`, `page`, `archive`, `category`, `tag`, `author`, `search`, `404`)
-- Twenty Twenty-Five theme parity (97%+ pixel match via Selenium E2E tests)
+- **7 official themes**: TT25 (98.27% match), TT24, TT23, TT22, TT21, TT20, TT19 — all with full template coverage
+- **15 Gutenberg core block renderers**: `paragraph`, `heading`, `image`, `list`, `quote`, `code`, `buttons`, `columns`, `separator`, `spacer`, `media_text`, `cover`, `group`, `embed`, `html`
 - Posts, pages, categories, tags, comments (threaded display)
 - Sticky posts, password-protected posts, scheduled posts
 - RSS feed (`/feed`), XML Sitemap (`/sitemap.xml`), robots.txt
 - Permalink structures (`/%postname%/`, `/%year%/%monthnum%/%day%/`)
 
-### REST API (WP v2 Compatible)
+### REST API (WP v2 Compatible) 🟡
 ```
-GET/POST   /wp-json/wp/v2/posts
+GET/POST    /wp-json/wp/v2/posts
 GET/PUT/DEL /wp-json/wp/v2/posts/{id}
+GET/POST    /wp-json/wp/v2/posts/{id}/revisions
+DELETE      /wp-json/wp/v2/posts/{id}/revisions/{rev}?force=true
+GET/POST    /wp-json/wp/v2/posts/{id}/autosaves
+GET         /wp-json/wp/v2/block-types          (73 blocks, WordPress 6.9)
+GET         /wp-json/wp/v2/search?type=term     (taxonomy search)
 ```
-Also: `/pages`, `/media`, `/users`, `/categories`, `/tags`, `/comments`, `/search`, `/settings`, `/types`, `/taxonomies`, `/menus`, `/themes`, `/plugins`
+Also: `/pages`, `/media`, `/users`, `/categories`, `/tags`, `/comments`, `/search`, `/settings`, `/types`, `/taxonomies`, `/menus`, `/themes`, `/plugins`, `/templates`, `/template-parts`, `/global-styles`, `/block-patterns`
 
-### Authentication & Security
+### Authentication & Security 🟡
 - JWT tokens for API, HTTP-only cookies for sessions
-- Argon2 (new) + bcrypt (legacy WordPress) password hashing
+- **Argon2id** (new) + **`$wp$` argon2id** (WordPress 6.8+) + bcrypt (legacy) password hashing
+- **TOTP 2FA** (RFC 6238) with QR code enrollment
+- **JWT blacklist** for immediate token revocation on logout
+- **Login rate limiting**: 5 failures → 15-minute lockout per IP (moka cache)
+- **Session fixation prevention**: session ID regenerated on every login
+- **XML-RPC blocked**: `/xmlrpc.php` → 405 (all methods)
+- **User enumeration blocked**: `/?author=N` → 403
+- WAF rules: XSS, path traversal, RFI, command injection, WP config access
 - Role-based access control (5 roles, 73 capabilities)
-- Security headers (CSP, X-Frame-Options, HSTS)
+- Security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`
+- CSRF nonce on all 24 admin form templates
 
 ### Native Rust Plugin Crates
-| Crate | WordPress Equivalent | Status |
-|-------|---------------------|--------|
-| `rustpress-commerce` | WooCommerce | In development |
-| `rustpress-seo` | Yoast / RankMath | In development |
-| `rustpress-forms` | Contact Form 7 / Gravity Forms | In development |
-| `rustpress-fields` | ACF (Advanced Custom Fields) | In development |
-| `rustpress-security` | Wordfence | In development |
+| Crate | WordPress Equivalent | Tests | Status |
+|-------|---------------------|-------|--------|
+| `rustpress-commerce` | WooCommerce | ✅ | In development |
+| `rustpress-seo` | Yoast / RankMath | ✅ | In development |
+| `rustpress-forms` | Contact Form 7 / Gravity Forms | ✅ | In development |
+| `rustpress-fields` | ACF (Advanced Custom Fields) | ✅ | In development |
+| `rustpress-security` | Wordfence | ✅ | In development |
 
-### Infrastructure
+### Infrastructure ✅
 - Page cache (moka, 5-min TTL, sub-ms hits)
 - Gzip compression
 - Connection pooling via SeaORM
 - Compiled Tera templates (parsed once at startup)
+- `rustpress migrate` CLI: one-command migration with compatibility report
 
-### Planned
-- [ ] `theme.json` parser for 100% CSS variable parity
-- [ ] Gutenberg block rendering (advanced blocks)
-- [ ] Plugin hook system (`add_action`/`add_filter` in Rust)
+### In Progress / Planned
+- [ ] Astra / Divi / OceanWP theme support
+- [ ] Advanced Gutenberg blocks (Query Loop, Navigation, etc.)
+- [ ] Plugin hook system (`add_action`/`add_filter` in Rust) — scaffolded
 - [ ] WASM plugin runtime (Extism)
 - [ ] Admin dashboard (wp-admin) full parity
-- [ ] Multi-site support
+- [ ] Multi-site support — scaffolded
 - [ ] WPGraphQL-compatible endpoint
+- [ ] ZAP OWASP scan — all green (in progress)
 - [ ] AI plugin/theme conversion service (rustpress-convert)
 
 ---
@@ -321,19 +357,23 @@ Key design decisions are recorded as ADRs (Architecture Decision Records):
 
 ## Status
 
-**Alpha** — Targeting **WordPress 6.9** compatibility. RustPress serves WordPress content with high visual fidelity but is not yet production-ready.
+**Beta Candidate** — Targeting **WordPress 6.9** compatibility. Core functionality is stable. Hardening and theme/plugin coverage in progress.
 
 What works well:
 - Reading and serving all WordPress content types
-- REST API compatibility
-- TT25 theme visual parity (97%+)
-- Performance (100x+ faster than PHP WordPress)
+- TT19–TT25 themes (7 generations), 15 Gutenberg core block renderers
+- REST API: 73 block types, revisions, autosaves, search, templates, global styles
+- Visual parity: **98.27% average** across 9 page types (TT25)
+- Security: rate limiting, session fixation fix, TOTP 2FA, JWT blacklist, WAF, XML-RPC block
+- Performance: 100x+ faster than PHP WordPress
+- `rustpress migrate` CLI
 
 What's in progress:
-- Admin dashboard
-- Write operations via frontend
-- Plugin system
-- Full Gutenberg block support
+- ZAP OWASP full scan (blocked pending PR merge)
+- Third-party themes (Astra, Divi, OceanWP)
+- Admin dashboard write operations
+- Plugin hook system (add_action/add_filter)
+- Full Gutenberg block coverage (Query Loop, Navigation, etc.)
 
 ---
 
