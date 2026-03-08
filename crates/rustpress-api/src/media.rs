@@ -540,6 +540,15 @@ async fn create_media(
             mime_from_filename(&filename)
         };
 
+        // Reject disallowed MIME types (e.g. PHP, shell scripts)
+        if !is_allowed_mime_type(&mime_type) {
+            return Err(WpError::new(
+                StatusCode::BAD_REQUEST,
+                "rest_upload_invalid_filetype",
+                "Sorry, this file type is not permitted for security reasons.",
+            ));
+        }
+
         // Read body
         let body = request.into_body();
         let bytes = axum::body::to_bytes(body, 50 * 1024 * 1024) // 50 MB limit
@@ -711,6 +720,43 @@ fn percent_decode_filename(s: &str) -> String {
         i += 1;
     }
     out
+}
+
+/// Allowed MIME types for upload (mirrors WordPress defaults).
+///
+/// Rejects executable and server-side script types (PHP, shell, etc.) to
+/// prevent malicious file uploads.
+pub fn is_allowed_mime_type(mime: &str) -> bool {
+    matches!(
+        mime,
+        "image/jpeg"
+            | "image/png"
+            | "image/gif"
+            | "image/webp"
+            | "image/avif"
+            | "image/tiff"
+            | "image/bmp"
+            | "image/svg+xml"
+            | "video/mp4"
+            | "video/webm"
+            | "video/ogg"
+            | "video/quicktime"
+            | "audio/mpeg"
+            | "audio/ogg"
+            | "audio/wav"
+            | "audio/mp4"
+            | "application/pdf"
+            | "application/zip"
+            | "application/x-zip-compressed"
+            | "application/msword"
+            | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            | "application/vnd.ms-excel"
+            | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            | "application/vnd.ms-powerpoint"
+            | "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            | "text/plain"
+            | "text/csv"
+    )
 }
 
 fn mime_from_filename(filename: &str) -> String {
@@ -1029,5 +1075,45 @@ mod tests {
             full.source_url,
             "http://example.com/wp-content/uploads/photo.jpg"
         );
+    }
+
+    // -- is_allowed_mime_type ------------------------------------------------
+
+    #[test]
+    fn test_jpeg_upload_is_allowed() {
+        assert!(is_allowed_mime_type("image/jpeg"));
+        assert!(is_allowed_mime_type("image/png"));
+        assert!(is_allowed_mime_type("image/gif"));
+        assert!(is_allowed_mime_type("image/webp"));
+    }
+
+    #[test]
+    fn test_invalid_mime_type_rejected() {
+        // PHP and executable types must be rejected
+        assert!(!is_allowed_mime_type("application/x-php"));
+        assert!(!is_allowed_mime_type("text/x-php"));
+        assert!(!is_allowed_mime_type("application/x-sh"));
+        assert!(!is_allowed_mime_type("application/x-executable"));
+        assert!(!is_allowed_mime_type("application/octet-stream"));
+        // Subtypes of allowed categories but not in allowlist
+        assert!(!is_allowed_mime_type("image/x-portable-bitmap"));
+    }
+
+    #[test]
+    fn test_allowed_document_types() {
+        assert!(is_allowed_mime_type("application/pdf"));
+        assert!(is_allowed_mime_type("application/zip"));
+        assert!(is_allowed_mime_type("application/msword"));
+        assert!(is_allowed_mime_type(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ));
+    }
+
+    #[test]
+    fn test_allowed_video_and_audio_types() {
+        assert!(is_allowed_mime_type("video/mp4"));
+        assert!(is_allowed_mime_type("video/webm"));
+        assert!(is_allowed_mime_type("audio/mpeg"));
+        assert!(is_allowed_mime_type("audio/ogg"));
     }
 }

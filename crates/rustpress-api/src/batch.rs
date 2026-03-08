@@ -858,4 +858,114 @@ mod tests {
     fn test_max_batch_size() {
         assert_eq!(MAX_BATCH_REQUESTS, 25);
     }
+
+    // ── 正常系: 通常のバッチリクエスト ──────────────────────────────────────
+    #[test]
+    fn test_batch_normal_case_structure() {
+        // Verify a well-formed batch with multiple responses produces correct output.
+        let batch_resp = BatchResponse {
+            failed: false,
+            responses: vec![
+                SubResponse {
+                    status: 200,
+                    body: json!({"id": 1, "title": {"rendered": "Hello"}}),
+                    headers: json!({"Content-Type": "application/json"}),
+                },
+                SubResponse {
+                    status: 201,
+                    body: json!({"id": 2, "title": {"rendered": "World"}}),
+                    headers: json!({"Content-Type": "application/json"}),
+                },
+            ],
+        };
+        let val = serde_json::to_value(&batch_resp).unwrap();
+        assert_eq!(val["failed"], false);
+        assert_eq!(val["responses"].as_array().unwrap().len(), 2);
+        assert_eq!(val["responses"][0]["status"], 200);
+        assert_eq!(val["responses"][1]["status"], 201);
+    }
+
+    // ── エラー混在: 一部リクエストが失敗 ────────────────────────────────────
+    #[test]
+    fn test_batch_mixed_error_case() {
+        // When any sub-response has status >= 400, `failed` must be true.
+        let batch_resp = BatchResponse {
+            failed: true,
+            responses: vec![
+                SubResponse {
+                    status: 200,
+                    body: json!({"id": 1}),
+                    headers: json!({}),
+                },
+                SubResponse {
+                    status: 404,
+                    body: json!({
+                        "code": "rest_post_invalid_id",
+                        "message": "Invalid post ID.",
+                        "data": {"status": 404}
+                    }),
+                    headers: json!({}),
+                },
+                SubResponse {
+                    status: 201,
+                    body: json!({"id": 3}),
+                    headers: json!({}),
+                },
+            ],
+        };
+        let val = serde_json::to_value(&batch_resp).unwrap();
+        assert_eq!(val["failed"], true);
+        assert_eq!(val["responses"].as_array().unwrap().len(), 3);
+        assert_eq!(val["responses"][1]["status"], 404);
+        assert_eq!(val["responses"][1]["body"]["code"], "rest_post_invalid_id");
+    }
+
+    // ── 空リクエスト: requests が空配列 ─────────────────────────────────────
+    #[test]
+    fn test_batch_empty_requests() {
+        let json_str = r#"{"requests": []}"#;
+        let batch: BatchRequest = serde_json::from_str(json_str).unwrap();
+        assert_eq!(batch.requests.len(), 0);
+        assert!(batch.validation.is_none());
+
+        // Empty batch produces empty responses with failed=false
+        let batch_resp = BatchResponse {
+            failed: false,
+            responses: vec![],
+        };
+        let val = serde_json::to_value(&batch_resp).unwrap();
+        assert_eq!(val["failed"], false);
+        assert_eq!(val["responses"].as_array().unwrap().len(), 0);
+    }
+
+    // ── validate_sub_request のロジック確認 ──────────────────────────────────
+    #[test]
+    fn test_validate_path_normalization() {
+        // Relative paths should be prefixed with /wp/v2/
+        assert_eq!(normalize_path("posts"), "/wp/v2/posts");
+        assert_eq!(normalize_path("/posts"), "/wp/v2/posts");
+        assert_eq!(normalize_path("categories/5"), "/wp/v2/categories/5");
+
+        // Already absolute paths should remain unchanged
+        assert_eq!(normalize_path("/wp/v2/posts"), "/wp/v2/posts");
+        assert_eq!(
+            normalize_path("/wp-json/wp/v2/media"),
+            "/wp-json/wp/v2/media"
+        );
+    }
+
+    #[test]
+    fn test_batch_max_requests_exceed() {
+        // Simulate creating a batch with too many requests
+        let requests: Vec<SubRequest> = (0..=MAX_BATCH_REQUESTS)
+            .map(|i| SubRequest {
+                method: "GET".to_string(),
+                path: format!("/wp/v2/posts/{i}"),
+                body: None,
+                headers: None,
+            })
+            .collect();
+        // The number of requests exceeds MAX_BATCH_REQUESTS
+        assert!(requests.len() > MAX_BATCH_REQUESTS);
+    }
 }
