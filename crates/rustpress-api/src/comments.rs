@@ -378,7 +378,14 @@ async fn create_comment(
     let author_url = input.author_url.as_deref().unwrap_or_default();
 
     // Spam filter: check disallowed_keys + URL count
-    let spam = is_spam(&state.db, &input.content, author_name, author_email, author_url).await;
+    let spam = is_spam(
+        &state.db,
+        &input.content,
+        author_name,
+        author_email,
+        author_url,
+    )
+    .await;
 
     // Map status: default to "approved" ("1" in DB), override to "spam" if flagged
     let db_approved = if spam {
@@ -526,8 +533,7 @@ mod tests {
 
     /// Helper: count URL occurrences and check threshold (mirrors is_spam rule 2)
     fn is_spam_by_url_count(content: &str) -> bool {
-        let url_count =
-            content.matches("http://").count() + content.matches("https://").count();
+        let url_count = content.matches("http://").count() + content.matches("https://").count();
         url_count >= SPAM_URL_THRESHOLD
     }
 
