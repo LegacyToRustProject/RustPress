@@ -6,6 +6,10 @@ use std::time::{Duration, Instant};
 ///
 /// Uses moka in-memory cache with automatic TTL-based expiration.
 /// WordPress standard: 5 failures → 15 minute lockout.
+///
+/// All check-and-record operations are atomic per-IP using moka's
+/// `entry().and_upsert_with()` API, preventing TOCTOU race conditions
+/// where burst requests could bypass the rate limit.
 #[derive(Clone)]
 pub struct LoginAttemptTracker {
     /// Maps IP → FailureRecord (auto-expires after lockout_duration)
@@ -46,63 +50,67 @@ impl LoginAttemptTracker {
         }
     }
 
-    /// Check if the IP is allowed to attempt login, and record a failure if not locked.
+    /// Atomically check if the IP is allowed to attempt login, and record a failure.
     ///
-    /// Returns `Ok(())` if the attempt is allowed.
+    /// Uses moka's `entry().and_upsert_with()` for atomic read-modify-write,
+    /// preventing TOCTOU races where concurrent requests could slip through between
+    /// a separate `is_locked()` check and `check_and_record()` call.
+    ///
+    /// Returns `Ok(())` if the attempt is allowed (count incremented).
     /// Returns `Err(LoginError::RateLimited)` if the IP is locked out.
     pub fn check_and_record(&self, ip: IpAddr) -> Result<(), LoginError> {
-        let record = self.cache.get(&ip);
+        let max = self.max_attempts;
+        let lockout = self.lockout_duration;
 
-        match record {
-            Some(rec) if rec.locked_at.is_some() => {
-                // Still locked out
-                let elapsed = rec.locked_at.unwrap().elapsed();
-                let remaining = self
-                    .lockout_duration
-                    .checked_sub(elapsed)
-                    .unwrap_or(Duration::ZERO);
-                let minutes = remaining.as_secs().div_ceil(60);
-                Err(LoginError::RateLimited {
-                    retry_after_minutes: minutes.max(1),
-                })
-            }
-            Some(rec) => {
-                let new_count = rec.count + 1;
-                if new_count >= self.max_attempts {
-                    // Lock the IP
-                    self.cache.insert(
-                        ip,
+        let entry = self.cache.entry(ip).and_upsert_with(|maybe_entry| {
+            match maybe_entry {
+                Some(existing) => {
+                    let old = existing.into_value();
+                    if old.locked_at.is_some() {
+                        // Already locked - keep the record unchanged
+                        old
+                    } else {
+                        let new_count = old.count + 1;
+                        if new_count >= max {
+                            // Threshold reached - lock
+                            FailureRecord {
+                                count: new_count,
+                                locked_at: Some(Instant::now()),
+                            }
+                        } else {
+                            // Increment count, still under threshold
+                            FailureRecord {
+                                count: new_count,
+                                locked_at: None,
+                            }
+                        }
+                    }
+                }
+                None => {
+                    // First failure for this IP
+                    if max <= 1 {
                         FailureRecord {
-                            count: new_count,
+                            count: 1,
                             locked_at: Some(Instant::now()),
-                        },
-                    );
-                    let minutes = self.lockout_duration.as_secs() / 60;
-                    Err(LoginError::RateLimited {
-                        retry_after_minutes: minutes,
-                    })
-                } else {
-                    self.cache.insert(
-                        ip,
+                        }
+                    } else {
                         FailureRecord {
-                            count: new_count,
+                            count: 1,
                             locked_at: None,
-                        },
-                    );
-                    Ok(())
+                        }
+                    }
                 }
             }
-            None => {
-                // First failure
-                self.cache.insert(
-                    ip,
-                    FailureRecord {
-                        count: 1,
-                        locked_at: None,
-                    },
-                );
-                Ok(())
-            }
+        });
+
+        let record = entry.into_value();
+        if record.locked_at.is_some() {
+            let minutes = lockout.as_secs().div_ceil(60);
+            Err(LoginError::RateLimited {
+                retry_after_minutes: minutes.max(1),
+            })
+        } else {
+            Ok(())
         }
     }
 
@@ -130,6 +138,7 @@ impl Default for LoginAttemptTracker {
 mod tests {
     use super::*;
     use std::net::Ipv4Addr;
+    use std::sync::Arc;
 
     fn test_ip() -> IpAddr {
         IpAddr::V4(Ipv4Addr::new(192, 168, 1, 100))
@@ -149,7 +158,6 @@ mod tests {
     fn test_under_threshold_allowed() {
         let tracker = LoginAttemptTracker::new();
         let ip = test_ip();
-        // 4 failures should be allowed (threshold is 5)
         for _ in 0..4 {
             assert!(tracker.check_and_record(ip).is_ok());
         }
@@ -159,11 +167,9 @@ mod tests {
     fn test_fifth_attempt_locks() {
         let tracker = LoginAttemptTracker::new();
         let ip = test_ip();
-        // First 4 attempts OK
         for _ in 0..4 {
             assert!(tracker.check_and_record(ip).is_ok());
         }
-        // 5th attempt triggers lockout
         let result = tracker.check_and_record(ip);
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -179,11 +185,9 @@ mod tests {
     fn test_locked_ip_stays_locked() {
         let tracker = LoginAttemptTracker::new();
         let ip = test_ip();
-        // Trigger lockout
         for _ in 0..5 {
             let _ = tracker.check_and_record(ip);
         }
-        // 6th attempt should also be locked
         assert!(tracker.check_and_record(ip).is_err());
         assert!(tracker.is_locked(&ip));
     }
@@ -192,13 +196,10 @@ mod tests {
     fn test_clear_resets_failures() {
         let tracker = LoginAttemptTracker::new();
         let ip = test_ip();
-        // Record some failures
         for _ in 0..3 {
             let _ = tracker.check_and_record(ip);
         }
-        // Clear
         tracker.clear(&ip);
-        // Should be allowed again
         assert!(tracker.check_and_record(ip).is_ok());
         assert!(!tracker.is_locked(&ip));
     }
@@ -208,30 +209,85 @@ mod tests {
         let tracker = LoginAttemptTracker::new();
         let ip1 = test_ip();
         let ip2 = test_ip2();
-        // Lock ip1
         for _ in 0..5 {
             let _ = tracker.check_and_record(ip1);
         }
         assert!(tracker.is_locked(&ip1));
-        // ip2 should still be allowed
         assert!(tracker.check_and_record(ip2).is_ok());
         assert!(!tracker.is_locked(&ip2));
     }
 
     #[test]
     fn test_auto_expire_after_lockout() {
-        // Use very short lockout for testing
         let tracker = LoginAttemptTracker::with_config(2, Duration::from_millis(50));
         let ip = test_ip();
-        // Trigger lockout
         let _ = tracker.check_and_record(ip);
         let _ = tracker.check_and_record(ip);
         assert!(tracker.is_locked(&ip));
 
-        // Wait for TTL expiration
         std::thread::sleep(Duration::from_millis(100));
-        // moka should have expired the entry
         assert!(!tracker.is_locked(&ip));
         assert!(tracker.check_and_record(ip).is_ok());
+    }
+
+    #[test]
+    fn test_concurrent_burst_respects_max_attempts() {
+        // 10 threads simultaneously hitting the same IP with max_attempts=5
+        // At most 4 should be allowed (attempts 1-4), the 5th locks.
+        let tracker = Arc::new(LoginAttemptTracker::with_config(5, Duration::from_secs(60)));
+        let ip = test_ip();
+        let barrier = Arc::new(std::sync::Barrier::new(10));
+
+        let handles: Vec<_> = (0..10)
+            .map(|_| {
+                let t = tracker.clone();
+                let b = barrier.clone();
+                std::thread::spawn(move || {
+                    b.wait();
+                    t.check_and_record(ip)
+                })
+            })
+            .collect();
+
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        let ok_count = results.iter().filter(|r| r.is_ok()).count();
+        let err_count = results.iter().filter(|r| r.is_err()).count();
+
+        assert_eq!(
+            ok_count, 4,
+            "expected exactly 4 allowed attempts, got {ok_count}"
+        );
+        assert_eq!(
+            err_count, 6,
+            "expected exactly 6 rejected attempts, got {err_count}"
+        );
+    }
+
+    #[test]
+    fn test_concurrent_burst_different_ips_no_interference() {
+        // 10 threads, 5 different IPs, 2 threads per IP, max_attempts=3
+        let tracker = Arc::new(LoginAttemptTracker::with_config(3, Duration::from_secs(60)));
+        let barrier = Arc::new(std::sync::Barrier::new(10));
+
+        let handles: Vec<_> = (0..10)
+            .map(|i| {
+                let t = tracker.clone();
+                let b = barrier.clone();
+                let ip_byte = (i / 2) as u8 + 1;
+                std::thread::spawn(move || {
+                    let ip = IpAddr::V4(Ipv4Addr::new(10, 0, 0, ip_byte));
+                    b.wait();
+                    t.check_and_record(ip)
+                })
+            })
+            .collect();
+
+        let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        let ok_count = results.iter().filter(|r| r.is_ok()).count();
+
+        assert_eq!(
+            ok_count, 10,
+            "expected all 10 attempts allowed, got {ok_count}"
+        );
     }
 }
