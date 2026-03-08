@@ -12,7 +12,7 @@ use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
     response::{IntoResponse, Response},
-    routing::get,
+    routing::any,
     Router,
 };
 use sea_orm::{
@@ -36,14 +36,7 @@ use crate::state::AppState;
 // ---------------------------------------------------------------------------
 
 pub fn routes() -> Router<Arc<AppState>> {
-    Router::new().route(
-        "/xmlrpc.php",
-        get(xmlrpc_blocked)
-            .post(xmlrpc_blocked)
-            .put(xmlrpc_blocked)
-            .delete(xmlrpc_blocked)
-            .patch(xmlrpc_blocked),
-    )
+    Router::new().route("/xmlrpc.php", any(xmlrpc_blocked))
 }
 
 /// XML-RPC is disabled for security. Returns 405 Method Not Allowed
@@ -2701,5 +2694,23 @@ mod tests {
         let resp = xmlrpc_blocked().await.into_response();
         let body = axum::body::to_bytes(resp.into_body(), 1024).await.unwrap();
         assert!(String::from_utf8_lossy(&body).contains("XML-RPC services are disabled"));
+    }
+
+    #[tokio::test]
+    async fn test_xmlrpc_options_blocked() {
+        use axum::body::Body;
+        use axum::http::Request as HttpRequest;
+        use tower::ServiceExt;
+
+        // Build a minimal router with the xmlrpc routes (state not needed for blocked handler)
+        let app = Router::new().route("/xmlrpc.php", any(xmlrpc_blocked));
+
+        let req = HttpRequest::builder()
+            .method("OPTIONS")
+            .uri("/xmlrpc.php")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 }
