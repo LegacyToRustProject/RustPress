@@ -672,3 +672,65 @@ pub fn extract_client_ip(request: &Request) -> String {
         })
         .unwrap_or_else(|| "unknown".to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::Body;
+    use axum::http::Request as HttpRequest;
+    use axum::routing::get;
+    use axum::Router;
+    use tower::ServiceExt;
+
+    fn security_headers_app() -> Router {
+        Router::new()
+            .route("/test", get(|| async { "ok" }))
+            .layer(axum::middleware::from_fn(security_headers))
+    }
+
+    #[tokio::test]
+    async fn test_security_headers_present() {
+        let app = security_headers_app();
+        let req = HttpRequest::builder()
+            .uri("/test")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(
+            resp.headers().get("X-Content-Type-Options").unwrap(),
+            "nosniff"
+        );
+        assert_eq!(resp.headers().get("X-Frame-Options").unwrap(), "SAMEORIGIN");
+    }
+
+    #[tokio::test]
+    async fn test_security_headers_referrer_and_permissions() {
+        let app = security_headers_app();
+        let req = HttpRequest::builder()
+            .uri("/test")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(
+            resp.headers().get("Referrer-Policy").unwrap(),
+            "strict-origin-when-cross-origin"
+        );
+        assert_eq!(
+            resp.headers().get("Permissions-Policy").unwrap(),
+            "camera=(), microphone=(), geolocation=()"
+        );
+    }
+
+    #[test]
+    fn test_extract_role_from_serialized_php() {
+        assert_eq!(
+            extract_role_from_serialized(r#"a:1:{s:13:"administrator";b:1;}"#),
+            Some("administrator".to_string())
+        );
+        assert_eq!(
+            extract_role_from_serialized(r#"a:1:{s:6:"editor";b:1;}"#),
+            Some("editor".to_string())
+        );
+        assert_eq!(extract_role_from_serialized("garbage"), None);
+    }
+}

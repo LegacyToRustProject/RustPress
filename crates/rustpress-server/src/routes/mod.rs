@@ -14,6 +14,7 @@ mod users;
 pub mod wasm_plugins;
 pub mod wc_api;
 pub mod wp_admin;
+#[allow(dead_code)]
 pub mod xmlrpc;
 
 use crate::state::AppState;
