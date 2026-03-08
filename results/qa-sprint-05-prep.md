@@ -11,7 +11,7 @@
 
 **未解決アクション**:
 1. **MEDIUM**: ZAP — CSP `unsafe-inline`/`unsafe-eval` を将来ノンス方式に改善
-2. **INFO**: TT20/TT19 専用 E2E テストが存在しない（手動確認のみ）
+2. ~~**INFO**: TT20/TT19 専用 E2E テストが存在しない（手動確認のみ）~~ → **PR#15 で解消** ✅
 3. **INFO**: Private IP (172.24.0.3) が一部レスポンスに露出（Docker 環境内のみ）
 
 ---
@@ -29,7 +29,7 @@
 | レート制限 429 確認（6回目でブロック） | ✅ PASS |
 | ZAP フルスキャン | ✅ 完了（High/Critical: 0件） |
 | TT21〜TT25 ビジュアル確認 | ✅ PASS（全 5 テーマ × 7 ページ）|
-| TT20/TT19 ビジュアル確認 | ⚠️ 専用テスト未実装 |
+| TT20/TT19 ビジュアル確認 | ✅ PASS — PR#15（全 2 テーマ × 7 ページ ≥93%）|
 | CSP ヘッダー追加 | ✅ `security_headers` ミドルウェアに実装・コミット済み |
 
 ---
@@ -136,26 +136,35 @@ docker run --rm --network host ghcr.io/zaproxy/zaproxy:stable \
 
 ---
 
-## タスク 5: TT20/TT19 ベースライン
+## タスク 5: TT20/TT19 ビジュアル E2E（PR#15 で完了）
 
-**状況**: TT20 (twentytwenty) / TT19 (twentynineteen) の Rust 実装は PR#4 で追加済みだが、
-E2E テスト (`test_visual_theme_twentytwenty` / `test_visual_theme_twentynineteen`) が存在しない。
+**PR#15**: `feat(qa): TT20/TT19 visual parity — all 14 pages ≥93% pixel match`
 
-**次スプリントアクション**: `visual_comparison.rs` に以下を追加:
-```rust
-#[tokio::test]
-#[ignore]
-async fn test_visual_theme_twentytwenty() {
-    run_theme_sweep("twentytwenty").await;
-}
+### TT20 (Twenty Twenty) — 7/7 PASS
 
-#[tokio::test]
-#[ignore]
-async fn test_visual_theme_twentynineteen() {
-    run_theme_sweep("twentynineteen").await;
-}
-```
-また `test_visual_all_themes_sweep` の対象テーマ一覧に `"twentytwenty"`, `"twentynineteen"` を追加。
+| ページ | スコア | 差分ピクセル |
+|-------|--------|------------|
+| home | 95.97% | 72,854 px |
+| single_post | 97.83% | 39,194 px |
+| sample_page | 97.66% | 42,205 px |
+| search | 96.33% | 66,349 px |
+| 404 | **99.90%** | 1,772 px |
+| category | 97.69% | 41,649 px |
+| author | **99.90%** | 1,776 px |
+
+### TT19 (Twenty Nineteen) — 7/7 PASS
+
+| ページ | スコア | 差分ピクセル |
+|-------|--------|------------|
+| home | 96.53% | 62,739 px |
+| single_post | 97.02% | 53,856 px |
+| sample_page | 98.82% | 21,357 px |
+| search | 96.64% | 60,724 px |
+| 404 | **99.79%** | 3,788 px |
+| category | 97.08% | 52,840 px |
+| author | 98.28% | 31,051 px |
+
+全 2 テーマ × 7 ページ = **14 ページすべて 93% 閾値クリア** ✅
 
 ---
 
@@ -185,10 +194,10 @@ headers.insert(
 
 | # | 優先度 | 内容 |
 |---|--------|------|
-| 1 | **MEDIUM** | CORP/COEP/COOP ヘッダーを `security_headers` に追加 |
-| 2 | **MEDIUM** | TT20/TT19 E2E テスト追加（`visual_comparison.rs`） |
+| 1 | **MEDIUM** | CORP/COEP/COOP ヘッダーを `security_headers` に追加（main: c5e1805 で完了）✅ |
+| 2 | ~~**MEDIUM**~~ | ~~TT20/TT19 E2E テスト追加~~ → PR#15 で完了 ✅ |
 | 3 | **INFO** | CSP の `unsafe-inline`/`unsafe-eval` をノンス方式へ改善 |
-| 4 | **INFO** | `object-src 'none'` と `base-uri 'self'` を CSP に追加 |
+| 4 | **INFO** | `object-src 'none'` と `base-uri 'self'` を CSP に追加（main: c5e1805 で完了）✅ |
 | 5 | **INFO** | Private IP 露出を除去（WordPress siteurl → 本番 URL に変更） |
 
 ---
