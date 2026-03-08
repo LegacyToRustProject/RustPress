@@ -1,9 +1,24 @@
 {% extends "base.html" %}
-{% block title %}{{ the_title }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
-{% block body_class %}page page-id-{{ post.id | default(value=2) }} page-template-default{% endblock %}
+{% block title %}{{ post.title | default(value=the_title) }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}page-template-default page page-id-{{ post.id | default(value=0) }} singular{% endblock %}
 {% block content %}
-<article id="post-{{ post.id | default(value=2) }}" class="page type-page status-publish hentry">
-<header class="entry-header"><h1 class="entry-title">{{ the_title }}</h1></header>
-<div class="entry-content">{{ the_content | safe }}</div>
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} page type-page status-publish hentry">
+	<header class="entry-header has-text-align-center header-footer-group">
+		<div class="entry-header-inner section-inner medium">
+			<h1 class="entry-title">{% if post.password %}Protected: {% endif %}{{ post.title | default(value=the_title) }}</h1>
+		</div>
+	</header>
+	{% if post.featured_image_url %}
+	<figure class="featured-media">
+		<div class="featured-media-inner section-inner">
+			<img src="{{ post.featured_image_url }}" alt="{{ post.title | default(value=the_title) }}" />
+		</div>
+	</figure>
+	{% endif %}
+	<div class="post-inner thin">
+		<div class="entry-content">
+			{{ the_content | safe }}
+		</div>
+	</div>
 </article>
 {% endblock %}

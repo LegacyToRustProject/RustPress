@@ -649,6 +649,30 @@ async fn run_theme_sweep(theme_slug: &str) {
 }
 
 // ---------------------------------------------------------------------------
+// Twenty Twenty visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentytwenty() {
+    // NOTE: requires WordPress to have twentytwenty active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwenty
+    run_theme_sweep("twentytwenty").await;
+}
+
+// ---------------------------------------------------------------------------
+// Twenty Nineteen visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentynineteen() {
+    // NOTE: requires WordPress to have twentynineteen active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentynineteen
+    run_theme_sweep("twentynineteen").await;
+}
+
+// ---------------------------------------------------------------------------
 // Twenty Twenty-Three visual sweep
 // ---------------------------------------------------------------------------
 
@@ -691,7 +715,7 @@ async fn test_visual_theme_twentytwentyone() {
 #[tokio::test]
 #[ignore]
 async fn test_visual_all_themes_sweep() {
-    // Tests TT21 through TT25 in sequence.
+    // Tests TT19 through TT25 in sequence.
     // Each sub-sweep uses whichever theme WordPress currently has active —
     // coordinate theme switching externally before running each sub-test.
     // This test validates the currently-active theme only.
@@ -701,6 +725,8 @@ async fn test_visual_all_themes_sweep() {
         "twentytwentythree",
         "twentytwentytwo",
         "twentytwentyone",
+        "twentytwenty",
+        "twentynineteen",
     ];
 
     for theme in &themes {

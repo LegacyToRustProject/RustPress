@@ -2,7 +2,7 @@
 {% block title %}{{ the_title }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
 {% block body_class %}page page-id-{{ post.id | default(value=2) }} page-template-default{% endblock %}
 {% block content %}
-<article id="post-{{ post.id | default(value=2) }}" class="page type-page status-publish hentry">
+<article id="post-{{ post.id | default(value=2) }}" class="page type-page status-publish hentry entry">
 <header class="entry-header"><h1 class="entry-title">{{ the_title }}</h1></header>
 <div class="entry-content">{{ the_content | safe }}</div>
 </article>
