@@ -934,6 +934,9 @@ mod tests {
             sticky: false,
             password_required: false,
             featured_image_url: String::new(),
+            has_more: false,
+            author_name: String::new(),
+            author_nicename: String::new(),
         };
         let classes = generate_body_class("single", Some(&post), "twentytwentyfive", &[]);
         assert!(classes.contains("single"));
