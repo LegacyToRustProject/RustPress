@@ -657,10 +657,12 @@ async fn login_submit(
     // Extract client IP from request headers for audit logging
     let client_ip = extract_client_ip_from_headers(&headers);
 
-    // Rate limit check: block if too many failed attempts from this IP
+    // Parse client IP for rate limiting (atomic check via check_and_record on failure paths)
     let parsed_ip: std::net::IpAddr = client_ip
         .parse()
         .unwrap_or(std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0)));
+    // Fast-path: skip credential checks for already-locked IPs.
+    // The authoritative atomic check happens in check_and_record() on failure paths.
     if state.login_tracker.is_locked(&parsed_ip) {
         return (
             StatusCode::TOO_MANY_REQUESTS,
@@ -682,7 +684,14 @@ async fn login_submit(
             state
                 .audit_log
                 .log_login_failure(&client_ip, &form.username);
-            let _ = state.login_tracker.check_and_record(parsed_ip);
+            // Atomically record failure and check lockout
+            if state.login_tracker.check_and_record(parsed_ip).is_err() {
+                return (
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "Too many login attempts. Please try again in 15 minutes.",
+                )
+                    .into_response();
+            }
             let mut ctx = tera::Context::new();
             let site_name = state.options.get_blogname().await.unwrap_or_default();
             ctx.insert("site_name", &site_name);
@@ -700,7 +709,14 @@ async fn login_submit(
         state
             .audit_log
             .log_login_failure(&client_ip, &form.username);
-        let _ = state.login_tracker.check_and_record(parsed_ip);
+        // Atomically record failure and check lockout
+        if state.login_tracker.check_and_record(parsed_ip).is_err() {
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                "Too many login attempts. Please try again in 15 minutes.",
+            )
+                .into_response();
+        }
         let mut ctx = tera::Context::new();
         let site_name = state.options.get_blogname().await.unwrap_or_default();
         ctx.insert("site_name", &site_name);
