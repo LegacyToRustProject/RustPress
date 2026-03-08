@@ -431,10 +431,6 @@ h6 {
 	gap: var(--wp--preset--spacing--40);
 }
 
-.wp-block-navigation__responsive-container:not(.hidden-by-default):not(.is-menu-open) {
-	display: block;
-}
-
 .wp-block-navigation__responsive-container-content {
 	display: flex;
 	align-items: center;
@@ -930,6 +926,27 @@ figure {
 img {
 	max-width: 100%;
 	height: auto;
+}
+
+/* ========================================
+   Button border-radius — global styles override
+   WordPress outputs :where(.wp-block-button__link){border-radius:9999px}
+   as inline CSS; we replicate it here so it takes effect over
+   wp-block-library.css (which defaults to border-radius:0)
+   ======================================== */
+:where(.wp-block-button__link) {
+	border-radius: 9999px;
+}
+
+/* ========================================
+   Navigation responsive — mobile (<600px)
+   hamburger visible; nav container hidden (fixed overlay, closed by default)
+   ======================================== */
+@media (max-width: 599px) {
+	/* Columns stack on mobile (not 404 which has flex-wrap:nowrap inline) */
+	.wp-block-columns-is-layout-flex:not([style*="flex-wrap:nowrap"]) {
+		flex-direction: column;
+	}
 }
 
 /* ========================================
