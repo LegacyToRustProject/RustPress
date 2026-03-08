@@ -1,6 +1,6 @@
 # WordPress Theme Compatibility Matrix
 
-Status: **In Progress** | Last updated: 2026-03-07
+Status: **In Progress** | Last updated: 2026-03-09
 
 ## Legend
 
@@ -16,14 +16,14 @@ Status: **In Progress** | Last updated: 2026-03-07
 
 | # | Theme | Type | Status |
 |---|-------|------|--------|
-| 1 | Twenty Twenty-Five | Block | Partial (98%) |
-| 2 | Twenty Twenty-Four | Block | Untested |
-| 3 | Twenty Twenty-Three | Block | Untested |
-| 4 | Twenty Twenty-Two | Block | Untested |
-| 5 | Twenty Twenty-One | Classic | Untested |
-| 6 | Twenty Twenty | Classic | Untested |
-| 7 | Twenty Nineteen | Classic | Untested |
-| 8 | Twenty Seventeen | Classic | Untested |
+| 1 | Twenty Twenty-Five | Block | OK (98.64% avg, all 9 pages ≥93%) |
+| 2 | Twenty Twenty-Four | Block | OK (≥93% all 7 pages, PR#4) |
+| 3 | Twenty Twenty-Three | Block | OK (≥93% all 7 pages, PR#4) |
+| 4 | Twenty Twenty-Two | Block | OK (≥93% all 7 pages, PR#4) |
+| 5 | Twenty Twenty-One | Classic | OK (≥93% all 7 pages, PR#4) |
+| 6 | Twenty Twenty | Classic | OK (≥93% all 7 pages, PR#15) |
+| 7 | Twenty Nineteen | Classic | OK (≥93% all 7 pages, PR#15) |
+| 8 | Twenty Seventeen | Classic | OK (≥93% all 7 pages, Sprint #06) |
 | 9 | Twenty Sixteen | Classic | Untested |
 | 10 | Twenty Fifteen | Classic | Untested |
 

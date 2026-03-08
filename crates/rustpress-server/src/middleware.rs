@@ -352,6 +352,8 @@ pub async fn waf_check(
     // Skip WAF for static assets and well-known safe paths
     if path.starts_with("/static/")
         || path.starts_with("/wp-content/uploads/")
+        || path.starts_with("/wp-content/themes/")
+        || path.starts_with("/wp-includes/")
         || path == "/favicon.ico"
     {
         return next.run(request).await;
