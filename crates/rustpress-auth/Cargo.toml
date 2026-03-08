@@ -9,6 +9,7 @@ description = "Authentication, sessions, and role management for RustPress"
 [dependencies]
 rustpress-core = { workspace = true }
 rustpress-db = { workspace = true }
+rustpress-security = { workspace = true }
 sea-orm = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

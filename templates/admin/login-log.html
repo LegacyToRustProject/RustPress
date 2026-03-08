@@ -1,0 +1,48 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Login Log{% endblock %}
+
+{% block content %}
+<div class="wrap">
+    <h1 class="wp-heading-inline">Login Log</h1>
+    <hr class="wp-header-end" style="border:0;margin:0 0 8px;">
+
+    <p class="description" style="margin:8px 0 16px;color:#646970;font-size:13px;">
+        Showing {{ log_count }} most recent login attempts.
+    </p>
+
+    <table class="wp-list-table widefat fixed striped" style="border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th scope="col" style="padding:8px 10px;font-weight:600;border-bottom:1px solid #c3c4c7;">Timestamp</th>
+                <th scope="col" style="padding:8px 10px;font-weight:600;border-bottom:1px solid #c3c4c7;">IP Address</th>
+                <th scope="col" style="padding:8px 10px;font-weight:600;border-bottom:1px solid #c3c4c7;">Username</th>
+                <th scope="col" style="padding:8px 10px;font-weight:600;border-bottom:1px solid #c3c4c7;">Result</th>
+                <th scope="col" style="padding:8px 10px;font-weight:600;border-bottom:1px solid #c3c4c7;">User Agent</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if login_logs | length == 0 %}
+            <tr>
+                <td colspan="5" style="padding:12px 10px;text-align:center;color:#646970;">No login attempts recorded yet.</td>
+            </tr>
+            {% endif %}
+            {% for log in login_logs %}
+            <tr>
+                <td style="padding:8px 10px;border-bottom:1px solid #e1e1e1;white-space:nowrap;">{{ log.timestamp }}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid #e1e1e1;font-family:monospace;">{{ log.ip_address }}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid #e1e1e1;">{{ log.username }}</td>
+                <td style="padding:8px 10px;border-bottom:1px solid #e1e1e1;">
+                    {% if log.result == "success" %}
+                    <span style="color:#00a32a;font-weight:600;">Success</span>
+                    {% else %}
+                    <span style="color:#d63638;font-weight:600;">Failure</span>
+                    {% endif %}
+                </td>
+                <td style="padding:8px 10px;border-bottom:1px solid #e1e1e1;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.user_agent }}">{{ log.user_agent }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
