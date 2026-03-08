@@ -666,15 +666,15 @@ async fn front_page_or_query(
     // ?author=N — redirect to /author/{nicename}/ like WordPress does.
     if let Some(author_id) = qv.author {
         use rustpress_db::entities::wp_users;
-        if let Ok(Some(user)) = wp_users::Entity::find_by_id(author_id)
-            .one(&state.db)
-            .await
-        {
+        if let Ok(Some(user)) = wp_users::Entity::find_by_id(author_id).one(&state.db).await {
             let url = format!("/author/{}/", user.user_nicename);
             return Redirect::permanent(&url).into_response();
         }
         // Author not found — fall through to 404
-        return conv(Err((StatusCode::NOT_FOUND, axum::response::Html("Author not found".to_string()))));
+        return conv(Err((
+            StatusCode::NOT_FOUND,
+            axum::response::Html("Author not found".to_string()),
+        )));
     }
 
     // No special query vars — render the front page
