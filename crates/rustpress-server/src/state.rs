@@ -3,7 +3,7 @@ use std::sync::Arc;
 use sea_orm::DatabaseConnection;
 use tokio::sync::RwLock;
 
-use rustpress_auth::{JwtManager, SessionManager};
+use rustpress_auth::{JwtManager, LoginAttemptTracker, SessionManager};
 use rustpress_blocks::BlockRenderer;
 use rustpress_cache::{ObjectCache, PageCache, RedisCache, TransientCache};
 use rustpress_commerce::{CartManager, OrderManager, ProductCatalog};
@@ -53,6 +53,8 @@ pub struct AppState {
     pub product_catalog: Arc<RwLock<ProductCatalog>>,
     pub cart_manager: Arc<RwLock<CartManager>>,
     pub order_manager: Arc<RwLock<OrderManager>>,
+    // Login attempt rate limiter (moka-based, per-IP)
+    pub login_tracker: LoginAttemptTracker,
     // Security audit log
     pub audit_log: Arc<AuditLog>,
     // WASM plugin host

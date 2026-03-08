@@ -368,6 +368,7 @@ async fn main() -> Result<()> {
         product_catalog,
         cart_manager,
         order_manager,
+        login_tracker: rustpress_auth::LoginAttemptTracker::new(),
         audit_log,
         wasm_host,
         multisite_resolver,

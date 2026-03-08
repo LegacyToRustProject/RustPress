@@ -133,6 +133,40 @@ impl SessionManager {
         removed
     }
 
+    /// Regenerate the session ID to prevent session fixation attacks.
+    ///
+    /// Invalidates the old session ID and creates a new one with the same
+    /// user data and expiry. Returns the new session ID.
+    pub async fn regenerate_id(&self, old_session_id: &str) -> Option<String> {
+        let old_session = {
+            let mut sessions = self.sessions.write().await;
+            sessions.remove(old_session_id)?
+        };
+
+        // Delete old session from DB
+        self.delete_session_from_db(old_session_id).await;
+
+        // Create new session with fresh ID but same data
+        let new_id = Uuid::new_v4().to_string();
+        let new_session = Session {
+            id: new_id.clone(),
+            user_id: old_session.user_id,
+            login: old_session.login,
+            role: old_session.role,
+            created_at: old_session.created_at,
+            expires_at: old_session.expires_at,
+        };
+
+        // Store new session
+        {
+            let mut sessions = self.sessions.write().await;
+            sessions.insert(new_id.clone(), new_session.clone());
+        }
+        self.persist_session(&new_session).await;
+
+        Some(new_id)
+    }
+
     /// Clean up expired sessions from memory and database.
     pub async fn cleanup_expired(&self) {
         let expired_ids: Vec<String> = {
@@ -244,5 +278,52 @@ mod tests {
 
         let sessions = manager.sessions.read().await;
         assert!(sessions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_regenerate_id_changes_id() {
+        let manager = SessionManager::new(24);
+        let session = manager.create_session(1, "admin", "administrator").await;
+        let old_id = session.id.clone();
+
+        let new_id = manager.regenerate_id(&old_id).await;
+        assert!(new_id.is_some());
+        let new_id = new_id.unwrap();
+        assert_ne!(old_id, new_id);
+    }
+
+    #[tokio::test]
+    async fn test_regenerate_id_invalidates_old() {
+        let manager = SessionManager::new(24);
+        let session = manager.create_session(1, "admin", "administrator").await;
+        let old_id = session.id.clone();
+
+        let new_id = manager.regenerate_id(&old_id).await.unwrap();
+
+        // Old ID should no longer resolve
+        assert!(manager.get_session(&old_id).await.is_none());
+        // New ID should work
+        let new_session = manager.get_session(&new_id).await;
+        assert!(new_session.is_some());
+        assert_eq!(new_session.unwrap().user_id, 1);
+    }
+
+    #[tokio::test]
+    async fn test_regenerate_id_preserves_data() {
+        let manager = SessionManager::new(24);
+        let session = manager.create_session(42, "editor", "editor").await;
+
+        let new_id = manager.regenerate_id(&session.id).await.unwrap();
+        let new_session = manager.get_session(&new_id).await.unwrap();
+
+        assert_eq!(new_session.user_id, 42);
+        assert_eq!(new_session.login, "editor");
+        assert_eq!(new_session.role, "editor");
+    }
+
+    #[tokio::test]
+    async fn test_regenerate_nonexistent_returns_none() {
+        let manager = SessionManager::new(24);
+        assert!(manager.regenerate_id("nonexistent").await.is_none());
     }
 }
