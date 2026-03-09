@@ -158,6 +158,25 @@ async fn main() -> Result<()> {
     i18n::register_tera_i18n_functions(theme_engine.tera_mut(), &translations);
     let theme_engine = Arc::new(RwLock::new(theme_engine));
 
+    // Initialize asset manager and enqueue the active theme's stylesheet.
+    // This runs once at startup — equivalent to a theme's functions.php
+    // calling wp_enqueue_style() on the 'wp_enqueue_scripts' action.
+    let asset_manager = Arc::new(rustpress_themes::AssetManager::new());
+    {
+        let theme_style_url = format!(
+            "/wp-content/themes/{}/style.css",
+            active_theme
+        );
+        asset_manager.enqueue_style(
+            "theme-style",
+            &theme_style_url,
+            &[],
+            env!("CARGO_PKG_VERSION"),
+            "all",
+        );
+        info!(theme = %active_theme, url = %theme_style_url, "theme stylesheet enqueued");
+    }
+
     // Initialize admin template engine
     let mut admin_tera = templates::init_admin_tera("templates/admin")
         .expect("Failed to initialize admin templates");
@@ -351,6 +370,7 @@ async fn main() -> Result<()> {
         plugin_registry,
         site_url: site_url.clone(),
         theme_engine,
+        asset_manager,
         admin_tera,
         translations,
         nonces: Arc::new(NonceManager::new(&config.jwt_secret)),

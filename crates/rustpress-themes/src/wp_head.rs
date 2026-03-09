@@ -73,10 +73,10 @@ impl AssetManager {
     /// Register and enqueue a stylesheet (equivalent to `wp_enqueue_style()`).
     pub fn enqueue_style(&self, handle: &str, src: &str, deps: &[&str], ver: &str, media: &str) {
         self.register_style(handle, src, deps, ver, media);
-        self.enqueued_styles
-            .write()
-            .unwrap()
-            .push(handle.to_string());
+        let mut enqueued = self.enqueued_styles.write().unwrap();
+        if !enqueued.contains(&handle.to_string()) {
+            enqueued.push(handle.to_string());
+        }
     }
 
     /// Register a script (equivalent to `wp_register_script()`).
@@ -112,10 +112,10 @@ impl AssetManager {
         in_footer: bool,
     ) {
         self.register_script(handle, src, deps, ver, in_footer);
-        self.enqueued_scripts
-            .write()
-            .unwrap()
-            .push(handle.to_string());
+        let mut enqueued = self.enqueued_scripts.write().unwrap();
+        if !enqueued.contains(&handle.to_string()) {
+            enqueued.push(handle.to_string());
+        }
     }
 
     /// Render enqueued stylesheets as `<link>` tags for `<head>`.
