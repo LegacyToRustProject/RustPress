@@ -97,6 +97,71 @@ Major plugins (WooCommerce, Yoast SEO, Contact Form 7, ACF, Wordfence) are being
 
 ---
 
+## Deploy Your Way — Start Small, Go as Far as You Want
+
+RustPress doesn't require an all-or-nothing migration. Each step works independently — go as far as you need.
+
+### Step 1: Try It — Route Some Pages to RustPress
+
+WordPress keeps running. You point specific slow pages — or all public pages — to RustPress via Nginx. Your content workflow doesn't change at all.
+
+```nginx
+# Option A: specific slow pages only (e.g. shop, search)
+location ~ ^/(shop|products|search)/ {
+    proxy_pass http://127.0.0.1:3000;
+    error_page 502 503 = @wordpress;  # auto-fallback to WP if needed
+}
+
+# Option B: all public pages (wp-admin stays on PHP)
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    error_page 502 503 = @wordpress;
+}
+
+location @wordpress { fastcgi_pass php-fpm; }
+```
+
+### Step 2: Turn Heavy Pages into Static Files
+
+Pre-generate your high-traffic, low-update pages. Served from CDN — no database, no PHP, zero attack surface.
+
+```bash
+rustpress generate --path /products/
+rustpress generate --path /landing/summer-sale/
+```
+
+Nginx serves `dist/` directly. If anything goes wrong, it falls back to the live server automatically.
+
+### Step 3: Full Replacement
+
+Remove PHP entirely. One binary, one config file.
+
+```
+Before: Nginx → PHP-FPM → WordPress → MySQL   (200ms, 80MB RAM)
+After:  Nginx → RustPress → MySQL             (2ms, 35MB RAM)
+```
+
+---
+
+## Every Page Type Still Works
+
+> *"What about pages that show different content for each user?"*
+
+RustPress handles every page type WordPress handles. SSG is an optimization for pages that *can* be static — not a requirement.
+
+| Page Type | How RustPress Handles It | Typical Speed |
+|-----------|--------------------------|:-------------:|
+| Static content (About, landing pages) | Pre-generated HTML, CDN delivery | **< 1ms** |
+| Dynamic public pages (news feed, search) | Rust renders from DB on each request | **~3ms** |
+| Login-required pages (member area, profile) | Session check → Rust renders per-user | **~5ms** |
+| E-commerce (cart, checkout, order history) | Full dynamic, fully session-aware | **~8ms** |
+
+The reason WordPress is slow is not that it's dynamic — it's that PHP bootstraps the entire runtime from scratch on every single request. RustPress is an always-on async server. Session lookups and DB queries take microseconds, not hundreds of milliseconds.
+
+**Dynamic pages don't need to be slow. They just need to not be PHP.**
+
+---
+
 ## The Mission: A Migration Path for Every WordPress Site
 
 RustPress's goal is not just to be a fast CMS. **The goal is to establish a migration path for every WordPress site in the world.**

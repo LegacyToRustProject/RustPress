@@ -158,6 +158,153 @@ SSGは WP互換モードとは独立:
 
 ---
 
+## 1-C. 段階的導入戦略 (Gradual Adoption)
+
+> **ADR-003: ターゲットユーザーと「染み込む」導入モデル** (2026-03-09 決定)
+
+### ターゲットユーザーの優先順位
+
+RustPressのプライマリターゲットは **VPS層 (Type B)** である。
+
+```
+Type C: エンジニア        ← 最初に使う。品質フィードバックを得る
+Type B: VPSユーザー  ← プライマリターゲット。本当に困っている層
+Type A: 共有ホスティング  ← 長期目標。object-cache.phpで部分的に届く
+```
+
+**Type Bが「プライマリ」な理由:**
+- Type C はRedis・Nginx FastCGI Cacheで自己解決できてしまう
+- Type B は「遅い・ハックされた・でも何をすればいいかわからない」という本物の痛みを持つ
+- Type B は VPS の SSH に一応アクセスできるが、設定変更は怖い
+
+### 「染み込む」導入モデル
+
+WordPressを一気に置き換えるのではなく、**侵入度を段階的に上げる**設計を取る。
+各レベルは独立しており、どこで止めても価値がある。
+
+```
+侵入度: 低 ──────────────────────────────── 高
+
+Level 0          Level 1          Level 2          Level 3
+object-cache.php → PHPプラグイン  → Nginxプロキシ → 完全置き換え
+(キャッシュのみ)   (設定GUI付き)    (表示担当)       (PHP除去)
+     ↓                ↓                ↓               ↓
+共有ホスティング    VPS (怖い人)     VPS (慣れた人)   エンジニア
+でも動く          でも動く
+```
+
+#### Level 0: object-cache.php (最小侵入・共有ホスティングでも動く)
+
+WordPressは `wp-content/object-cache.php` を置くだけでObject Cacheを置き換えられる。
+このファイルをRustPress Cacheへのブリッジとして実装する。
+
+```
+wp-content/object-cache.php  ← このファイル1つ置くだけ
+    ↓
+wp_cache_get/set の呼び出しを横取り
+    ↓
+RustPressのmoka cache (Rustプロセス or ソケット通信)
+    ↓
+DBアクセスが激減 → WPのまま体感速度が上がる
+```
+
+**実装**: `rustpress-object-cache` クレート + `object-cache.php` ブリッジ
+
+#### Level 1: RustPress Connect プラグイン (VPS向けGUI)
+
+WPプラグインとしてインストールし、管理画面でRustPressの設定を行う。
+Nginxの設定は自動生成して「コピーボタン」で提供する。手動適用のみ。
+
+```
+wp-admin > 設定 > RustPress Connect
+  ├─ [接続] タブ     … RPサーバーのURL・ポート・疎通確認
+  ├─ [ルーティング] タブ … どのURLをRPに向けるか (チェックボックス)
+  │    → [Nginx設定を生成] → テキストエリアにコード表示 → [コピー]
+  ├─ [静的化] タブ   … 対象パス・更新スケジュール・[今すぐ生成]
+  └─ [状態] タブ     … 稼働確認・WordPress vs RustPress 速度比較
+```
+
+プラグインができること・できないこと:
+
+| 操作 | 可否 | 理由 |
+|------|:----:|------|
+| Nginx設定の**生成・表示** | ✅ | PHPで文字列生成 |
+| Nginx設定の**自動適用** | ❌ | sudo権限が必要 |
+| RPサーバーの疎通確認 | ✅ | `wp_remote_get('/health')` |
+| 速度比較グラフの表示 | ✅ | wp_optionsに計測値を保存 |
+| 静的生成のトリガー | △ | `exec()`有効なVPSのみ |
+
+#### Level 2: Nginxプロキシ (URL単位の切り替え)
+
+Nginxで特定URLをRustPressに向ける。WordPressとRustPressが同じDBを共有したまま並走。
+
+```nginx
+# 遅いページだけRustPressへ (Level 2a)
+location ~ ^/(shop|products|search)/ {
+    proxy_pass http://127.0.0.1:3000;
+    error_page 502 503 = @wordpress;  # RP障害時はWPにフォールバック
+}
+
+# 全公開ページをRustPressへ、wp-adminはWPのまま (Level 2b)
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    error_page 502 503 = @wordpress;
+}
+location @wordpress { fastcgi_pass php-fpm; }
+```
+
+#### Level 3: 完全置き換え
+
+PHPを除去。単一バイナリ。
+
+```
+移行前: Nginx → PHP-FPM → WordPress → MySQL   (200ms, 80MB RAM)
+移行後: Nginx → RustPress → MySQL             (2ms, 35MB RAM)
+```
+
+### PHP拡張モジュール (.so) オプション
+
+Level 0〜1 の発展形として、**PHPの拡張モジュールとしてRustを組み込む**方法がある。
+`ext-php-rs` クレートを使い、Rustで書いた関数をPHPから直接呼べる。
+
+```
+php.ini に extension=rustpress.so を1行追加するだけ
+
+PHP Process
+  ├── WordPress PHP コード (変更なし)
+  └── rustpress.so
+       ├── wp_cache_get/set  → Rustのmoka cacheに置き換え
+       ├── WP_Query          → SeaORMの型安全クエリに置き換え
+       └── apply_filters     → RustのHook Systemに置き換え
+```
+
+| 環境 | 利用可否 |
+|------|:-------:|
+| 共有ホスティング | ❌ カスタム拡張は原則不可 |
+| VPS (自前管理) | ✅ php.ini に1行 |
+| Docker | ✅ Dockerfile に1行 |
+
+**実装優先度**: Level 0 (object-cache.php) → Level 1 (プラグイン) → .so の順。
+.soはVPS普及後に開発する。
+
+### 各ページタイプの処理方針
+
+SSGは静的にできるページへのオプション最適化であって必須ではない。
+ログイン後・動的・EC系ページはRustが動的に処理する。
+
+| ページ種別 | 処理方法 | 速度目標 |
+|-----------|---------|:-------:|
+| 静的コンテンツ (LP, 固定ページ) | SSGで事前生成・CDN配信 | < 1ms |
+| 動的公開ページ (新着, 検索) | Rust動的レンダリング | ~3ms |
+| ログイン必須ページ (会員, マイページ) | セッション確認 → Rust動的レンダリング | ~5ms |
+| EC (カート, 決済, 注文履歴) | 完全動的・セッション対応 | ~8ms |
+
+> WPが遅い根本原因は「動的だから」ではなく「PHPがリクエストごとにフルブートストラップするから」。
+> RustPressは常駐型非同期サーバーのためセッション確認もDBクエリもマイクロ秒単位。
+> **動的ページは遅くなくていい。PHPでなければいい。**
+
+---
+
 ## 1-B. WordPress 7.0 追従計画
 
 > **情報基準日: 2026-03-09** — WP 7.0 Beta 3 (2026-03-05) まで確認済み
@@ -335,8 +482,11 @@ rustpress/                          ← メインリポジトリ
 | `rustpress/docker` | Docker Compose セットアップ | Open時 |
 | `rustpress/docs` | ドキュメントサイト (mdBook) | Open時 |
 | `rustpress/homebrew-tap` | macOS用 Homebrewフォーミュラ | v0.5以降 |
+| `rustpress/rustpress-connect` | WPプラグイン (PHP) — 設定GUI・Nginx設定生成・速度比較ダッシュボード | Phase 9 完了後 |
+| `rustpress/rustpress-php-ext` | PHP拡張モジュール (.so) — ext-php-rs製。object-cache/WP_Query/Hooksを置き換え | Phase 10 以降 |
 
 **原則:** Phase 8完了まで全てモノレポ内で開発。分離はプロジェクトが成長してからでよい。
+**プラグイン・PHPモジュールはPHPコードのため別リポジトリが自然。** WordPress.org への提出もここから行う。
 
 ---
 
