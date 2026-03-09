@@ -175,6 +175,28 @@ async fn main() -> Result<()> {
             "all",
         );
         info!(theme = %active_theme, url = %theme_style_url, "theme stylesheet enqueued");
+
+        // Enqueue theme-specific additional assets.
+        match active_theme.as_str() {
+            "twentyseventeen" => {
+                let base = format!("/wp-content/themes/{active_theme}");
+                asset_manager.enqueue_style(
+                    "twentyseventeen-block-style",
+                    &format!("{base}/assets/css/blocks.css"),
+                    &["theme-style"],
+                    env!("CARGO_PKG_VERSION"),
+                    "all",
+                );
+                asset_manager.enqueue_style(
+                    "twentyseventeen-fonts",
+                    &format!("{base}/assets/fonts/font-libre-franklin.css"),
+                    &[],
+                    env!("CARGO_PKG_VERSION"),
+                    "all",
+                );
+            }
+            _ => {}
+        }
     }
 
     // Initialize admin template engine

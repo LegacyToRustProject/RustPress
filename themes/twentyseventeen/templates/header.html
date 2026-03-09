@@ -1,0 +1,22 @@
+<header id="masthead" class="site-header" role="banner">
+<div class="custom-header">
+<div class="custom-header-media">
+<div id="wp-custom-header" class="wp-custom-header"><img src="/wp-content/themes/twentyseventeen/assets/images/header.jpg" width="2000" height="1200" alt=""></div>
+</div>
+<div class="site-branding">
+<div class="wrap">
+<div class="site-branding-text">
+<h1 class="site-title"><a href="{{ site_url | default(value='/') }}" rel="home">{{ site_name | default(value="RustPress") }}</a></h1>
+{% if site_description %}<p class="site-description">{{ site_description }}</p>{% endif %}
+</div>
+{% if header_menu and header_menu | length > 0 %}
+<nav id="site-navigation" class="main-navigation" role="navigation">
+<div class="menu-main-container"><ul id="primary-menu" class="nav-menu">
+{% for item in header_menu %}<li class="menu-item menu-item-type-post_type menu-item-object-page"><a href="{{ item.url }}">{{ item.label }}</a></li>{% endfor %}
+</ul></div>
+</nav>
+{% endif %}
+</div>
+</div>
+</div>
+</header>
