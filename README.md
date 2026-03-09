@@ -190,25 +190,30 @@ RustPress site — 100x faster, structurally secure, single binary
 
 | # | Condition | Status | Progress |
 |---|-----------|--------|----------|
-| B-1 | Top 100 WordPress themes render correctly | 🟡 In progress | TT19–TT25 (7 official themes) complete. Astra/Divi/OceanWP planned. |
+| B-1 | Top 100 WordPress themes render correctly | 🟡 In progress | TT16–TT25 (10 official themes) complete. Astra/Divi/OceanWP planned. |
 | B-2 | Top 50 WordPress plugins' data migrates and displays | 🟡 In progress | WooCommerce, Yoast, CF7, ACF, Wordfence — Rust-native crates scaffolded |
 | B-3 | WP REST API v2 — 100% compatible | 🟡 In progress | 73 block types, revisions, autosaves, search, templates, global styles complete |
 | B-4 | 97%+ pixel match with WordPress on all pages | ✅ Done | **98.27%** avg across 9 page types (TT25). All pages above 97% threshold. |
 | B-5 | `rustpress migrate` — one command, working site in 5 min | ✅ Done | Generates `.env`, schema check, compatibility report |
-| B-6 | OWASP Top 10 — all addressed | 🟡 In progress | Rate limiting, session fixation, argon2id/$wp$, TOTP 2FA, JWT blacklist, WAF, XML-RPC block, user enumeration block, security headers done. ZAP scan pending PR merge. |
+| B-6 | OWASP Top 10 — all addressed | 🟡 In progress | Rate limiting, session fixation, argon2id/$wp$, TOTP 2FA, JWT blacklist, WAF, XML-RPC block, user enumeration block, security headers, OAuth 2.0/OIDC, SAML 2.0 done. ZAP scan pending PR merge. |
 | B-7 | CI/CD fully operational | ✅ Done | GitHub Actions on all PRs: check, test, clippy, fmt, audit, build |
 
 In traditional development, this would be RC-level. We set it as Beta because AI makes it achievable at speed.
 
-### Beta Sprint Progress (as of 2026-03-08)
+### Beta Sprint Progress (as of 2026-03-09)
 
 ```
-RustPress (main)          ████████████████████░░░░   76%
- ├─ #01 Themes             ████████████████████░░░░░  85%  TT19–TT25 complete
+RustPress (main)          ██████████████████████░░   88%
+ ├─ #01 Themes             ████████████████████████░  95%  TT16–TT25 complete (10 themes)
  ├─ #02 REST API           ████████████████████░░░░░  80%  73 blocks, revisions, search
- ├─ #03a Auth/Session      ██████████████████░░░░░░░  75%  rate limit, session fixation
- ├─ #03b Endpoint Defense  █████████████████░░░░░░░░  70%  XML-RPC, WAF, headers
+ ├─ #03a Auth/Session      ████████████████████████░  95%  OAuth2/OIDC, SAML 2.0, TOTP, Argon2id
+ ├─ #03b Endpoint Defense  ████████████████████░░░░░  80%  XML-RPC, WAF, headers, C1-C5 fixed
  └─ QA (#09)               ███████████████░░░░░░░░░░  60%  blocked on PR#3 merge
+
+Phase 8 (complete ✅)
+ ├─ OAuth 2.0/OIDC         ████████████████████████░  95%  Google, GitHub, Microsoft, Apple, PKCE
+ ├─ SAML 2.0 SP            ████████████████████████░  95%
+ └─ Observability          ████████████████████████░  95%  OTLP + Sentry + Prometheus
 
 Conversion Engines        ████████████░░░░░░░░░░░░   52%
  ├─ #04 php-to-rust        ████████████░░░░░░░░░░░░░  45%
@@ -217,7 +222,7 @@ Conversion Engines        ████████████░░░░░░
  ├─ #07 java-to-rust       ███████████████░░░░░░░░░░  60%
  └─ #08 perl-to-rust       ██████████████░░░░░░░░░░░  55%
 
-Overall                   ██████████████████░░░░░░░  65%
+Overall                   ████████████████████░░░░░  80%
 ```
 
 ---
