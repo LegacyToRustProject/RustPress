@@ -19,6 +19,7 @@ COPY --from=builder /build/target/release/rustpress /app/rustpress
 COPY --from=builder /build/templates /app/templates
 COPY --from=builder /build/static /app/static
 COPY --from=builder /build/languages /app/languages
+COPY --from=builder /build/themes /app/themes
 
 RUN mkdir -p /app/wp-content/uploads /app/wp-content/plugins
 

@@ -661,6 +661,19 @@ async fn test_visual_theme_twentytwenty() {
 }
 
 // ---------------------------------------------------------------------------
+// Twenty Seventeen visual sweep
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentyseventeen() {
+    // NOTE: requires WordPress to have twentyseventeen active.
+    // Switch via: mysql -h127.0.0.1 -P3307 -uwpuser -pwppass wordpress_ref -e
+    //   "UPDATE wp_options SET option_value='twentyseventeen' WHERE option_name IN ('template','stylesheet');"
+    run_theme_sweep("twentyseventeen").await;
+}
+
+// ---------------------------------------------------------------------------
 // Twenty Nineteen visual sweep
 // ---------------------------------------------------------------------------
 
