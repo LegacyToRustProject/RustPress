@@ -730,12 +730,18 @@ async fn single_post_by_slug(
     headers: &HeaderMap,
 ) -> Result<Html<String>, (StatusCode, Html<String>)> {
     // Try post first (include password-protected posts which have status 'publish')
-    let post = wp_posts::Entity::find()
+    let post = match wp_posts::Entity::find()
         .filter(wp_posts::Column::PostName.eq(slug))
         .filter(wp_posts::Column::PostStatus.eq("publish"))
         .one(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
+    {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::debug!(error = %e, "post-by-slug query failed (no-DB mode?) — serving 404");
+            None
+        }
+    };
 
     match post {
         Some(p) => {
@@ -1240,42 +1246,54 @@ async fn taxonomy_posts(
     let per_page = state.options.get_posts_per_page().await.unwrap_or(10) as u64;
 
     // 1. Find the term by slug
-    let term = wp_terms::Entity::find()
+    let term = match wp_terms::Entity::find()
         .filter(wp_terms::Column::Slug.eq(slug))
         .one(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
-
-    let term = match term {
-        Some(t) => t,
-        None => {
+    {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            let pagination = PaginationData::new(page, 1, 0);
+            return Ok((vec![], pagination, 0));
+        }
+        Err(e) => {
+            tracing::debug!(error = %e, "term query failed (no-DB mode?)");
             let pagination = PaginationData::new(page, 1, 0);
             return Ok((vec![], pagination, 0));
         }
     };
 
     // 2. Find term_taxonomy for this term + taxonomy type
-    let tt = wp_term_taxonomy::Entity::find()
+    let tt = match wp_term_taxonomy::Entity::find()
         .filter(wp_term_taxonomy::Column::TermId.eq(term.term_id))
         .filter(wp_term_taxonomy::Column::Taxonomy.eq(taxonomy))
         .one(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
-
-    let tt = match tt {
-        Some(t) => t,
-        None => {
+    {
+        Ok(Some(t)) => t,
+        Ok(None) => {
+            let pagination = PaginationData::new(page, 1, 0);
+            return Ok((vec![], pagination, term.term_id));
+        }
+        Err(e) => {
+            tracing::debug!(error = %e, "term_taxonomy query failed (no-DB mode?)");
             let pagination = PaginationData::new(page, 1, 0);
             return Ok((vec![], pagination, term.term_id));
         }
     };
 
     // 3. Get post IDs from term_relationships
-    let relationships = wp_term_relationships::Entity::find()
+    let relationships = match wp_term_relationships::Entity::find()
         .filter(wp_term_relationships::Column::TermTaxonomyId.eq(tt.term_taxonomy_id))
         .all(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::debug!(error = %e, "term_relationships query failed (no-DB mode?)");
+            vec![]
+        }
+    };
 
     let post_ids: Vec<u64> = relationships.iter().map(|r| r.object_id).collect();
 
@@ -1291,23 +1309,27 @@ async fn taxonomy_posts(
         .filter(wp_posts::Column::PostStatus.eq("publish"))
         .order_by_desc(wp_posts::Column::PostDate);
 
-    let total = query
-        .clone()
-        .count(&state.db)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
-    let total_pages = if total == 0 {
-        1
-    } else {
-        total.div_ceil(per_page)
+    let total = match query.clone().count(&state.db).await {
+        Ok(n) => n,
+        Err(e) => {
+            tracing::debug!(error = %e, "taxonomy post count failed (no-DB mode?)");
+            return Ok((vec![], PaginationData::new(page, 1, 0), tt.term_id));
+        }
     };
+    let total_pages = if total == 0 { 1 } else { total.div_ceil(per_page) };
 
-    let models = query
+    let models = match query
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
+    {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::debug!(error = %e, "taxonomy posts query failed (no-DB mode?)");
+            vec![]
+        }
+    };
 
     let rewrite = state.rewrite_rules.read().await;
     let posts: Vec<PostTemplateData> = models

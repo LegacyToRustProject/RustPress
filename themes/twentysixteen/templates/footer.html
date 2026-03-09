@@ -1,0 +1,15 @@
+<footer id="colophon" class="site-footer" role="contentinfo">
+{% if footer_menu and footer_menu | length > 0 %}
+<nav class="social-navigation" role="navigation" aria-label="Footer Social Links Menu">
+<ul class="social-links-menu">
+{% for item in footer_menu %}<li><a href="{{ item.url }}" rel="noopener noreferrer">{{ item.label }}</a></li>{% endfor %}
+</ul>
+</nav>
+{% endif %}
+{% if footer_widgets %}
+<div class="widget-area footer-widgets">{{ footer_widgets | safe }}</div>
+{% endif %}
+<div class="site-info">
+<a href="https://wordpress.org/" class="imprint">Proudly powered by WordPress</a>
+</div>
+</footer>
