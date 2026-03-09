@@ -14,3 +14,11 @@ pub async fn connect(database_url: &str) -> Result<DatabaseConnection, DbErr> {
 
     Ok(db)
 }
+
+/// Connect to an in-memory SQLite database for stub/theme-development mode.
+/// All queries will fail gracefully at runtime — this is intentional.
+pub async fn connect_sqlite_memory() -> Result<DatabaseConnection, DbErr> {
+    let db = Database::connect("sqlite::memory:").await?;
+    info!("In-memory SQLite stub connected (no persistent data)");
+    Ok(db)
+}

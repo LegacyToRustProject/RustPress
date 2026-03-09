@@ -63,6 +63,11 @@ impl HookRegistry {
     /// Execute all action callbacks registered for the given tag.
     ///
     /// Equivalent to WordPress `do_action($tag, $args...)`.
+    ///
+    /// Callbacks are cloned out of the registry before the read lock is
+    /// released, so callbacks may safely call `add_action`/`add_filter`
+    /// (write-locks) without deadlocking — matching WordPress behaviour where
+    /// hooks registered during `do_action` are queued for the same tag.
     pub fn do_action(&self, tag: &str, args: &Value) {
         // Increment action fire counter
         {
@@ -70,12 +75,22 @@ impl HookRegistry {
             *counts.entry(tag.to_string()).or_insert(0) += 1;
         }
 
-        let actions = self.actions.read().expect("hook lock poisoned");
-        if let Some(entries) = actions.get(tag) {
-            trace!(tag, count = entries.len(), "executing actions");
-            for entry in entries {
-                (entry.callback)(args);
+        // Clone callbacks while holding the read lock, then release it before
+        // invoking them. This allows callbacks to call add_action/add_filter
+        // (which need a write lock) without deadlocking.
+        let callbacks: Vec<ActionCallback> = {
+            let actions = self.actions.read().expect("hook lock poisoned");
+            match actions.get(tag) {
+                Some(entries) => {
+                    trace!(tag, count = entries.len(), "executing actions");
+                    entries.iter().map(|e| e.callback.clone()).collect()
+                }
+                None => return,
             }
+        };
+
+        for cb in callbacks {
+            cb(args);
         }
     }
 
@@ -94,22 +109,35 @@ impl HookRegistry {
     ///
     /// Each filter receives the output of the previous filter (pipeline).
     /// Equivalent to WordPress `apply_filters($tag, $value, $args...)`.
+    ///
+    /// Callbacks are cloned out of the registry before the read lock is
+    /// released, so callbacks may safely call `add_filter`/`add_action`
+    /// without deadlocking.
     pub fn apply_filters(&self, tag: &str, value: Value) -> Value {
         // Save previous filter and set current
         let previous = CURRENT_FILTER.with(|cf| cf.borrow().clone());
         CURRENT_FILTER.with(|cf| *cf.borrow_mut() = Some(tag.to_string()));
 
-        let filters = self.filters.read().expect("hook lock poisoned");
-        let result = if let Some(entries) = filters.get(tag) {
-            trace!(tag, count = entries.len(), "applying filters");
-            let mut result = value;
-            for entry in entries {
-                result = (entry.callback)(result);
+        // Clone callbacks while holding the read lock, then release before
+        // running the pipeline so nested filter/action registration is safe.
+        let callbacks: Vec<FilterCallback> = {
+            let filters = self.filters.read().expect("hook lock poisoned");
+            match filters.get(tag) {
+                Some(entries) => {
+                    trace!(tag, count = entries.len(), "applying filters");
+                    entries.iter().map(|e| e.callback.clone()).collect()
+                }
+                None => {
+                    CURRENT_FILTER.with(|cf| *cf.borrow_mut() = previous);
+                    return value;
+                }
             }
-            result
-        } else {
-            value
         };
+
+        let mut result = value;
+        for cb in callbacks {
+            result = cb(result);
+        }
 
         // Restore previous filter
         CURRENT_FILTER.with(|cf| *cf.borrow_mut() = previous);
@@ -326,5 +354,49 @@ mod tests {
         let registry = HookRegistry::new();
         let result = registry.apply_filters("nonexistent", json!("original"));
         assert_eq!(result, json!("original"));
+    }
+
+    /// Regression: add_action() called inside do_action() must not deadlock.
+    /// WordPress plugins commonly register hooks during hook execution
+    /// (e.g. add_action('init', fn() { add_action('wp_head', ...) })).
+    #[test]
+    fn test_add_action_inside_do_action_no_deadlock() {
+        let registry = HookRegistry::new();
+        let registry2 = registry.clone();
+
+        registry.add_action(
+            "init",
+            Arc::new(move |_| {
+                // Registering a new hook while "init" is still executing.
+                // Without the fix this would deadlock (write-lock inside read-lock).
+                registry2.add_action("wp_head", Arc::new(|_| {}), DEFAULT_PRIORITY);
+            }),
+            DEFAULT_PRIORITY,
+        );
+
+        // Must complete without deadlocking or panicking.
+        registry.do_action("init", &json!({}));
+        assert!(registry.has_action("wp_head"));
+    }
+
+    /// Regression: add_filter() called inside apply_filters() must not deadlock.
+    #[test]
+    fn test_add_filter_inside_apply_filters_no_deadlock() {
+        let registry = HookRegistry::new();
+        let registry2 = registry.clone();
+
+        registry.add_filter(
+            "the_title",
+            Arc::new(move |v| {
+                // Registering a new filter while "the_title" is still executing.
+                registry2.add_filter("the_content", Arc::new(|v| v), DEFAULT_PRIORITY);
+                v
+            }),
+            DEFAULT_PRIORITY,
+        );
+
+        let result = registry.apply_filters("the_title", json!("Hello"));
+        assert_eq!(result, json!("Hello"));
+        assert!(registry.has_filter("the_content"));
     }
 }

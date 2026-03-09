@@ -1,0 +1,10 @@
+services:
+  rustpress:
+    environment:
+      ACTIVE_THEME: twentyseventeen
+      THEMES_DIR: /app/themes
+
+  # Expose MySQL port to host so local `cargo run` can connect without Docker build
+  db:
+    ports:
+      - "3307:3306"

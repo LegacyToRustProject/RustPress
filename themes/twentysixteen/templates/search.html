@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Search Results for &#8220;{{ search_query | default(value='') }}&#8221; &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}search search-results{% endblock %}
+{% block content %}
+<header class="page-header">
+<h1 class="page-title">Search Results for: <span>{{ search_query | default(value='') }}</span></h1>
+</header>
+{% if posts and posts | length > 0 %}
+{% for post in posts %}
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard hentry">
+<header class="entry-header">
+<h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2>
+<div class="entry-meta">
+<span class="posted-on"><time class="entry-date published" datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></span>
+</div>
+</header>
+<div class="entry-summary">{{ post.excerpt | default(value="") | safe }}</div>
+</article>
+{% endfor %}
+{% if pagination %}
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+{% if pagination.prev_url %}<div class="nav-previous"><a href="{{ pagination.prev_url }}">Older posts</a></div>{% endif %}
+{% if pagination.next_url %}<div class="nav-next"><a href="{{ pagination.next_url }}">Newer posts</a></div>{% endif %}
+</div>
+</nav>
+{% endif %}
+{% else %}
+<article class="post no-results not-found">
+<header class="entry-header"><h1 class="page-title">Nothing Found</h1></header>
+<div class="entry-content">
+<p>Sorry, but nothing matched your search terms. Please try again with some different keywords.</p>
+<form role="search" method="get" class="search-form" action="{{ site_url | default(value='/') }}">
+<label><span class="screen-reader-text">Search for:</span><input type="search" class="search-field" placeholder="Search &hellip;" value="{{ search_query | default(value='') }}" name="s"></label>
+<input type="submit" class="search-submit" value="Search">
+</form>
+</div>
+</article>
+{% endif %}
+{% endblock %}

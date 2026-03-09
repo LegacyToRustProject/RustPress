@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 
 mod admin;
 mod config;
@@ -14,6 +13,7 @@ pub mod middleware;
 pub mod nav_menu;
 mod routes;
 mod state;
+mod telemetry;
 mod templates;
 pub mod widgets;
 
@@ -34,14 +34,18 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("rustpress=debug,tower_http=debug")),
-        )
-        .init();
-
+    // Load .env before telemetry so OTLP_ENDPOINT / SENTRY_DSN / RUST_LOG are visible.
     dotenvy::dotenv().ok();
+
+    // Initialise OpenTelemetry, tracing-subscriber, and Sentry.
+    // The guard must be kept alive until after `axum::serve` returns.
+    let _telemetry = telemetry::init_telemetry(telemetry::TelemetryConfig::default());
+
+    // Install the Prometheus recorder and publish the handle so GET /metrics works.
+    if let Some(handle) = telemetry::prometheus_handle() {
+        routes::metrics::PROMETHEUS_HANDLE.set(handle).ok();
+        info!("Prometheus metrics endpoint active at /metrics");
+    }
 
     // Initialize health check start time for uptime tracking
     routes::health::init_start_time();
@@ -55,26 +59,53 @@ async fn main() -> Result<()> {
         config.port
     );
 
-    // Connect to database
-    let db = connection::connect(&config.database_url).await?;
+    // Connect to database — fall back to in-memory SQLite when MySQL is unavailable.
+    // Skip MySQL entirely if NO_DB=1 OR if DATABASE_URL was not set (empty string).
+    let no_db_mode = {
+        let v = std::env::var("NO_DB").unwrap_or_default();
+        v == "1" || v == "true" || config.database_url.is_empty()
+    };
+    let db = if no_db_mode {
+        tracing::warn!("Using in-memory SQLite stub (no DATABASE_URL / NO_DB mode)");
+        rustpress_db::connection::connect_sqlite_memory().await?
+    } else {
+        match connection::connect(&config.database_url).await {
+            Ok(conn) => conn,
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "MySQL connection failed — falling back to in-memory SQLite stub. \
+                     Set DATABASE_URL to a valid MySQL URL for full functionality."
+                );
+                rustpress_db::connection::connect_sqlite_memory().await?
+            }
+        }
+    };
 
-    // Run migrations (create tables if not exist) — skip when using an existing WordPress DB
-    let skip_migrations = std::env::var("SKIP_MIGRATIONS").unwrap_or_default();
-    if skip_migrations == "true" || skip_migrations == "1" {
-        info!("SKIP_MIGRATIONS set — using existing database tables");
+    // Run migrations — skip in NO_DB mode or when SKIP_MIGRATIONS is set
+    let skip_migrations = no_db_mode || {
+        let v = std::env::var("SKIP_MIGRATIONS").unwrap_or_default();
+        v == "true" || v == "1"
+    };
+    if skip_migrations {
+        info!("Skipping database migrations (stub/no-DB mode)");
     } else {
         info!("Running database migrations...");
         rustpress_migrate::create_wp_tables(&db).await?;
         rustpress_migrate::insert_default_options(&db, &config.site_url, "RustPress").await?;
 
-        // Create default admin user
+        // Create default admin user.
+        // SECURITY: never print the generated password — plain-text in logs is
+        // a C3-class credential exposure. Operators must set ADMIN_PASSWORD
+        // before first run, or reset via CLI afterwards.
         let admin_password = std::env::var("ADMIN_PASSWORD").unwrap_or_else(|_| {
-            let generated = uuid::Uuid::new_v4().to_string();
-            eprintln!(
-                "WARNING: ADMIN_PASSWORD not set. Generated random admin password: {generated}"
+            tracing::warn!(
+                "ADMIN_PASSWORD env var not set. \
+                 A random admin password was generated but NOT logged. \
+                 Use `rustpress user reset-password admin` or set \
+                 ADMIN_PASSWORD before the first run to gain admin access."
             );
-            eprintln!("Set ADMIN_PASSWORD env var to use a specific password.");
-            generated
+            uuid::Uuid::new_v4().to_string()
         });
         let admin_hash = rustpress_auth::PasswordHasher::hash_argon2(&admin_password)
             .expect("Failed to hash admin password");
@@ -157,6 +188,47 @@ async fn main() -> Result<()> {
     // Register i18n functions on the theme engine's Tera instance
     i18n::register_tera_i18n_functions(theme_engine.tera_mut(), &translations);
     let theme_engine = Arc::new(RwLock::new(theme_engine));
+
+    // Initialize asset manager and enqueue the active theme's stylesheet.
+    // This runs once at startup — equivalent to a theme's functions.php
+    // calling wp_enqueue_style() on the 'wp_enqueue_scripts' action.
+    let asset_manager = Arc::new(rustpress_themes::AssetManager::new());
+    {
+        let theme_style_url = format!(
+            "/wp-content/themes/{}/style.css",
+            active_theme
+        );
+        asset_manager.enqueue_style(
+            "theme-style",
+            &theme_style_url,
+            &[],
+            env!("CARGO_PKG_VERSION"),
+            "all",
+        );
+        info!(theme = %active_theme, url = %theme_style_url, "theme stylesheet enqueued");
+
+        // Enqueue theme-specific additional assets.
+        match active_theme.as_str() {
+            "twentyseventeen" => {
+                let base = format!("/wp-content/themes/{active_theme}");
+                asset_manager.enqueue_style(
+                    "twentyseventeen-block-style",
+                    &format!("{base}/assets/css/blocks.css"),
+                    &["theme-style"],
+                    env!("CARGO_PKG_VERSION"),
+                    "all",
+                );
+                asset_manager.enqueue_style(
+                    "twentyseventeen-fonts",
+                    &format!("{base}/assets/fonts/font-libre-franklin.css"),
+                    &[],
+                    env!("CARGO_PKG_VERSION"),
+                    "all",
+                );
+            }
+            _ => {}
+        }
+    }
 
     // Initialize admin template engine
     let mut admin_tera = templates::init_admin_tera("templates/admin")
@@ -351,6 +423,7 @@ async fn main() -> Result<()> {
         plugin_registry,
         site_url: site_url.clone(),
         theme_engine,
+        asset_manager,
         admin_tera,
         translations,
         nonces: Arc::new(NonceManager::new(&config.jwt_secret)),
@@ -548,13 +621,15 @@ async fn main() -> Result<()> {
     }
 
     // Apply global middleware (order matters: outermost layer runs first)
-    // 1. Block sensitive files (.env, .git, etc.) — first line of defense
-    // 2. WAF — block malicious patterns
-    // 3. Rate limiter — prevent abuse
-    // 4. CORS — cross-origin policy
-    // 5. Security headers — defense-in-depth headers
-    // 6. ETag + compression — performance
+    // 1. Telemetry — trace spans + Prometheus metrics (outermost, covers all layers)
+    // 2. Block sensitive files (.env, .git, etc.) — first line of defense
+    // 3. WAF — block malicious patterns
+    // 4. Rate limiter — prevent abuse
+    // 5. CORS — cross-origin policy
+    // 6. Security headers — defense-in-depth headers
+    // 7. ETag + compression — performance
     app = app
+        .layer(axum::middleware::from_fn(middleware::telemetry_trace))
         .layer(axum::middleware::from_fn(middleware::block_sensitive_files))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -597,6 +672,9 @@ async fn main() -> Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    // Flush and shut down OTLP exporters after the server has drained.
+    telemetry::shutdown_telemetry();
 
     Ok(())
 }

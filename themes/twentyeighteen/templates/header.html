@@ -1,0 +1,23 @@
+<header id="masthead" class="site-header" role="banner">
+<div class="header-main">
+<div class="site-branding">
+<p class="site-title"><a href="{{ site_url | default(value='/') }}" rel="home">{{ site_name | default(value="RustPress") }}</a></p>
+{% if site_description %}<p class="site-description">{{ site_description }}</p>{% endif %}
+</div>
+{% if header_menu and header_menu | length > 0 %}
+<nav id="site-navigation" class="main-navigation" role="navigation" aria-label="Top Menu">
+<div class="menu-main-container"><ul id="primary-menu" class="nav-menu">
+{% for item in header_menu %}<li class="menu-item menu-item-type-post_type menu-item-object-page{% if item.active %} current-menu-item{% endif %}"><a href="{{ item.url }}">{{ item.label }}</a></li>{% endfor %}
+</ul></div>
+</nav>
+{% endif %}
+</div>
+</header>
+{% if show_cover_image | default(value=false) %}
+<div class="site-cover-image" {% if cover_image_url %}style="background-image: url('{{ cover_image_url }}');"{% endif %} role="img" aria-label="{{ site_name | default(value='RustPress') }} cover image">
+<div class="cover-image-inner">
+<h2 class="site-title-large"><a href="{{ site_url | default(value='/') }}" rel="home">{{ site_name | default(value="RustPress") }}</a></h2>
+{% if site_description %}<p class="site-description">{{ site_description }}</p>{% endif %}
+</div>
+</div>
+{% endif %}

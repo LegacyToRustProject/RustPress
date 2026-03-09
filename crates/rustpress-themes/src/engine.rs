@@ -80,14 +80,22 @@ impl ThemeEngine {
     }
 
     /// Render a page using template hierarchy resolution.
+    ///
+    /// Resolves the template by checking Tera's in-memory registry (no disk I/O),
+    /// which is consistent with the templates compiled at startup.
     pub fn render_page(
         &self,
         page_type: &PageType,
         context: &Context,
     ) -> Result<String, ThemeError> {
-        let template_name = self.hierarchy.resolve(page_type);
-        debug!(template = &template_name, "rendering template");
-        let html = self.tera.render(&template_name, context)?;
+        let candidates = self.hierarchy.get_candidates(page_type);
+        let template_name = candidates
+            .iter()
+            .find(|name| self.tera.get_template(name).is_ok())
+            .map(|s| s.as_str())
+            .unwrap_or("index.html");
+        debug!(template = template_name, "rendering template");
+        let html = self.tera.render(template_name, context)?;
         Ok(html)
     }
 

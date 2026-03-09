@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="{{ language | default(value='en-US') }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ site_name | default(value="RustPress") }}{% endblock %}</title>
+<link rel="stylesheet" href="/wp-content/themes/twentyeighteen/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Fira+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+{{ wp_head | safe }}
+{% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
+{{ seo_meta_tags | safe }}
+{% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %} wp-embed-responsive hfeed">
+<div id="page" class="site">
+<a class="screen-reader-text" href="#content">Skip to content</a>
+{% include "header.html" %}
+<div id="content" class="site-content">
+{% block main %}
+<div class="content-area">
+<main id="main" class="site-main">
+{% block content %}{% endblock %}
+</main>
+</div>
+{% if sidebar_widgets %}
+<aside id="secondary" class="widget-area" role="complementary">
+{{ sidebar_widgets | safe }}
+</aside>
+{% endif %}
+{% endblock %}
+</div>
+{% include "footer.html" %}
+</div>
+{{ wp_footer | safe }}
+</body>
+</html>

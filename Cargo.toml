@@ -68,6 +68,7 @@ tower = "0.5"
 # ORM (MySQL for WP database compatibility)
 sea-orm = { version = "1.1", features = [
     "sqlx-mysql",
+    "sqlx-sqlite",
     "runtime-tokio-native-tls",
     "macros",
 ] }
@@ -89,7 +90,18 @@ uuid = { version = "1", features = ["v4", "serde"] }
 
 # Logging / tracing
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Observability
+opentelemetry = { version = "0.27", features = ["trace", "metrics"] }
+opentelemetry_sdk = { version = "0.27", features = ["trace", "metrics", "rt-tokio"] }
+opentelemetry-otlp = { version = "0.27", features = ["trace", "metrics", "tonic", "grpc-tonic"] }
+opentelemetry-semantic-conventions = "0.27"
+tracing-opentelemetry = "0.28"
+sentry = { version = "0.34", features = ["tokio", "tracing", "tower"] }
+sentry-tracing = "0.34"
+metrics = "0.24"
+metrics-exporter-prometheus = "0.16"
 
 # Error handling
 anyhow = "1"
@@ -107,8 +119,18 @@ moka = { version = "0.12", features = ["future", "sync"] }
 # Hashing
 md-5 = "0.10"
 sha1 = "0.10"
+sha2 = "0.10"
 hmac = "0.12"
 data-encoding = "2"
+
+# Random number generation
+rand = "0.8"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+
+# XML processing
+quick-xml = { version = "0.36", features = ["serialize"] }
 
 # Base64 encoding/decoding (for XML-RPC media upload)
 base64 = "0.22"

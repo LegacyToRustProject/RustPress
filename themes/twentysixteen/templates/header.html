@@ -1,0 +1,27 @@
+<header id="masthead" class="site-header" role="banner">
+<div class="site-branding">
+{% if site_logo_url %}
+<div class="site-logo"><a href="{{ site_url | default(value='/') }}" rel="home"><img src="{{ site_logo_url }}" alt="{{ site_name | default(value='') }}"></a></div>
+{% endif %}
+<h1 class="site-title"><a href="{{ site_url | default(value='/') }}" rel="home">{{ site_name | default(value="RustPress") }}</a></h1>
+{% if site_description %}<p class="site-description">{{ site_description }}</p>{% endif %}
+</div>
+<nav id="site-navigation" class="main-navigation" role="navigation">
+<button class="menu-toggle" aria-controls="primary-menu" aria-expanded="false">Menu</button>
+{% if header_menu and header_menu | length > 0 %}
+<div class="menu-main-container">
+<ul id="primary-menu" class="nav-menu">
+{% for item in header_menu %}
+<li class="menu-item menu-item-type-post_type menu-item-object-page"><a href="{{ item.url }}">{{ item.label }}</a></li>
+{% endfor %}
+</ul>
+</div>
+{% else %}
+<div class="menu-main-container">
+<ul id="primary-menu" class="nav-menu">
+<li class="menu-item"><a href="{{ site_url | default(value='/') }}">Home</a></li>
+</ul>
+</div>
+{% endif %}
+</nav>
+</header>

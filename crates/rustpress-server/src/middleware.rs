@@ -4,6 +4,7 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
+use base64::Engine as _;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use std::sync::Arc;
 
@@ -248,8 +249,28 @@ pub async fn require_activate_plugins(
     require_capability(State(state), request, next, Capability::ActivatePlugins).await
 }
 
+/// Per-request CSP nonce injected into request extensions by `security_headers`.
+///
+/// Handlers that render inline `<script nonce="…">` or `<style nonce="…">` can
+/// extract this from `request.extensions()`.  Because every request gets a fresh
+/// nonce the value is guaranteed not to repeat.
+#[derive(Clone, Debug)]
+pub struct CspNonce(pub String);
+
 /// Middleware: add security headers to all responses.
-pub async fn security_headers(request: Request, next: Next) -> Response {
+///
+/// Generates a fresh 128-bit cryptographically-random nonce on every request and
+/// injects it into both the request extensions (for handlers) and the
+/// Content-Security-Policy response header. `unsafe-inline` and `unsafe-eval` are
+/// intentionally absent from `script-src`.
+pub async fn security_headers(mut request: Request, next: Next) -> Response {
+    // Generate a 128-bit nonce via UUID v4 (backed by OS CSPRNG via getrandom).
+    let nonce = base64::engine::general_purpose::STANDARD
+        .encode(uuid::Uuid::new_v4().as_bytes());
+
+    // Store in request extensions so handlers / templates can use it.
+    request.extensions_mut().insert(CspNonce(nonce.clone()));
+
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
 
@@ -270,21 +291,22 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
         "Permissions-Policy",
         HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
     );
-    headers.insert(
-        "Content-Security-Policy",
-        HeaderValue::from_static(concat!(
-            "default-src 'self'; ",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; ",
-            "style-src 'self' 'unsafe-inline'; ",
-            "img-src 'self' data: https:; ",
-            "font-src 'self' data:; ",
-            "object-src 'none'; ",
-            "base-uri 'self'; ",
-            "form-action 'self'; ",
-            "frame-src 'self'; ",
-            "frame-ancestors 'self'"
-        )),
+    // Nonce-based CSP: no unsafe-inline, no unsafe-eval.
+    let csp = format!(
+        "default-src 'self'; \
+         script-src 'self' 'nonce-{nonce}'; \
+         style-src 'self' 'nonce-{nonce}'; \
+         img-src 'self' data: https:; \
+         font-src 'self' data:; \
+         object-src 'none'; \
+         base-uri 'self'; \
+         form-action 'self'; \
+         frame-src 'self'; \
+         frame-ancestors 'self'"
     );
+    if let Ok(val) = HeaderValue::from_str(&csp) {
+        headers.insert("Content-Security-Policy", val);
+    }
     headers.insert(
         "Cross-Origin-Resource-Policy",
         HeaderValue::from_static("same-origin"),
@@ -352,6 +374,8 @@ pub async fn waf_check(
     // Skip WAF for static assets and well-known safe paths
     if path.starts_with("/static/")
         || path.starts_with("/wp-content/uploads/")
+        || path.starts_with("/wp-content/themes/")
+        || path.starts_with("/wp-includes/")
         || path == "/favicon.ico"
     {
         return next.run(request).await;
@@ -600,17 +624,48 @@ pub async fn cors_headers(
     response
 }
 
+/// Extract and lower-case the `scheme://host:port` authority from a URL.
+///
+/// Strips any path, query, or fragment so that `http://example.com/path` and
+/// `http://example.com` both normalise to `http://example.com`.  This prevents
+/// sub-domain bypass (e.g. `http://example.com.evil.com` differs from
+/// `http://example.com` after normalisation).
+fn origin_authority(url: &str) -> String {
+    let lower = url.trim().to_lowercase();
+    if let Some(after_scheme) = lower.find("://") {
+        let rest = &lower[after_scheme + 3..];
+        // Authority ends at the first '/', '?', or '#'
+        let authority_len = rest
+            .find(|c| c == '/' || c == '?' || c == '#')
+            .unwrap_or(rest.len());
+        let scheme = &lower[..after_scheme];
+        let authority = &rest[..authority_len];
+        // Strip default ports (80 for http, 443 for https) to normalise
+        let authority = match (scheme, authority.rsplit_once(':')) {
+            ("http", Some((host, "80"))) => host,
+            ("https", Some((host, "443"))) => host,
+            _ => authority,
+        };
+        format!("{scheme}://{authority}")
+    } else {
+        lower
+    }
+}
+
 /// Check if an origin is allowed.
+///
+/// Compares normalised `scheme://host:port` representations so that path
+/// suffixes and default ports cannot be exploited to bypass the check.
 fn is_allowed_origin(origin: &str, site_url: &str) -> bool {
-    // Same origin is always allowed
-    if origin == site_url {
+    let norm_origin = origin_authority(origin);
+    if norm_origin == origin_authority(site_url) {
         return true;
     }
 
-    // Allow configured origins from environment
+    // Allow explicitly configured origins from the environment.
     if let Ok(allowed) = std::env::var("CORS_ALLOWED_ORIGINS") {
         for allowed_origin in allowed.split(',') {
-            if origin == allowed_origin.trim() {
+            if norm_origin == origin_authority(allowed_origin.trim()) {
                 return true;
             }
         }
@@ -801,4 +856,44 @@ mod tests {
         );
         assert_eq!(extract_role_from_serialized("garbage"), None);
     }
+}
+
+// ---------------------------------------------------------------------------
+// Telemetry middleware — records HTTP request metrics and tracing spans
+// ---------------------------------------------------------------------------
+
+/// Axum middleware that wraps every request in a tracing span and records
+/// Prometheus metrics via `telemetry::record_http_request`.
+pub async fn telemetry_trace(request: Request, next: Next) -> Response {
+    use std::time::Instant;
+
+    let method = request.method().to_string();
+    // Normalise the path: strip query-string so cardinality stays bounded.
+    let path = request
+        .uri()
+        .path()
+        .to_string();
+
+    let span = tracing::info_span!(
+        "http_request",
+        http.method = %method,
+        http.path   = %path,
+        http.status = tracing::field::Empty,
+    );
+
+    let start = Instant::now();
+
+    let response = {
+        let _enter = span.enter();
+        next.run(request).await
+    };
+
+    let status = response.status().as_u16();
+    let duration_ms = start.elapsed().as_millis() as u64;
+
+    span.record("http.status", status);
+
+    crate::telemetry::record_http_request(&method, &path, status, duration_ms);
+
+    response
 }

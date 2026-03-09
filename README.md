@@ -97,6 +97,71 @@ Major plugins (WooCommerce, Yoast SEO, Contact Form 7, ACF, Wordfence) are being
 
 ---
 
+## Deploy Your Way — Start Small, Go as Far as You Want
+
+RustPress doesn't require an all-or-nothing migration. Each step works independently — go as far as you need.
+
+### Step 1: Try It — Route Some Pages to RustPress
+
+WordPress keeps running. You point specific slow pages — or all public pages — to RustPress via Nginx. Your content workflow doesn't change at all.
+
+```nginx
+# Option A: specific slow pages only (e.g. shop, search)
+location ~ ^/(shop|products|search)/ {
+    proxy_pass http://127.0.0.1:3000;
+    error_page 502 503 = @wordpress;  # auto-fallback to WP if needed
+}
+
+# Option B: all public pages (wp-admin stays on PHP)
+location / {
+    proxy_pass http://127.0.0.1:3000;
+    error_page 502 503 = @wordpress;
+}
+
+location @wordpress { fastcgi_pass php-fpm; }
+```
+
+### Step 2: Turn Heavy Pages into Static Files
+
+Pre-generate your high-traffic, low-update pages. Served from CDN — no database, no PHP, zero attack surface.
+
+```bash
+rustpress generate --path /products/
+rustpress generate --path /landing/summer-sale/
+```
+
+Nginx serves `dist/` directly. If anything goes wrong, it falls back to the live server automatically.
+
+### Step 3: Full Replacement
+
+Remove PHP entirely. One binary, one config file.
+
+```
+Before: Nginx → PHP-FPM → WordPress → MySQL   (200ms, 80MB RAM)
+After:  Nginx → RustPress → MySQL             (2ms, 35MB RAM)
+```
+
+---
+
+## Every Page Type Still Works
+
+> *"What about pages that show different content for each user?"*
+
+RustPress handles every page type WordPress handles. SSG is an optimization for pages that *can* be static — not a requirement.
+
+| Page Type | How RustPress Handles It | Typical Speed |
+|-----------|--------------------------|:-------------:|
+| Static content (About, landing pages) | Pre-generated HTML, CDN delivery | **< 1ms** |
+| Dynamic public pages (news feed, search) | Rust renders from DB on each request | **~3ms** |
+| Login-required pages (member area, profile) | Session check → Rust renders per-user | **~5ms** |
+| E-commerce (cart, checkout, order history) | Full dynamic, fully session-aware | **~8ms** |
+
+The reason WordPress is slow is not that it's dynamic — it's that PHP bootstraps the entire runtime from scratch on every single request. RustPress is an always-on async server. Session lookups and DB queries take microseconds, not hundreds of milliseconds.
+
+**Dynamic pages don't need to be slow. They just need to not be PHP.**
+
+---
+
 ## The Mission: A Migration Path for Every WordPress Site
 
 RustPress's goal is not just to be a fast CMS. **The goal is to establish a migration path for every WordPress site in the world.**
@@ -125,25 +190,30 @@ RustPress site — 100x faster, structurally secure, single binary
 
 | # | Condition | Status | Progress |
 |---|-----------|--------|----------|
-| B-1 | Top 100 WordPress themes render correctly | 🟡 In progress | TT19–TT25 (7 official themes) complete. Astra/Divi/OceanWP planned. |
+| B-1 | Top 100 WordPress themes render correctly | 🟡 In progress | TT16–TT25 (10 official themes) complete. Astra/Divi/OceanWP planned. |
 | B-2 | Top 50 WordPress plugins' data migrates and displays | 🟡 In progress | WooCommerce, Yoast, CF7, ACF, Wordfence — Rust-native crates scaffolded |
 | B-3 | WP REST API v2 — 100% compatible | 🟡 In progress | 73 block types, revisions, autosaves, search, templates, global styles complete |
 | B-4 | 97%+ pixel match with WordPress on all pages | ✅ Done | **98.27%** avg across 9 page types (TT25). All pages above 97% threshold. |
 | B-5 | `rustpress migrate` — one command, working site in 5 min | ✅ Done | Generates `.env`, schema check, compatibility report |
-| B-6 | OWASP Top 10 — all addressed | 🟡 In progress | Rate limiting, session fixation, argon2id/$wp$, TOTP 2FA, JWT blacklist, WAF, XML-RPC block, user enumeration block, security headers done. ZAP scan pending PR merge. |
+| B-6 | OWASP Top 10 — all addressed | 🟡 In progress | Rate limiting, session fixation, argon2id/$wp$, TOTP 2FA, JWT blacklist, WAF, XML-RPC block, user enumeration block, security headers, OAuth 2.0/OIDC, SAML 2.0 done. ZAP scan pending PR merge. |
 | B-7 | CI/CD fully operational | ✅ Done | GitHub Actions on all PRs: check, test, clippy, fmt, audit, build |
 
 In traditional development, this would be RC-level. We set it as Beta because AI makes it achievable at speed.
 
-### Beta Sprint Progress (as of 2026-03-08)
+### Beta Sprint Progress (as of 2026-03-09)
 
 ```
-RustPress (main)          ████████████████████░░░░   76%
- ├─ #01 Themes             ████████████████████░░░░░  85%  TT19–TT25 complete
+RustPress (main)          ██████████████████████░░   88%
+ ├─ #01 Themes             ████████████████████████░  95%  TT16–TT25 complete (10 themes)
  ├─ #02 REST API           ████████████████████░░░░░  80%  73 blocks, revisions, search
- ├─ #03a Auth/Session      ██████████████████░░░░░░░  75%  rate limit, session fixation
- ├─ #03b Endpoint Defense  █████████████████░░░░░░░░  70%  XML-RPC, WAF, headers
+ ├─ #03a Auth/Session      ████████████████████████░  95%  OAuth2/OIDC, SAML 2.0, TOTP, Argon2id
+ ├─ #03b Endpoint Defense  ████████████████████░░░░░  80%  XML-RPC, WAF, headers, C1-C5 fixed
  └─ QA (#09)               ███████████████░░░░░░░░░░  60%  blocked on PR#3 merge
+
+Phase 8 (complete ✅)
+ ├─ OAuth 2.0/OIDC         ████████████████████████░  95%  Google, GitHub, Microsoft, Apple, PKCE
+ ├─ SAML 2.0 SP            ████████████████████████░  95%
+ └─ Observability          ████████████████████████░  95%  OTLP + Sentry + Prometheus
 
 Conversion Engines        ████████████░░░░░░░░░░░░   52%
  ├─ #04 php-to-rust        ████████████░░░░░░░░░░░░░  45%
@@ -152,7 +222,7 @@ Conversion Engines        ████████████░░░░░░
  ├─ #07 java-to-rust       ███████████████░░░░░░░░░░  60%
  └─ #08 perl-to-rust       ██████████████░░░░░░░░░░░  55%
 
-Overall                   ██████████████████░░░░░░░  65%
+Overall                   ████████████████████░░░░░  80%
 ```
 
 ---

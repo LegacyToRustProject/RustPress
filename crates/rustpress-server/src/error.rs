@@ -11,7 +11,13 @@ impl IntoResponse for AppError {
             RustPressError::NotFound(_) => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
-        (status, self.0.to_string()).into_response()
+        // H4: log full error internally but never expose DB paths/schema to clients.
+        tracing::error!(error = %self.0, status = %status, "request error");
+        let body = match status {
+            StatusCode::NOT_FOUND => "Not found.",
+            _ => "An internal server error occurred.",
+        };
+        (status, body).into_response()
     }
 }
 

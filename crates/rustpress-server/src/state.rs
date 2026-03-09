@@ -17,7 +17,7 @@ use rustpress_fields::{FieldGroupRegistry, FieldStorage};
 use rustpress_forms::SubmissionStore;
 use rustpress_plugins::{PluginRegistry, WasmHost};
 use rustpress_security::{AuditLog, LoginProtection, RateLimiter, WafEngine};
-use rustpress_themes::ThemeEngine;
+use rustpress_themes::{AssetManager, ThemeEngine};
 
 use crate::i18n::Translations;
 
@@ -35,6 +35,10 @@ pub struct AppState {
     pub plugin_registry: PluginRegistry,
     pub site_url: String,
     pub theme_engine: Arc<RwLock<ThemeEngine>>,
+    /// WordPress-compatible style/script asset queue.
+    /// Populated at startup via `wp_enqueue_scripts` hook; rendered into
+    /// `{{ wp_head }}` and `{{ wp_footer }}` template variables each request.
+    pub asset_manager: Arc<AssetManager>,
     pub admin_tera: Arc<tera::Tera>,
     pub translations: Translations,
     pub nonces: Arc<NonceManager>,

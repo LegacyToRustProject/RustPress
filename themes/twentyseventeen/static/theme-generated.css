@@ -1,0 +1,16 @@
+body {
+	--wp--preset--color--dark-gray: #1a1a1a;
+	--wp--preset--color--medium-gray: #686868;
+	--wp--preset--color--light-gray: #767676;
+	--wp--preset--color--white: #fff;
+	--wp--preset--color--yellow: #d4002d;
+	--wp--preset--font-size--small: 0.888rem;
+	--wp--preset--font-size--medium: 1rem;
+	--wp--preset--font-size--large: 1.25rem;
+	--wp--preset--font-size--larger: 1.5rem;
+	--wp--preset--font-size--huge: 2rem;
+	--wp--preset--font-family--libre-franklin: "Libre Franklin", "Helvetica Neue", helvetica, arial, sans-serif;
+	--wp--preset--font-family--georgia: Georgia, "Times New Roman", Times, serif;
+	--wp--style--global--content-size: 740px;
+	--wp--style--global--wide-size: 1168px;
+}

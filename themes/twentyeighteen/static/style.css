@@ -1,0 +1,1405 @@
+/*
+Theme Name: Twenty Eighteen
+Theme URI: https://wordpress.org/themes/twentyeighteen/
+Author: the WordPress team
+Author URI: https://wordpress.org/
+Description: Twenty Eighteen is designed to showcase editorial content—whether on a corporate blog, a news publication, or a personal portfolio. With a clean, Scandinavian-inspired aesthetic, it features a clean header with horizontal navigation, large full-width cover image, Abril Fatface display typography, and a two-column layout with sidebar. Its primary accent color—a bold pink/magenta #c2185b—provides visual energy throughout.
+Version: 2.5
+Tested up to: 6.7
+Requires at least: 4.9
+Requires PHP: 5.2.4
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: twentyeighteen
+Tags: one-column, two-columns, right-sidebar, custom-background, custom-colors, custom-header, custom-menu, custom-logo, editor-style, featured-images, footer-widgets, post-formats, rtl-language-support, sticky-post, theme-options, threaded-comments, translation-ready
+
+This theme, like WordPress, is licensed under the GPL.
+Use it to make something cool, have fun, and share what you've learned with others.
+*/
+
+/*--------------------------------------------------------------
+>>> TABLE OF CONTENTS:
+----------------------------------------------------------------
+1.0  Normalize
+2.0  Accessibility
+3.0  Typography
+4.0  Elements
+5.0  Forms
+6.0  Navigation
+     6.1  Links
+     6.2  Menus
+7.0  Layout
+     7.1  Site Header
+     7.2  Cover Image
+     7.3  Content Area
+     7.4  Sidebar
+     7.5  Front Page
+     7.6  Site Footer
+8.0  Posts and Pages
+9.0  Comments
+10.0 Widgets
+11.0 Media
+12.0 Media Queries
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+1.0 Normalize
+--------------------------------------------------------------*/
+
+html {
+	box-sizing: border-box;
+	font-family: sans-serif;
+	line-height: 1.15;
+	-ms-text-size-adjust: 100%;
+	-webkit-text-size-adjust: 100%;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: inherit;
+}
+
+body {
+	margin: 0;
+	background-color: #fff;
+	color: #444;
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	font-size: 17px;
+	line-height: 1.7;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+article,
+aside,
+footer,
+header,
+nav,
+section {
+	display: block;
+}
+
+h1 {
+	font-size: 2em;
+	margin: 0.67em 0;
+}
+
+figure {
+	margin: 1em 0;
+}
+
+hr {
+	box-sizing: content-box;
+	height: 0;
+	overflow: visible;
+	border: 0;
+	border-top: 1px solid #eee;
+	margin: 2em 0;
+}
+
+img {
+	border-style: none;
+	max-width: 100%;
+	height: auto;
+	display: block;
+}
+
+a {
+	color: #c2185b;
+	text-decoration: none;
+}
+
+a:hover,
+a:focus {
+	text-decoration: underline;
+}
+
+/*--------------------------------------------------------------
+2.0 Accessibility
+--------------------------------------------------------------*/
+
+.screen-reader-text {
+	clip: rect(1px, 1px, 1px, 1px);
+	position: absolute !important;
+	height: 1px;
+	width: 1px;
+	overflow: hidden;
+	word-wrap: normal !important;
+}
+
+.screen-reader-text:focus {
+	background-color: #f1f1f1;
+	border-radius: 3px;
+	box-shadow: 0 0 2px 2px rgba(0,0,0,.6);
+	clip: auto !important;
+	color: #21759b;
+	display: block;
+	font-size: 14px;
+	font-size: 0.875rem;
+	font-weight: bold;
+	height: auto;
+	left: 5px;
+	line-height: normal;
+	padding: 15px 23px 14px;
+	text-decoration: none;
+	top: 5px;
+	width: auto;
+	z-index: 100000;
+}
+
+/*--------------------------------------------------------------
+3.0 Typography
+--------------------------------------------------------------*/
+
+body,
+button,
+input,
+select,
+textarea {
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	font-size: 17px;
+	font-size: 1.0625rem;
+	line-height: 1.7;
+	color: #444;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+	font-family: "Playfair Display", Georgia, "Times New Roman", Times, serif;
+	font-weight: 700;
+	color: #222;
+	line-height: 1.3;
+	margin: 0 0 0.75em;
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.875rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+h5 { font-size: 1.0625rem; }
+h6 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+p {
+	margin: 0 0 1.5em;
+}
+
+blockquote {
+	margin: 1.5em 0;
+	padding: 1em 1.5em;
+	border-left: 4px solid #c2185b;
+	font-family: "Playfair Display", Georgia, serif;
+	font-style: italic;
+	font-size: 1.125rem;
+	color: #444;
+	background: #fdf5f8;
+}
+
+blockquote cite {
+	display: block;
+	margin-top: 0.5em;
+	font-size: 0.875rem;
+	font-style: normal;
+	color: #767676;
+}
+
+code,
+kbd,
+pre,
+samp {
+	font-family: "Courier 10 Pitch", Courier, monospace;
+	font-size: 0.9375rem;
+}
+
+pre {
+	overflow: auto;
+	background: #f5f5f5;
+	padding: 1.5em;
+	margin: 1.5em 0;
+}
+
+abbr,
+acronym {
+	border-bottom: 1px dotted #767676;
+	cursor: help;
+}
+
+mark,
+ins {
+	background: #fff9c4;
+	text-decoration: none;
+}
+
+big {
+	font-size: 125%;
+}
+
+/*--------------------------------------------------------------
+4.0 Elements
+--------------------------------------------------------------*/
+
+ul,
+ol {
+	margin: 0 0 1.5em 1.5em;
+	padding: 0;
+}
+
+ul { list-style: disc; }
+ol { list-style: decimal; }
+
+li > ul,
+li > ol {
+	margin-bottom: 0;
+	margin-left: 1.5em;
+}
+
+dt { font-weight: bold; }
+dd { margin: 0 1.5em 1.5em; }
+
+table {
+	border-collapse: collapse;
+	margin: 0 0 1.5em;
+	width: 100%;
+}
+
+thead th {
+	border-bottom: 2px solid #222;
+	padding: 0.5em 1em;
+	text-align: left;
+	font-family: "Playfair Display", Georgia, serif;
+}
+
+th,
+td {
+	border-bottom: 1px solid #eee;
+	padding: 0.5em 1em;
+}
+
+caption {
+	font-style: italic;
+	color: #767676;
+	margin-bottom: 0.5em;
+}
+
+/*--------------------------------------------------------------
+5.0 Forms
+--------------------------------------------------------------*/
+
+button,
+input[type="button"],
+input[type="reset"],
+input[type="submit"] {
+	background: #c2185b;
+	border: none;
+	border-radius: 2px;
+	color: #fff;
+	cursor: pointer;
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	font-size: 0.875rem;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	line-height: 1;
+	padding: 0.75em 1.5em;
+	text-transform: uppercase;
+	transition: background 0.15s ease;
+}
+
+button:hover,
+input[type="button"]:hover,
+input[type="reset"]:hover,
+input[type="submit"]:hover {
+	background: #ad1457;
+}
+
+button:focus,
+input[type="button"]:focus,
+input[type="reset"]:focus,
+input[type="submit"]:focus {
+	outline: 2px solid #c2185b;
+	outline-offset: 2px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+input[type="search"],
+input[type="number"],
+input[type="tel"],
+input[type="range"],
+input[type="date"],
+textarea {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 2px;
+	color: #444;
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	font-size: 1rem;
+	padding: 0.5em 0.75em;
+	width: 100%;
+	transition: border-color 0.15s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+textarea:focus {
+	border-color: #c2185b;
+	outline: none;
+	box-shadow: 0 0 0 2px rgba(194, 24, 91, 0.15);
+}
+
+label {
+	display: block;
+	font-size: 0.875rem;
+	font-weight: 600;
+	letter-spacing: 0.03em;
+	margin-bottom: 0.25em;
+	color: #222;
+}
+
+textarea {
+	width: 100%;
+	resize: vertical;
+}
+
+/*--------------------------------------------------------------
+6.0 Navigation
+--------------------------------------------------------------*/
+
+/* 6.1 Links */
+
+a {
+	color: #c2185b;
+}
+
+a:visited {
+	color: #880e4f;
+}
+
+a:hover,
+a:active {
+	color: #ad1457;
+	outline: 0;
+}
+
+a:focus {
+	outline: 2px solid #c2185b;
+	outline-offset: 2px;
+}
+
+/* 6.2 Menus */
+
+.main-navigation {
+	display: block;
+	clear: both;
+}
+
+.main-navigation ul {
+	display: flex;
+	flex-wrap: wrap;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.main-navigation ul ul {
+	display: none;
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 99999;
+	background: #fff;
+	border: 1px solid #eee;
+	border-top: 2px solid #c2185b;
+	box-shadow: 0 4px 12px rgba(0,0,0,.1);
+	min-width: 200px;
+	flex-direction: column;
+}
+
+.main-navigation ul li:hover > ul,
+.main-navigation ul li.focus > ul {
+	display: flex;
+}
+
+.main-navigation ul ul li {
+	border-bottom: 1px solid #eee;
+}
+
+.main-navigation ul ul a {
+	padding: 0.5em 1.25em;
+	display: block;
+}
+
+.main-navigation li {
+	position: relative;
+}
+
+.main-navigation a {
+	display: block;
+	font-size: 0.875rem;
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	font-weight: 600;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: #222;
+	padding: 1.25em 1em;
+	text-decoration: none;
+	transition: color 0.15s ease;
+}
+
+.main-navigation a:hover,
+.main-navigation a:focus {
+	color: #c2185b;
+	text-decoration: none;
+}
+
+.main-navigation .current-menu-item > a,
+.main-navigation .current-menu-ancestor > a {
+	color: #c2185b;
+}
+
+/* Post navigation */
+
+.navigation {
+	margin: 2em 0;
+}
+
+.nav-links {
+	display: flex;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 1em;
+}
+
+.nav-previous,
+.nav-next {
+	flex: 0 1 48%;
+}
+
+.nav-next {
+	text-align: right;
+}
+
+.nav-links a {
+	font-size: 0.875rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: #c2185b;
+	display: flex;
+	align-items: center;
+	gap: 0.25em;
+}
+
+.nav-links a:hover {
+	text-decoration: none;
+	color: #880e4f;
+}
+
+.nav-links .meta-nav {
+	font-size: 1.5em;
+	line-height: 1;
+}
+
+/* Breadcrumb */
+
+.site-breadcrumb {
+	font-size: 0.875rem;
+	color: #767676;
+	margin-bottom: 1.5em;
+}
+
+.site-breadcrumb a {
+	color: #767676;
+}
+
+.site-breadcrumb a:hover {
+	color: #c2185b;
+}
+
+/*--------------------------------------------------------------
+7.0 Layout
+--------------------------------------------------------------*/
+
+/* 7.1 Site Header */
+
+#page {
+	width: 100%;
+}
+
+.site {
+	background: #fff;
+}
+
+.site-header {
+	position: sticky;
+	top: 0;
+	z-index: 1000;
+	background: #fff;
+	border-bottom: 1px solid #eee;
+	box-shadow: 0 2px 8px rgba(0,0,0,.06);
+}
+
+.header-main {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	max-width: 1168px;
+	margin: 0 auto;
+	padding: 0 2em;
+}
+
+.site-branding {
+	padding: 0.75em 0;
+	flex-shrink: 0;
+}
+
+.site-title {
+	font-family: "Abril Fatface", Georgia, serif;
+	font-size: 1.625rem;
+	font-weight: 400;
+	line-height: 1.2;
+	margin: 0;
+	color: #222;
+}
+
+.site-title a {
+	color: #222;
+	text-decoration: none;
+}
+
+.site-title a:hover {
+	color: #c2185b;
+}
+
+.site-description {
+	font-size: 0.8125rem;
+	font-style: italic;
+	color: #767676;
+	margin: 0;
+	font-family: "Playfair Display", Georgia, serif;
+}
+
+.site-header .main-navigation {
+	display: flex;
+	align-items: center;
+}
+
+.site-header .main-navigation ul {
+	flex-wrap: nowrap;
+}
+
+/* 7.2 Cover Image */
+
+.site-cover-image {
+	position: relative;
+	background-color: #37474f;
+	background-image: url('/wp-content/themes/twentyeighteen/assets/images/header.jpg');
+	background-size: cover;
+	background-position: center center;
+	background-repeat: no-repeat;
+	min-height: 480px;
+	display: flex;
+	align-items: flex-end;
+	overflow: hidden;
+}
+
+.site-cover-image::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		to bottom,
+		rgba(0,0,0,0) 40%,
+		rgba(0,0,0,0.55) 100%
+	);
+}
+
+.cover-image-inner {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 1168px;
+	margin: 0 auto;
+	padding: 3em 2em;
+	color: #fff;
+}
+
+.cover-image-inner .site-title-large {
+	font-family: "Abril Fatface", Georgia, serif;
+	font-size: clamp(2.5rem, 6vw, 5rem);
+	font-weight: 400;
+	line-height: 1.1;
+	color: #fff;
+	margin: 0 0 0.25em;
+	text-shadow: 0 2px 12px rgba(0,0,0,0.35);
+}
+
+.cover-image-inner .site-title-large a {
+	color: #fff;
+	text-decoration: none;
+}
+
+.cover-image-inner .site-description {
+	font-family: "Playfair Display", Georgia, serif;
+	font-size: 1.125rem;
+	font-style: italic;
+	color: rgba(255,255,255,0.85);
+	margin: 0;
+	text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* 7.3 Content Area */
+
+.site-content {
+	max-width: 1168px;
+	margin: 0 auto;
+	padding: 3em 2em;
+}
+
+.content-area {
+	width: 72%;
+	float: left;
+	padding-right: 3em;
+}
+
+.site-main {
+	width: 100%;
+}
+
+/* Clearfix for two-column layout */
+.site-content::after {
+	content: '';
+	display: table;
+	clear: both;
+}
+
+/* 7.4 Sidebar */
+
+#secondary {
+	width: 28%;
+	float: right;
+}
+
+/* 7.5 Front Page */
+
+.front-page-sections {
+	clear: both;
+	border-top: 1px solid #eee;
+	margin-top: 2em;
+	padding-top: 2em;
+}
+
+.panel-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: 2em;
+	max-width: 1168px;
+	margin: 0 auto;
+	padding: 2em;
+}
+
+.panel-grid-cell {
+	background: #fafafa;
+	border: 1px solid #eee;
+	padding: 2em;
+	border-radius: 2px;
+}
+
+.panel-grid-cell h2 {
+	font-family: "Abril Fatface", Georgia, serif;
+	font-size: 1.5rem;
+	font-weight: 400;
+	margin-top: 0;
+}
+
+.panel-grid-cell a {
+	color: #c2185b;
+}
+
+/* 7.6 Site Footer */
+
+.site-footer {
+	background: #222;
+	color: rgba(255,255,255,0.7);
+	padding: 2em;
+	margin-top: 4em;
+}
+
+.site-footer .wrap {
+	max-width: 1168px;
+	margin: 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 1em;
+}
+
+.site-footer .site-info {
+	font-size: 0.875rem;
+}
+
+.site-footer a {
+	color: rgba(255,255,255,0.7);
+	text-decoration: none;
+}
+
+.site-footer a:hover {
+	color: #c2185b;
+}
+
+.footer-widgets {
+	background: #37474f;
+	color: rgba(255,255,255,0.85);
+	padding: 3em 2em;
+}
+
+.footer-widgets .wrap {
+	max-width: 1168px;
+	margin: 0 auto;
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 2em;
+}
+
+.footer-widgets .widget-title {
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: rgba(255,255,255,0.5);
+	border-bottom: 1px solid rgba(255,255,255,0.15);
+	padding-bottom: 0.5em;
+	margin-bottom: 1em;
+}
+
+.footer-widgets a {
+	color: rgba(255,255,255,0.85);
+}
+
+.footer-widgets a:hover {
+	color: #c2185b;
+}
+
+.social-navigation ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5em;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.social-navigation a {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2em;
+	height: 2em;
+	background: rgba(255,255,255,0.1);
+	border-radius: 50%;
+	color: #fff;
+	font-size: 0.875rem;
+	text-decoration: none;
+	transition: background 0.15s;
+}
+
+.social-navigation a:hover {
+	background: #c2185b;
+}
+
+/*--------------------------------------------------------------
+8.0 Posts and Pages
+--------------------------------------------------------------*/
+
+.hentry {
+	margin: 0 0 3em;
+	padding-bottom: 3em;
+	border-bottom: 1px solid #eee;
+}
+
+.hentry:last-of-type {
+	border-bottom: 0;
+}
+
+.entry-header {
+	margin-bottom: 1.5em;
+}
+
+.entry-title {
+	font-family: "Playfair Display", Georgia, "Times New Roman", Times, serif;
+	font-size: 2rem;
+	font-weight: 700;
+	line-height: 1.2;
+	margin: 0 0 0.5em;
+}
+
+.entry-title a {
+	color: #222;
+	text-decoration: none;
+}
+
+.entry-title a:hover {
+	color: #c2185b;
+	text-decoration: none;
+}
+
+.entry-meta {
+	font-size: 0.8125rem;
+	color: #767676;
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	margin-bottom: 0.75em;
+}
+
+.entry-meta a {
+	color: #767676;
+}
+
+.entry-meta a:hover {
+	color: #c2185b;
+}
+
+.entry-meta .sep {
+	margin: 0 0.3em;
+}
+
+.byline {
+	margin-left: 0.5em;
+}
+
+.byline::before {
+	content: '\2014';
+	margin-right: 0.5em;
+}
+
+.cat-links,
+.tags-links {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.cat-links a,
+.tags-links a {
+	color: #c2185b;
+}
+
+.post-thumbnail {
+	margin-bottom: 1.5em;
+	overflow: hidden;
+	border-radius: 2px;
+}
+
+.post-thumbnail img {
+	width: 100%;
+	transition: transform 0.3s ease;
+}
+
+.post-thumbnail a:hover img {
+	transform: scale(1.02);
+}
+
+.entry-content {
+	font-size: 1.0625rem;
+	line-height: 1.75;
+	color: #444;
+}
+
+.entry-content p:first-child {
+	font-size: 1.125rem;
+	color: #222;
+}
+
+.entry-footer {
+	margin-top: 1.5em;
+	padding-top: 1em;
+	border-top: 1px solid #eee;
+	font-size: 0.8125rem;
+	color: #767676;
+}
+
+.entry-footer a {
+	color: #767676;
+}
+
+.entry-footer a:hover {
+	color: #c2185b;
+}
+
+/* Sticky posts */
+
+.sticky .entry-header::before {
+	content: 'Featured';
+	display: inline-block;
+	background: #c2185b;
+	color: #fff;
+	font-size: 0.6875rem;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	padding: 0.2em 0.6em;
+	border-radius: 2px;
+	margin-bottom: 0.75em;
+}
+
+/* More link */
+
+.more-link {
+	display: inline-block;
+	font-size: 0.875rem;
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	color: #c2185b;
+	text-decoration: none;
+	margin-top: 0.75em;
+}
+
+.more-link:hover {
+	text-decoration: underline;
+}
+
+/* Page header (archives, search) */
+
+.page-header {
+	border-bottom: 2px solid #222;
+	margin-bottom: 2em;
+	padding-bottom: 0.75em;
+}
+
+.page-title {
+	font-family: "Abril Fatface", Georgia, serif;
+	font-size: 2rem;
+	font-weight: 400;
+	margin: 0 0 0.25em;
+	color: #222;
+}
+
+.page-title span {
+	color: #c2185b;
+}
+
+.taxonomy-description {
+	font-size: 1rem;
+	color: #767676;
+	font-style: italic;
+	margin-top: 0.5em;
+}
+
+.author-description {
+	font-size: 1rem;
+	color: #767676;
+	margin-top: 0.5em;
+}
+
+/* Single post - bigger title */
+
+.single .entry-title {
+	font-size: 2.5rem;
+}
+
+/* Page template */
+
+.page .entry-title {
+	font-family: "Abril Fatface", Georgia, serif;
+	font-weight: 400;
+	font-size: 2.5rem;
+}
+
+/* Password form */
+
+.post-password-form {
+	background: #fdf5f8;
+	border: 1px solid #f5c0d0;
+	border-left: 4px solid #c2185b;
+	padding: 2em;
+	border-radius: 2px;
+}
+
+.post-password-form p {
+	margin-bottom: 1em;
+}
+
+.post-password-form label {
+	margin-bottom: 0.5em;
+}
+
+.post-password-form input[type="password"] {
+	max-width: 300px;
+	margin-bottom: 1em;
+}
+
+/* Error 404 */
+
+.error-404 .page-content {
+	margin-top: 1.5em;
+}
+
+.error-404 .search-form {
+	display: flex;
+	gap: 0.5em;
+	max-width: 480px;
+	margin-top: 1.5em;
+}
+
+.error-404 .search-field {
+	flex: 1;
+}
+
+/* Attachment */
+
+.attachment .entry-content figure {
+	margin: 0 0 1.5em;
+}
+
+.attachment .entry-content img {
+	border-radius: 2px;
+	box-shadow: 0 2px 16px rgba(0,0,0,.1);
+}
+
+.attachment-meta {
+	font-size: 0.875rem;
+	color: #767676;
+	margin-top: 1em;
+}
+
+/*--------------------------------------------------------------
+9.0 Comments
+--------------------------------------------------------------*/
+
+.comments-area {
+	margin-top: 3em;
+	padding-top: 2em;
+	border-top: 2px solid #222;
+}
+
+.comments-title {
+	font-family: "Abril Fatface", Georgia, serif;
+	font-size: 1.75rem;
+	font-weight: 400;
+	margin: 0 0 1.5em;
+	color: #222;
+}
+
+.comment-list {
+	list-style: none;
+	margin: 0 0 2em;
+	padding: 0;
+}
+
+.comment-list li {
+	margin-bottom: 1.5em;
+}
+
+.comment-body {
+	background: #fafafa;
+	border: 1px solid #eee;
+	border-radius: 2px;
+	padding: 1.25em 1.5em;
+}
+
+.comment-meta {
+	display: flex;
+	align-items: baseline;
+	gap: 0.75em;
+	margin-bottom: 0.75em;
+}
+
+.comment-author {
+	font-weight: 700;
+	color: #222;
+}
+
+.comment-metadata {
+	font-size: 0.8125rem;
+	color: #767676;
+}
+
+.comment-metadata a {
+	color: #767676;
+}
+
+.comment-content {
+	font-size: 0.9375rem;
+	line-height: 1.6;
+}
+
+.comment-content p:last-child {
+	margin-bottom: 0;
+}
+
+/* Comment form */
+
+.comment-respond {
+	margin-top: 2em;
+	background: #fafafa;
+	border: 1px solid #eee;
+	padding: 2em;
+	border-radius: 2px;
+}
+
+.comment-reply-title {
+	font-family: "Abril Fatface", Georgia, serif;
+	font-size: 1.5rem;
+	font-weight: 400;
+	margin: 0 0 1.25em;
+}
+
+.comment-form p {
+	margin-bottom: 1.25em;
+}
+
+.comment-form .required {
+	color: #c2185b;
+}
+
+.comment-form input[type="submit"] {
+	margin-top: 0.25em;
+}
+
+/*--------------------------------------------------------------
+10.0 Widgets
+--------------------------------------------------------------*/
+
+.widget-area {
+	font-size: 0.9375rem;
+}
+
+.widget {
+	margin-bottom: 2.5em;
+}
+
+.widget:last-child {
+	margin-bottom: 0;
+}
+
+.widget-title {
+	font-family: "Fira Sans", "Helvetica Neue", helvetica, arial, sans-serif;
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: #222;
+	border-bottom: 2px solid #c2185b;
+	padding-bottom: 0.5em;
+	margin-bottom: 1em;
+}
+
+.widget ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.widget ul li {
+	padding: 0.4em 0;
+	border-bottom: 1px solid #eee;
+	font-size: 0.9375rem;
+}
+
+.widget ul li:last-child {
+	border-bottom: 0;
+}
+
+.widget ul li a {
+	color: #444;
+}
+
+.widget ul li a:hover {
+	color: #c2185b;
+}
+
+.widget_search .search-form {
+	display: flex;
+	gap: 0.5em;
+}
+
+.widget_search .search-field {
+	flex: 1;
+}
+
+/*--------------------------------------------------------------
+11.0 Media
+--------------------------------------------------------------*/
+
+.alignleft {
+	float: left;
+	margin: 0 1.5em 1em 0;
+}
+
+.alignright {
+	float: right;
+	margin: 0 0 1em 1.5em;
+}
+
+.aligncenter {
+	clear: both;
+	display: block;
+	margin: 0 auto 1em;
+}
+
+.alignnone {
+	margin-bottom: 1em;
+}
+
+figure.wp-caption {
+	max-width: 100%;
+}
+
+.wp-caption-text {
+	font-size: 0.8125rem;
+	font-style: italic;
+	color: #767676;
+	margin-top: 0.5em;
+	text-align: center;
+}
+
+.gallery {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 0.5em;
+	margin: 1.5em 0;
+}
+
+.gallery-item {
+	overflow: hidden;
+	border-radius: 2px;
+}
+
+.gallery-item img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform 0.3s ease;
+}
+
+.gallery-item:hover img {
+	transform: scale(1.04);
+}
+
+/*--------------------------------------------------------------
+12.0 Media Queries
+--------------------------------------------------------------*/
+
+@media screen and (max-width: 1168px) {
+	.header-main {
+		padding: 0 1.5em;
+	}
+	.site-content {
+		padding: 2.5em 1.5em;
+	}
+}
+
+@media screen and (max-width: 900px) {
+	.content-area {
+		width: 100%;
+		float: none;
+		padding-right: 0;
+	}
+
+	#secondary {
+		width: 100%;
+		float: none;
+		margin-top: 3em;
+		border-top: 2px solid #eee;
+		padding-top: 2em;
+	}
+
+	.site-cover-image {
+		min-height: 320px;
+	}
+}
+
+@media screen and (max-width: 700px) {
+	.header-main {
+		flex-direction: column;
+		align-items: flex-start;
+		padding: 0 1em;
+	}
+
+	.site-branding {
+		padding: 0.75em 0 0.25em;
+	}
+
+	.site-header .main-navigation ul {
+		flex-wrap: wrap;
+	}
+
+	.site-header .main-navigation a {
+		padding: 0.75em 0.75em 0.75em 0;
+		font-size: 0.8125rem;
+	}
+
+	.site-content {
+		padding: 2em 1em;
+	}
+
+	.entry-title {
+		font-size: 1.5rem;
+	}
+
+	.single .entry-title,
+	.page .entry-title {
+		font-size: 2rem;
+	}
+
+	.cover-image-inner {
+		padding: 2em 1em;
+	}
+
+	.site-cover-image {
+		min-height: 240px;
+	}
+
+	.site-footer .wrap {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.nav-links {
+		flex-direction: column;
+	}
+
+	.nav-next {
+		text-align: left;
+	}
+}
+
+@media print {
+	.site-header,
+	.site-footer,
+	#secondary,
+	.navigation,
+	.comments-area {
+		display: none;
+	}
+
+	body {
+		font-size: 12pt;
+		color: #000;
+	}
+
+	a {
+		text-decoration: underline;
+		color: #000;
+	}
+
+	.site-content {
+		max-width: 100%;
+		padding: 0;
+	}
+
+	.content-area {
+		width: 100%;
+		float: none;
+		padding: 0;
+	}
+}
