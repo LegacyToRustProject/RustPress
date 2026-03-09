@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 
 mod admin;
 mod config;
@@ -14,6 +13,7 @@ pub mod middleware;
 pub mod nav_menu;
 mod routes;
 mod state;
+mod telemetry;
 mod templates;
 pub mod widgets;
 
@@ -34,14 +34,18 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("rustpress=debug,tower_http=debug")),
-        )
-        .init();
-
+    // Load .env before telemetry so OTLP_ENDPOINT / SENTRY_DSN / RUST_LOG are visible.
     dotenvy::dotenv().ok();
+
+    // Initialise OpenTelemetry, tracing-subscriber, and Sentry.
+    // The guard must be kept alive until after `axum::serve` returns.
+    let _telemetry = telemetry::init_telemetry(telemetry::TelemetryConfig::default());
+
+    // Install the Prometheus recorder and publish the handle so GET /metrics works.
+    if let Some(handle) = telemetry::prometheus_handle() {
+        routes::metrics::PROMETHEUS_HANDLE.set(handle).ok();
+        info!("Prometheus metrics endpoint active at /metrics");
+    }
 
     // Initialize health check start time for uptime tracking
     routes::health::init_start_time();
@@ -617,13 +621,15 @@ async fn main() -> Result<()> {
     }
 
     // Apply global middleware (order matters: outermost layer runs first)
-    // 1. Block sensitive files (.env, .git, etc.) — first line of defense
-    // 2. WAF — block malicious patterns
-    // 3. Rate limiter — prevent abuse
-    // 4. CORS — cross-origin policy
-    // 5. Security headers — defense-in-depth headers
-    // 6. ETag + compression — performance
+    // 1. Telemetry — trace spans + Prometheus metrics (outermost, covers all layers)
+    // 2. Block sensitive files (.env, .git, etc.) — first line of defense
+    // 3. WAF — block malicious patterns
+    // 4. Rate limiter — prevent abuse
+    // 5. CORS — cross-origin policy
+    // 6. Security headers — defense-in-depth headers
+    // 7. ETag + compression — performance
     app = app
+        .layer(axum::middleware::from_fn(middleware::telemetry_trace))
         .layer(axum::middleware::from_fn(middleware::block_sensitive_files))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -666,6 +672,9 @@ async fn main() -> Result<()> {
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    // Flush and shut down OTLP exporters after the server has drained.
+    telemetry::shutdown_telemetry();
 
     Ok(())
 }

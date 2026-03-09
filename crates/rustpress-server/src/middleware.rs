@@ -857,3 +857,43 @@ mod tests {
         assert_eq!(extract_role_from_serialized("garbage"), None);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Telemetry middleware — records HTTP request metrics and tracing spans
+// ---------------------------------------------------------------------------
+
+/// Axum middleware that wraps every request in a tracing span and records
+/// Prometheus metrics via `telemetry::record_http_request`.
+pub async fn telemetry_trace(request: Request, next: Next) -> Response {
+    use std::time::Instant;
+
+    let method = request.method().to_string();
+    // Normalise the path: strip query-string so cardinality stays bounded.
+    let path = request
+        .uri()
+        .path()
+        .to_string();
+
+    let span = tracing::info_span!(
+        "http_request",
+        http.method = %method,
+        http.path   = %path,
+        http.status = tracing::field::Empty,
+    );
+
+    let start = Instant::now();
+
+    let response = {
+        let _enter = span.enter();
+        next.run(request).await
+    };
+
+    let status = response.status().as_u16();
+    let duration_ms = start.elapsed().as_millis() as u64;
+
+    span.record("http.status", status);
+
+    crate::telemetry::record_http_request(&method, &path, status, duration_ms);
+
+    response
+}

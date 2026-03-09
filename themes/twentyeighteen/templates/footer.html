@@ -1,0 +1,23 @@
+{% if footer_widgets %}
+<div class="footer-widgets">
+<div class="wrap">
+{{ footer_widgets | safe }}
+</div>
+</div>
+{% endif %}
+<footer id="colophon" class="site-footer" role="contentinfo">
+<div class="wrap">
+{% if footer_menu and footer_menu | length > 0 %}
+<nav class="social-navigation" role="navigation" aria-label="Footer Social Links Menu">
+<ul class="social-links-menu">
+{% for item in footer_menu %}<li><a href="{{ item.url }}" rel="noopener noreferrer">{{ item.label }}</a></li>{% endfor %}
+</ul>
+</nav>
+{% endif %}
+<div class="site-info">
+<a href="{{ site_url | default(value='/') }}">{{ site_name | default(value="RustPress") }}</a>
+<span class="sep"> &mdash; </span>
+<a href="https://wordpress.org/" class="imprint">Proudly powered by WordPress</a>
+</div>
+</div>
+</footer>

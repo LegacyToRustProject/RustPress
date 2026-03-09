@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ the_title }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}page page-id-{{ post.id | default(value=2) }} page-template-default{% endblock %}
+{% block content %}
+<article id="post-{{ post.id | default(value=2) }}" class="post-{{ post.id | default(value=2) }} page type-page status-publish hentry entry">
+<header class="entry-header">
+<h1 class="entry-title">{{ the_title }}</h1>
+</header>
+{% if post.featured_image_url %}<div class="post-thumbnail"><img src="{{ post.featured_image_url }}" alt="{{ the_title }}" loading="eager"></div>{% endif %}
+<div class="entry-content">
+{{ the_content | safe }}
+</div>
+</article>
+{% if comments_enabled %}<div id="comments" class="comments-area">{% include "comment-thread.html" %}</div>{% endif %}
+{% endblock %}

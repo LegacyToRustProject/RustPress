@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Tag: {{ archive_title | default(value="Tag") }} &#8211; {{ site_name | default(value="RustPress") }}{% endblock %}
+{% block body_class %}archive tag{% endblock %}
+{% block content %}
+<header class="page-header">
+<h1 class="page-title">Tag: <span>{{ archive_title | default(value="Tag") }}</span></h1>
+{% if archive_description %}<div class="taxonomy-description">{{ archive_description }}</div>{% endif %}
+</header>
+{% for post in posts %}
+<article id="post-{{ post.id | default(value=0) }}" class="post-{{ post.id | default(value=0) }} post type-post status-publish format-standard{% if post.featured_image_url %} has-post-thumbnail{% endif %} hentry">
+<header class="entry-header">
+{% if post.featured_image_url %}<div class="post-thumbnail"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}"><img src="{{ post.featured_image_url }}" alt="{{ post.title }}" loading="lazy"></a></div>{% endif %}
+<div class="entry-meta">
+<span class="posted-on"><time class="entry-date published" datetime="{{ post.date_iso | default(value=post.date) }}">{{ post.date_formatted | default(value=post.date) }}</time></span>
+</div>
+<h2 class="entry-title"><a href="{{ post.permalink | default(value='/' ~ post.slug) }}" rel="bookmark">{{ post.title }}</a></h2>
+</header>
+<div class="entry-content">{{ post.excerpt | default(value="") | safe }}</div>
+</article>
+{% else %}
+<p>No posts found with this tag.</p>
+{% endfor %}
+{% if pagination %}
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+{% if pagination.prev_url %}<div class="nav-previous"><a href="{{ pagination.prev_url }}"><span class="meta-nav" aria-hidden="true">&larr;</span> Older posts</a></div>{% endif %}
+{% if pagination.next_url %}<div class="nav-next"><a href="{{ pagination.next_url }}">Newer posts <span class="meta-nav" aria-hidden="true">&rarr;</span></a></div>{% endif %}
+</div>
+</nav>
+{% endif %}
+{% endblock %}

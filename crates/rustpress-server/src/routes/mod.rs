@@ -7,6 +7,7 @@ pub mod commerce;
 pub mod forms;
 mod frontend;
 pub mod health;
+pub mod metrics;
 pub mod plugin_admin;
 mod posts;
 pub mod seo;
@@ -28,9 +29,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .merge(xmlrpc::routes())
         .with_state(state.clone());
 
-    // Core router with API, health, auth
+    // Core router with API, health, auth, metrics
     let api_router = Router::new()
         .merge(health::routes())
+        .merge(metrics::routes())
         .merge(posts::routes())
         .merge(users::routes())
         .merge(auth::routes())
