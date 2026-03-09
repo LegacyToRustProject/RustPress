@@ -86,14 +86,30 @@ pub fn process_image(
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("image");
-    let file_stem = file_path
+
+    // H2: sanitize stem and extension to alphanumeric + safe chars only.
+    // `Path::file_stem()` already strips directory components, but encoded
+    // separators (%2F, null bytes) could survive if the caller is careless.
+    let raw_stem = file_path
         .file_stem()
         .and_then(|n| n.to_str())
         .unwrap_or("image");
-    let extension = file_path
+    let file_stem: String = raw_stem
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect();
+    let file_stem = if file_stem.is_empty() { "image".to_string() } else { file_stem };
+
+    let raw_ext = file_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("jpg");
+    // Extension: only ASCII alphanumeric (e.g. "jpg", "png", "webp")
+    let extension: String = raw_ext
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect();
+    let extension = if extension.is_empty() { "jpg".to_string() } else { extension };
 
     let mut generated_sizes = std::collections::HashMap::new();
 
@@ -125,7 +141,12 @@ pub fn process_image(
         };
 
         let size_filename = format!("{file_stem}-{new_width}x{new_height}.{extension}");
+        // H2: verify the generated path stays within upload_dir (defence-in-depth)
         let size_path = upload_dir.join(&size_filename);
+        if !size_path.starts_with(upload_dir) {
+            error!(?size_path, "thumbnail path escapes upload_dir — skipping");
+            continue;
+        }
 
         match resized.save(&size_path) {
             Ok(_) => {
@@ -141,7 +162,7 @@ pub fn process_image(
                         file: size_filename,
                         width: new_width,
                         height: new_height,
-                        mime_type: mime_from_extension(extension),
+                        mime_type: mime_from_extension(&extension),
                     },
                 );
             }

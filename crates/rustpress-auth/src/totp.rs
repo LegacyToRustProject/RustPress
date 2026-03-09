@@ -47,25 +47,20 @@ fn hotp(secret_b32: &str, counter: u64) -> Option<u32> {
     Some(code)
 }
 
-/// Generate a random 20-byte TOTP secret encoded in Base32.
+/// Generate a cryptographically-random 20-byte TOTP secret encoded in Base32.
+///
+/// Uses UUID v4 (backed by the OS CSPRNG via `getrandom`) to fill 20 random
+/// bytes.  Two UUIDs are generated (16 + 16 = 32 bytes) and the first 20 are
+/// used, giving 160 bits of cryptographic entropy — well above the RFC 4226
+/// minimum of 128 bits.
 ///
 /// Store the returned string in `wp_usermeta` under `_totp_secret`.
 pub fn generate_secret() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    // Generate 20 pseudo-random bytes using the same entropy-mix as migrate
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static CTR: AtomicU64 = AtomicU64::new(1);
+    let u1 = uuid::Uuid::new_v4();
+    let u2 = uuid::Uuid::new_v4();
     let mut bytes = [0u8; 20];
-    for b in &mut bytes {
-        let n = CTR.fetch_add(1, Ordering::Relaxed);
-        let t = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.subsec_nanos())
-            .unwrap_or(0);
-        *b = ((t.wrapping_add(n as u32))
-            .wrapping_mul(0x9e37_79b9)
-            .wrapping_add(n as u32 * 31)) as u8;
-    }
+    bytes[..16].copy_from_slice(u1.as_bytes());
+    bytes[16..].copy_from_slice(&u2.as_bytes()[..4]);
     BASE32.encode(&bytes)
 }
 

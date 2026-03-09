@@ -43,7 +43,9 @@ impl SecurityHeaders {
             ),
             x_frame_options: Some("SAMEORIGIN".into()),
             x_content_type_options: Some("nosniff".into()),
-            strict_transport_security: Some("max-age=31536000; includeSubDomains".into()),
+            // M6: add preload so browsers eligible for the global HSTS preload list
+            // can opt in.  Operators must still submit their domain at hstspreload.org.
+            strict_transport_security: Some("max-age=31536000; includeSubDomains; preload".into()),
             referrer_policy: Some("strict-origin-when-cross-origin".into()),
             permissions_policy: Some(
                 "camera=(), microphone=(), geolocation=(), payment=(), usb=(), \

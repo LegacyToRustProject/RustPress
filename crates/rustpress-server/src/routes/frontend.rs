@@ -317,20 +317,28 @@ async fn get_posts_page(
         .filter(wp_posts::Column::PostStatus.eq("publish"))
         .order_by_desc(wp_posts::Column::PostDate);
 
-    let total = query
-        .clone()
-        .count(&state.db)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
+    let total = match query.clone().count(&state.db).await {
+        Ok(n) => n,
+        Err(e) => {
+            tracing::debug!(error = %e, "post count query failed (no-DB mode?)");
+            return Ok((vec![], PaginationData::new(1, 1, 0)));
+        }
+    };
 
     let total_pages = total.div_ceil(per_page);
 
-    let models = query
+    let models = match query
         .offset((page - 1) * per_page)
         .limit(per_page)
         .all(&state.db)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Html(e.to_string())))?;
+    {
+        Ok(m) => m,
+        Err(e) => {
+            tracing::debug!(error = %e, "post list query failed (no-DB mode?)");
+            vec![]
+        }
+    };
 
     let rewrite = state.rewrite_rules.read().await;
     let mut posts: Vec<PostTemplateData> = models

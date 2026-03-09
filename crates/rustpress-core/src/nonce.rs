@@ -82,7 +82,8 @@ impl NonceManager {
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect::<String>();
-        hex[..10].to_string()
+        // M2: 20 hex chars = 80-bit token, brute-force infeasible (WP uses 10 = 40-bit).
+        hex[..20].to_string()
     }
 }
 
@@ -107,7 +108,7 @@ mod tests {
         let manager = NonceManager::new("test-secret-key");
         let nonce = manager.create_nonce("save_post", 1);
         assert!(!nonce.is_empty());
-        assert_eq!(nonce.len(), 10);
+        assert_eq!(nonce.len(), 20);
     }
 
     #[test]

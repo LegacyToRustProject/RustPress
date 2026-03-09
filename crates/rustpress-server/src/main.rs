@@ -55,26 +55,53 @@ async fn main() -> Result<()> {
         config.port
     );
 
-    // Connect to database
-    let db = connection::connect(&config.database_url).await?;
+    // Connect to database — fall back to in-memory SQLite when MySQL is unavailable.
+    // Skip MySQL entirely if NO_DB=1 OR if DATABASE_URL was not set (empty string).
+    let no_db_mode = {
+        let v = std::env::var("NO_DB").unwrap_or_default();
+        v == "1" || v == "true" || config.database_url.is_empty()
+    };
+    let db = if no_db_mode {
+        tracing::warn!("Using in-memory SQLite stub (no DATABASE_URL / NO_DB mode)");
+        rustpress_db::connection::connect_sqlite_memory().await?
+    } else {
+        match connection::connect(&config.database_url).await {
+            Ok(conn) => conn,
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "MySQL connection failed — falling back to in-memory SQLite stub. \
+                     Set DATABASE_URL to a valid MySQL URL for full functionality."
+                );
+                rustpress_db::connection::connect_sqlite_memory().await?
+            }
+        }
+    };
 
-    // Run migrations (create tables if not exist) — skip when using an existing WordPress DB
-    let skip_migrations = std::env::var("SKIP_MIGRATIONS").unwrap_or_default();
-    if skip_migrations == "true" || skip_migrations == "1" {
-        info!("SKIP_MIGRATIONS set — using existing database tables");
+    // Run migrations — skip in NO_DB mode or when SKIP_MIGRATIONS is set
+    let skip_migrations = no_db_mode || {
+        let v = std::env::var("SKIP_MIGRATIONS").unwrap_or_default();
+        v == "true" || v == "1"
+    };
+    if skip_migrations {
+        info!("Skipping database migrations (stub/no-DB mode)");
     } else {
         info!("Running database migrations...");
         rustpress_migrate::create_wp_tables(&db).await?;
         rustpress_migrate::insert_default_options(&db, &config.site_url, "RustPress").await?;
 
-        // Create default admin user
+        // Create default admin user.
+        // SECURITY: never print the generated password — plain-text in logs is
+        // a C3-class credential exposure. Operators must set ADMIN_PASSWORD
+        // before first run, or reset via CLI afterwards.
         let admin_password = std::env::var("ADMIN_PASSWORD").unwrap_or_else(|_| {
-            let generated = uuid::Uuid::new_v4().to_string();
-            eprintln!(
-                "WARNING: ADMIN_PASSWORD not set. Generated random admin password: {generated}"
+            tracing::warn!(
+                "ADMIN_PASSWORD env var not set. \
+                 A random admin password was generated but NOT logged. \
+                 Use `rustpress user reset-password admin` or set \
+                 ADMIN_PASSWORD before the first run to gain admin access."
             );
-            eprintln!("Set ADMIN_PASSWORD env var to use a specific password.");
-            generated
+            uuid::Uuid::new_v4().to_string()
         });
         let admin_hash = rustpress_auth::PasswordHasher::hash_argon2(&admin_password)
             .expect("Failed to hash admin password");

@@ -68,6 +68,7 @@ tower = "0.5"
 # ORM (MySQL for WP database compatibility)
 sea-orm = { version = "1.1", features = [
     "sqlx-mysql",
+    "sqlx-sqlite",
     "runtime-tokio-native-tls",
     "macros",
 ] }
