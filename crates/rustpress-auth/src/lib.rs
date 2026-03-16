@@ -1,3 +1,4 @@
+pub mod audit;
 pub mod jwt;
 pub mod jwt_blacklist;
 pub mod middleware;

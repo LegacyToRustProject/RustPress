@@ -708,6 +708,22 @@ async fn test_visual_theme_twentytwentyone() {
     run_theme_sweep("twentytwentyone").await;
 }
 
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentytwenty() {
+    // NOTE: requires WordPress to have twentytwenty active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentytwenty
+    run_theme_sweep("twentytwenty").await;
+}
+
+#[tokio::test]
+#[ignore]
+async fn test_visual_theme_twentynineteen() {
+    // NOTE: requires WordPress to have twentynineteen active.
+    // Switch via: docker exec <wp-container> wp --allow-root theme activate twentynineteen
+    run_theme_sweep("twentynineteen").await;
+}
+
 // ---------------------------------------------------------------------------
 // All-themes meta-sweep (runs all supported themes in sequence)
 // ---------------------------------------------------------------------------
