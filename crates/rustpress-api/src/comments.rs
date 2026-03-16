@@ -13,8 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
-use rustpress_db::entities::wp_comments;
-use rustpress_db::entities::wp_posts;
+use rustpress_db::entities::{wp_comments, wp_options, wp_posts};
 
 use crate::common::{
     avatar_urls, comment_links, envelope_response, filter_comment_context,
@@ -109,6 +108,60 @@ fn db_to_status(approved: &str) -> String {
         "0" => "hold".to_string(),
         other => other.to_string(),
     }
+}
+
+/// Maximum number of URLs allowed in a comment before it is flagged as spam.
+const SPAM_URL_THRESHOLD: usize = 3;
+
+/// Check comment content against spam rules.
+/// Returns `true` if the comment should be marked as spam.
+///
+/// Rules:
+/// 1. If content or author fields contain any word from wp_options `disallowed_keys`
+/// 2. If comment body contains 3+ URLs (https?://)
+async fn is_spam(
+    db: &sea_orm::DatabaseConnection,
+    content: &str,
+    author_name: &str,
+    author_email: &str,
+    author_url: &str,
+) -> bool {
+    // Rule 1: Check disallowed_keys from wp_options
+    let disallowed = wp_options::Entity::find()
+        .filter(wp_options::Column::OptionName.eq("disallowed_keys"))
+        .one(db)
+        .await
+        .ok()
+        .flatten();
+
+    if let Some(opt) = disallowed {
+        let content_lower = content.to_lowercase();
+        let name_lower = author_name.to_lowercase();
+        let email_lower = author_email.to_lowercase();
+        let url_lower = author_url.to_lowercase();
+
+        for word in opt.option_value.lines() {
+            let word = word.trim().to_lowercase();
+            if word.is_empty() {
+                continue;
+            }
+            if content_lower.contains(&word)
+                || name_lower.contains(&word)
+                || email_lower.contains(&word)
+                || url_lower.contains(&word)
+            {
+                return true;
+            }
+        }
+    }
+
+    // Rule 2: Too many URLs in content
+    let url_count = content.matches("http://").count() + content.matches("https://").count();
+    if url_count >= SPAM_URL_THRESHOLD {
+        return true;
+    }
+
+    false
 }
 
 fn build_comment(c: wp_comments::Model, site_url: &str) -> WpComment {
@@ -320,17 +373,35 @@ async fn create_comment(
     // Any authenticated user can create comments
     let now = chrono::Utc::now().naive_utc();
 
-    // Map status: default to "approved" ("1" in DB)
-    let db_approved = match input.status.as_deref() {
-        Some(s) => status_to_db(s).to_string(),
-        None => "1".to_string(),
+    let author_name = input.author_name.as_deref().unwrap_or("Anonymous");
+    let author_email = input.author_email.as_deref().unwrap_or_default();
+    let author_url = input.author_url.as_deref().unwrap_or_default();
+
+    // Spam filter: check disallowed_keys + URL count
+    let spam = is_spam(
+        &state.db,
+        &input.content,
+        author_name,
+        author_email,
+        author_url,
+    )
+    .await;
+
+    // Map status: default to "approved" ("1" in DB), override to "spam" if flagged
+    let db_approved = if spam {
+        "spam".to_string()
+    } else {
+        match input.status.as_deref() {
+            Some(s) => status_to_db(s).to_string(),
+            None => "1".to_string(),
+        }
     };
 
     let new_comment = wp_comments::ActiveModel {
         comment_post_id: Set(input.post),
-        comment_author: Set(input.author_name.unwrap_or_else(|| "Anonymous".to_string())),
-        comment_author_email: Set(input.author_email.unwrap_or_default()),
-        comment_author_url: Set(input.author_url.unwrap_or_default()),
+        comment_author: Set(author_name.to_string()),
+        comment_author_email: Set(author_email.to_string()),
+        comment_author_url: Set(author_url.to_string()),
         comment_author_ip: Set(String::new()),
         comment_date: Set(now),
         comment_date_gmt: Set(now),
@@ -453,5 +524,161 @@ async fn update_comment_count(db: &sea_orm::DatabaseConnection, post_id: u64) {
         let mut active: wp_posts::ActiveModel = post.into();
         active.comment_count = Set(count as i64);
         let _ = active.update(db).await;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Helper: count URL occurrences and check threshold (mirrors is_spam rule 2)
+    fn is_spam_by_url_count(content: &str) -> bool {
+        let url_count = content.matches("http://").count() + content.matches("https://").count();
+        url_count >= SPAM_URL_THRESHOLD
+    }
+
+    /// Helper: check content against a newline-separated disallowed word list
+    fn is_spam_by_disallowed_keys(
+        disallowed_keys: &str,
+        content: &str,
+        author_name: &str,
+        author_email: &str,
+        author_url: &str,
+    ) -> bool {
+        let content_lower = content.to_lowercase();
+        let name_lower = author_name.to_lowercase();
+        let email_lower = author_email.to_lowercase();
+        let url_lower = author_url.to_lowercase();
+
+        for word in disallowed_keys.lines() {
+            let word = word.trim().to_lowercase();
+            if word.is_empty() {
+                continue;
+            }
+            if content_lower.contains(&word)
+                || name_lower.contains(&word)
+                || email_lower.contains(&word)
+                || url_lower.contains(&word)
+            {
+                return true;
+            }
+        }
+        false
+    }
+
+    #[test]
+    fn test_spam_disallowed_keyword_in_content() {
+        let keys = "viagra\ncasino\nfree money";
+        assert!(is_spam_by_disallowed_keys(
+            keys,
+            "Buy cheap viagra now!",
+            "John",
+            "john@example.com",
+            ""
+        ));
+    }
+
+    #[test]
+    fn test_spam_disallowed_keyword_in_author_email() {
+        let keys = "spam.example.com";
+        assert!(is_spam_by_disallowed_keys(
+            keys,
+            "Nice post!",
+            "Spammer",
+            "bot@spam.example.com",
+            ""
+        ));
+    }
+
+    #[test]
+    fn test_spam_disallowed_keyword_in_author_name() {
+        let keys = "spambot";
+        assert!(is_spam_by_disallowed_keys(
+            keys,
+            "Nice article",
+            "SpamBot3000",
+            "x@example.com",
+            ""
+        ));
+    }
+
+    #[test]
+    fn test_spam_disallowed_keyword_case_insensitive() {
+        let keys = "VIAGRA";
+        assert!(is_spam_by_disallowed_keys(
+            keys,
+            "buy Viagra online",
+            "John",
+            "john@example.com",
+            ""
+        ));
+    }
+
+    #[test]
+    fn test_spam_disallowed_empty_lines_ignored() {
+        let keys = "\n\n  \nviagra\n  \n";
+        // Empty lines should not match everything
+        assert!(!is_spam_by_disallowed_keys(
+            keys,
+            "Great post!",
+            "John",
+            "john@example.com",
+            ""
+        ));
+        assert!(is_spam_by_disallowed_keys(
+            keys,
+            "buy viagra",
+            "John",
+            "john@example.com",
+            ""
+        ));
+    }
+
+    #[test]
+    fn test_spam_too_many_urls() {
+        let content = "Check out https://a.com and https://b.com and https://c.com for deals!";
+        assert!(is_spam_by_url_count(content));
+    }
+
+    #[test]
+    fn test_spam_mixed_http_https_urls() {
+        let content = "Visit http://a.com, https://b.com, http://c.com now";
+        assert!(is_spam_by_url_count(content));
+    }
+
+    #[test]
+    fn test_not_spam_few_urls() {
+        let content = "See https://example.com and https://rust-lang.org";
+        assert!(!is_spam_by_url_count(content));
+    }
+
+    #[test]
+    fn test_not_spam_no_urls() {
+        let content = "This is a perfectly normal comment.";
+        assert!(!is_spam_by_url_count(content));
+    }
+
+    #[test]
+    fn test_clean_comment_passes_all_checks() {
+        let keys = "viagra\ncasino\nfree money";
+        let content = "Great article, thanks for sharing!";
+        let name = "Alice";
+        let email = "alice@example.com";
+        let url = "https://alice.dev";
+
+        assert!(!is_spam_by_disallowed_keys(keys, content, name, email, url));
+        assert!(!is_spam_by_url_count(content));
+    }
+
+    #[test]
+    fn test_status_mapping() {
+        assert_eq!(status_to_db("approved"), "1");
+        assert_eq!(status_to_db("hold"), "0");
+        assert_eq!(status_to_db("spam"), "spam");
+        assert_eq!(status_to_db("trash"), "trash");
+
+        assert_eq!(db_to_status("1"), "approved");
+        assert_eq!(db_to_status("0"), "hold");
+        assert_eq!(db_to_status("spam"), "spam");
     }
 }
